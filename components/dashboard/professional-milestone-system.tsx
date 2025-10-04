@@ -1667,15 +1667,28 @@ export function ProfessionalMilestoneSystem({
             onRefresh={loadData}
             onCreateRecommended={async () => {
               try {
+                console.log('🌱 Creating recommended milestones for booking:', bookingId)
                 const res = await fetch('/api/milestones/seed', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
                   body: JSON.stringify({ booking_id: bookingId })
                 })
-                if (!res.ok) throw new Error('Failed to seed milestones')
+                
+                console.log('📡 Milestones seed response:', { status: res.status, ok: res.ok })
+                
+                if (!res.ok) {
+                  const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+                  console.error('❌ Milestones seed failed:', errorData)
+                  throw new Error(`Failed to seed milestones: ${errorData.error || res.statusText}`)
+                }
+                
+                const result = await res.json()
+                console.log('✅ Milestones seeded successfully:', result)
                 await loadData()
-              } catch (e) { console.error(e) }
+              } catch (e) { 
+                console.error('❌ Error in onCreateRecommended:', e) 
+              }
             }}
           />
           {/* One-click seed when empty - moved into Smart block with proper gating */}

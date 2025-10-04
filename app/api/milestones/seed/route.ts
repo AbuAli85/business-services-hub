@@ -23,16 +23,42 @@ const SeedSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🌱 Milestones seed API called')
     const supabase = createRouteHandlerClient({ cookies })
     const body = await request.json()
     const { booking_id, plan } = SeedSchema.parse(body)
 
+    console.log('📋 Request body:', { booking_id, plan })
+
     // Auth
     const { data: { user }, error: userError } = await supabase.auth.getUser()
+    console.log('🔐 Auth check result:', { user: user?.id, error: userError })
+    
+    let finalUser = user
+    
     if (userError || !user) {
-      console.warn('Authentication failed in milestones seed API:', userError)
+      console.warn('❌ Authentication failed in milestones seed API:', userError)
+      
+      // Try to get session as fallback
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('🔄 Fallback session check:', { session: session?.user?.id, error: sessionError })
+      
+      if (sessionError || !session?.user) {
+        return NextResponse.json(
+          { error: 'Unauthorized', details: userError?.message || sessionError?.message },
+          { status: 401, headers: corsHeaders }
+        )
+      }
+      
+      // Use session user if available
+      finalUser = session.user
+      console.log('✅ Using session user:', finalUser.id)
+    }
+    
+    // Ensure we have a valid user
+    if (!finalUser) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'No authenticated user found' },
         { status: 401, headers: corsHeaders }
       )
     }
@@ -52,8 +78,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const isProvider = booking.provider_id === user.id
-    const isAdmin = user.user_metadata?.role === 'admin'
+    const isProvider = booking.provider_id === finalUser.id
+    const isAdmin = finalUser.user_metadata?.role === 'admin'
     if (!isProvider && !isAdmin) {
       return NextResponse.json(
         { error: 'Only providers can seed milestones' },
@@ -216,7 +242,7 @@ export async function POST(request: NextRequest) {
           estimated_hours: 0,
           actual_hours: 0,
           editable: true,
-          created_by: user.id
+          created_by: finalUser.id
         }
       })
 
