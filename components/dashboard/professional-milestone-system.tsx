@@ -544,7 +544,7 @@ export function ProfessionalMilestoneSystem({
             action: 'update_status',
             old_values: { status: 'previous_status' },
             new_values: { status },
-            actor_id: user.id,
+            user_id: user.id,
             created_at: new Date().toISOString()
           })
         }
@@ -570,12 +570,11 @@ export function ProfessionalMilestoneSystem({
       
       // Use our backend-driven API for milestone deletion
       // The API will handle task deletion automatically
-      const response = await fetch('/api/milestones', {
+      const response = await fetch(`/api/milestones?id=${milestoneId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: milestoneId })
+        }
       })
 
       if (!response.ok) {
@@ -696,7 +695,7 @@ export function ProfessionalMilestoneSystem({
             entity_id: taskId,
             action: 'update_status',
             new_values: { status },
-            actor_id: user.id,
+            user_id: user.id,
             created_at: new Date().toISOString()
           })
         }
@@ -765,7 +764,7 @@ export function ProfessionalMilestoneSystem({
             entity: 'task',
             entity_id: taskId,
             action: 'delete',
-            actor_id: user.id,
+            user_id: user.id,
             created_at: new Date().toISOString()
           })
         }
@@ -852,7 +851,7 @@ export function ProfessionalMilestoneSystem({
                 description: milestoneForm.description,
                 priority: normalizedPriority
               },
-              actor_id: user.id,
+              user_id: user.id,
               created_at: new Date().toISOString()
             })
           }
@@ -920,7 +919,7 @@ export function ProfessionalMilestoneSystem({
                 priority: normalizedPriorityCreate,
                 status: 'pending'
               },
-              actor_id: user.id,
+              user_id: user.id,
               created_at: new Date().toISOString()
             })
           }
@@ -1070,7 +1069,7 @@ export function ProfessionalMilestoneSystem({
                 status: 'pending',
                 priority: taskForm.priority
               },
-              actor_id: user.id,
+              user_id: user.id,
               created_at: new Date().toISOString()
             })
           }

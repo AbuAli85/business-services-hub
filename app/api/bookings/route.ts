@@ -1127,7 +1127,7 @@ export async function PATCH(request: NextRequest) {
             message: notification.message,
             data: {
               booking_id,
-              actor_id: user.id,
+              user_id: user.id,
               actor_name: actorName,
               service_name: booking.service_title || 'Service',
               booking_title: booking.service_title || 'Booking',
