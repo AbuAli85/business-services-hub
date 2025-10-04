@@ -35,6 +35,8 @@ import { BookingLoadingSkeleton } from '@/components/dashboard/bookings/BookingL
 import { BookingSummaryStats } from '@/components/dashboard/bookings/BookingSummaryStats'
 import { EnhancedBookingRow } from '@/components/dashboard/bookings/EnhancedBookingRow'
 import { EnhancedBookingFilters } from '@/components/dashboard/bookings/EnhancedBookingFilters'
+import { EnhancedBookingsTable } from '@/components/dashboard/bookings/EnhancedBookingsTable'
+import { useBookingsFullData } from '@/hooks/useBookingsFullData'
 import PaginationFooter from '@/components/ui/PaginationFooter'
 
 // Utils
@@ -67,7 +69,7 @@ export default function BookingsPage() {
   const [sortBy, setSortBy] = useState('lastUpdated')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showFilters, setShowFilters] = useState(false)
-	const [viewMode, setViewMode] = useState<'card' | 'calendar' | 'table' | 'professional'>(() => {
+	const [viewMode, setViewMode] = useState<'card' | 'calendar' | 'table' | 'professional' | 'enhanced'>(() => {
 		if (typeof window === 'undefined') return 'card'
 		return (localStorage.getItem('bookings:viewMode') as any) || 'card'
 	})
@@ -99,16 +101,31 @@ export default function BookingsPage() {
   }>>([])
   const [detailLoading, setDetailLoading] = useState(false)
 
-  // Bookings data
+  // Enhanced bookings data with full relational information
   const {
-    bookings,
-    invoices,
+    bookings: enhancedBookings,
     totalCount,
-    summaryStats,
     loading: dataLoading,
     error: dataError,
     lastUpdatedAt,
-    refresh,
+    refresh
+  } = useBookingsFullData({
+    userRole: userRole || undefined,
+    userId: user?.id,
+    currentPage,
+    pageSize,
+    statusFilter,
+    searchQuery,
+    sortBy,
+    sortOrder,
+    enableRealtime: true
+  })
+
+  // Legacy bookings data for compatibility with existing components
+  const {
+    bookings,
+    invoices,
+    summaryStats,
     approveBooking,
     declineBooking
   } = useBookings({
@@ -459,9 +476,9 @@ export default function BookingsPage() {
           dateStart: filters.dateStart || undefined,
           dateEnd: filters.dateEnd || undefined
         }}
-        lastUpdatedAt={lastUpdatedAt}
+        lastUpdatedAt={lastUpdatedAt ? new Date(lastUpdatedAt).getTime() : null}
         dataLoading={dataLoading}
-        viewMode={viewMode}
+        viewMode={viewMode === 'enhanced' ? 'professional' : viewMode as 'card' | 'calendar' | 'table' | 'professional'}
         density={density}
         onRefresh={() => refresh(true)}
         onViewModeChange={setViewMode}
@@ -833,6 +850,36 @@ export default function BookingsPage() {
 					loading={dataLoading}
 				  />
 				</div>
+			  ) : viewMode === 'enhanced' ? (
+          <EnhancedBookingsTable
+            bookings={enhancedBookings || []}
+            selectedIds={selectedIds}
+            onSelect={(bookingId, checked) => {
+              setSelectedIds(prev => {
+                const next = new Set(prev)
+                if (checked) next.add(bookingId); else next.delete(bookingId)
+                return next
+              })
+            }}
+            onSelectAll={(checked) => {
+              setSelectAll(checked)
+              if (checked) {
+                setSelectedIds(new Set(enhancedBookings?.map(b => b.id) || []))
+              } else {
+                setSelectedIds(new Set())
+              }
+            }}
+            onViewDetails={(bookingId) => router.push(`/dashboard/bookings/${bookingId}`)}
+            onViewMilestones={(bookingId) => router.push(`/dashboard/bookings/${bookingId}/milestones`)}
+            onViewInvoice={(bookingId) => {
+              const booking = enhancedBookings?.find(b => b.id === bookingId)
+              if (booking?.invoice_id) router.push(getInvoiceHref(booking.invoice_id))
+            }}
+            onMessageClient={(bookingId) => router.push('/dashboard/messages')}
+            userRole={userRole}
+            density={density}
+            loading={dataLoading}
+          />
 			  ) : (
 			  <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               {/* Header row with select all */}
