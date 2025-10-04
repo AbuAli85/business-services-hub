@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from 'sonner'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { ReactQueryProvider } from '@/components/providers/react-query-provider'
 import '@/lib/error-handler'
 
 // next/font self-hosted Inter (no external <link> needed)
@@ -104,12 +105,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>
-            <ErrorBoundary>
-              {children}
-              <Toaster position="top-right" />
-            </ErrorBoundary>
-          </TooltipProvider>
+          <ReactQueryProvider>
+            <TooltipProvider>
+              <ErrorBoundary>
+                {children}
+                <Toaster position="top-right" />
+              </ErrorBoundary>
+            </TooltipProvider>
+          </ReactQueryProvider>
         </ThemeProvider>
       </body>
     </html>

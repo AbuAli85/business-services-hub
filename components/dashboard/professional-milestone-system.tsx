@@ -58,6 +58,26 @@ import { notificationTriggerService } from '@/lib/notification-triggers'
 import { milestonesApi, tasksApi, handleApiError } from '@/lib/api-client'
 import { validateMilestoneForm, getMilestoneFieldError } from '@/lib/validation/milestone'
 import { validateTaskForm, getTaskFieldError, isValidUUID as validateUUID } from '@/lib/validation/task'
+import {
+  useMilestones,
+  useCreateMilestone,
+  useUpdateMilestone,
+  useDeleteMilestone,
+  useApproveMilestone,
+  useAddMilestoneComment,
+  useSeedMilestones,
+} from '@/hooks/use-milestones'
+import {
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask,
+  useUpdateTaskStatus,
+} from '@/hooks/use-tasks'
+import { 
+  MilestoneListSkeleton, 
+  DashboardHeaderSkeleton, 
+  StatsGridSkeleton 
+} from '@/components/ui/skeleton-loader'
 import { 
   Milestone, 
   Task, 
@@ -77,17 +97,57 @@ export function ProfessionalMilestoneSystem({
   bookingId, 
   className = '' 
 }: ProfessionalMilestoneSystemProps) {
-  const [milestones, setMilestones] = useState<Milestone[]>([])
+  // React Query hooks for data fetching with caching
+  const { 
+    data: milestonesData, 
+    isLoading, 
+    error: queryError,
+    refetch: refetchMilestones 
+  } = useMilestones(bookingId)
+
+  // Initialize React Query mutation hooks
+  const createMilestoneMutation = useCreateMilestone(bookingId)
+  const updateMilestoneMutation = useUpdateMilestone(bookingId)
+  const deleteMilestoneMutation = useDeleteMilestone(bookingId)
+  const approveMilestoneMutation = useApproveMilestone(bookingId)
+  const addMilestoneCommentMutation = useAddMilestoneComment(bookingId)
+  const seedMilestonesMutation = useSeedMilestones(bookingId)
+  
+  const createTaskMutation = useCreateTask(bookingId)
+  const updateTaskMutation = useUpdateTask(bookingId)
+  const deleteTaskMutation = useDeleteTask(bookingId)
+  const updateTaskStatusMutation = useUpdateTaskStatus(bookingId)
+
+  // Process and normalize milestones data from React Query
+  const milestones = React.useMemo(() => {
+    return (milestonesData?.milestones || []).map((m: any) => ({
+      ...m,
+      tasks: (m.tasks || []).sort((a: any, b: any) => {
+        const ao = a.order_index ?? 0
+        const bo = b.order_index ?? 0
+        if (ao !== bo) return ao - bo
+        const ad = a.created_at ? new Date(a.created_at).getTime() : 0
+        const bd = b.created_at ? new Date(b.created_at).getTime() : 0
+        return ad - bd
+      })
+    }))
+  }, [milestonesData])
+
+  // Convert query error to string for compatibility
+  const error = queryError ? String(queryError) : null
+  const loading = isLoading
+
+  // Filter states
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'on_hold' | 'cancelled'>('all')
   const [highRiskOnly, setHighRiskOnly] = useState(false)
+  
+  // Legacy state for features not yet migrated to React Query
   const [phases, setPhases] = useState<ProjectPhase[]>([])
   const [templates, setTemplates] = useState<MilestoneTemplate[]>([])
   const [comments, setComments] = useState<Record<string, any[]>>({})
   const [approvals, setApprovals] = useState<Record<string, any[]>>({})
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('smart')
   
   // Dialog states
@@ -156,29 +216,14 @@ export function ProfessionalMilestoneSystem({
   })
 
   // Use useCallback to memoize loadData function
+  // Simplified loadData - only handles approvals and comments (milestones handled by React Query)
   const loadData = React.useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
-      
       // Initialize Supabase client
       const supabase = await getSupabaseClient()
       
-      // Load milestones from API using centralized client
-      const milestonesData = await milestonesApi.getAll(bookingId)
-      const normalizedMilestones = (milestonesData.milestones || []).map((m: any) => ({
-        ...m,
-        tasks: (m.tasks || []).sort((a: any, b: any) => {
-          const ao = a.order_index ?? 0
-          const bo = b.order_index ?? 0
-          if (ao !== bo) return ao - bo
-          const ad = a.created_at ? new Date(a.created_at).getTime() : 0
-          const bd = b.created_at ? new Date(b.created_at).getTime() : 0
-          return ad - bd
-        })
-      }))
-      
-      setMilestones(normalizedMilestones)
+      // Refetch milestones from React Query cache
+      await refetchMilestones()
       
       // Skip comments loading for now (no API endpoint)
       // TODO: Create API endpoint for comments
@@ -199,7 +244,7 @@ export function ProfessionalMilestoneSystem({
         }
 
       // Load approvals and task comments in parallel for better performance
-      const allTaskIds = normalizedMilestones.flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
+      const allTaskIds = milestones.flatMap((m: any) => (m.tasks || []).map((t: any) => t.id))
       const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
       const taskIds = allTaskIds.filter((id: string) => {
         const isValid = isUuid(id) && id !== bookingId
@@ -274,23 +319,13 @@ export function ProfessionalMilestoneSystem({
       setTemplates([])
       
     } catch (err) {
-      const errorMessage = handleApiError(err, {
+      handleApiError(err, {
         showToast: true,
         logToConsole: true,
-        fallbackMessage: 'Failed to load milestones'
+        fallbackMessage: 'Failed to load milestone data'
       })
-      
-      setError(errorMessage)
-      setMilestones([])
-      
-      // Additional action for auth errors
-      if (errorMessage.includes('Unauthorized') || errorMessage.includes('Authentication')) {
-        // Optionally redirect to login
-      }
-    } finally {
-      setLoading(false)
     }
-  }, [bookingId])
+  }, [bookingId, refetchMilestones, milestones])
 
   useEffect(() => {
     loadData()
@@ -457,49 +492,33 @@ export function ProfessionalMilestoneSystem({
 
   // Milestone actions
   const updateMilestoneStatus = async (milestoneId: string, status: string) => {
-    // Store previous state for rollback
-    const previousMilestones = milestones
-    
-    try {
-      // Optimistic update - update UI immediately
-      setMilestones(prev => prev.map(m => 
-        m.id === milestoneId ? { ...m, status: status as any, updated_at: new Date().toISOString() } as any : m
-      ))
-      
-      // Use centralized API client for milestone status updates
-      await milestonesApi.update(milestoneId, { status })
-      
-      toast.success('Milestone status updated')
-      
-      // Log audit trail
-      try {
-        const supabase = await getSupabaseClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          await supabase.from('audit_logs').insert({
-            booking_id: bookingId,
-            entity: 'milestone',
-            entity_id: milestoneId,
-            action: 'update_status',
-            old_values: { status: 'previous_status' },
-            new_values: { status },
-            user_id: user.id,
-            created_at: new Date().toISOString()
-          })
+    // Use React Query mutation with automatic optimistic updates
+    updateMilestoneMutation.mutate({
+      id: milestoneId,
+      data: { status }
+    }, {
+      onSuccess: async () => {
+        // Log audit trail
+        try {
+          const supabase = await getSupabaseClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            await supabase.from('audit_logs').insert({
+              booking_id: bookingId,
+              entity: 'milestone',
+              entity_id: milestoneId,
+              action: 'update_status',
+              old_values: { status: 'previous_status' },
+              new_values: { status },
+              user_id: user.id,
+              created_at: new Date().toISOString()
+            })
+          }
+        } catch (auditError) {
+          console.warn('Failed to log audit trail:', auditError)
         }
-      } catch (auditError) {
-        console.warn('Failed to log audit trail:', auditError)
       }
-      
-      // Background refresh to ensure consistency
-      loadData()
-    } catch (err) {
-      // Revert optimistic update on error
-      setMilestones(previousMilestones)
-      handleApiError(err, {
-        fallbackMessage: 'Failed to update milestone status'
-      })
-    }
+    })
   }
 
   const deleteMilestone = async (milestoneId: string) => {
@@ -507,18 +526,8 @@ export function ProfessionalMilestoneSystem({
       return
     }
 
-    try {
-      // Use centralized API client for milestone deletion
-      // The API will handle task deletion automatically
-      await milestonesApi.delete(milestoneId)
-      
-      toast.success('Milestone deleted successfully')
-      await loadData()
-    } catch (err) {
-      handleApiError(err, {
-        fallbackMessage: 'Failed to delete milestone'
-      })
-    }
+    // Use React Query mutation with automatic optimistic updates
+    deleteMilestoneMutation.mutate(milestoneId)
   }
 
   const editMilestone = (milestone: Milestone) => {
@@ -536,26 +545,24 @@ export function ProfessionalMilestoneSystem({
 
   // Task actions
   const updateTaskStatus = async (taskId: string, status: string) => {
-    try {
-      const supabase = await getSupabaseClient()
+    // Validate that taskId is actually a task ID, not a booking ID
+    if (!taskId || taskId === bookingId) {
+      console.error('❌ Invalid taskId provided to updateTaskStatus:', taskId, 'bookingId:', bookingId)
+      toast.error('Invalid task ID provided')
+      return
+    }
+    
+    // Additional validation: ensure taskId is a valid UUID
+    const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+    if (!isUuid(taskId)) {
+      console.error('❌ Invalid UUID format for taskId:', taskId)
+      toast.error('Invalid task ID format')
+      return
+    }
 
-      // Validate that taskId is actually a task ID, not a booking ID
-      if (!taskId || taskId === bookingId) {
-        console.error('❌ Invalid taskId provided to updateTaskStatus:', taskId, 'bookingId:', bookingId)
-        toast.error('Invalid task ID provided')
-        return
-      }
-      
-      // Additional validation: ensure taskId is a valid UUID
-      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-      if (!isUuid(taskId)) {
-        console.error('❌ Invalid UUID format for taskId:', taskId)
-        toast.error('Invalid task ID format')
-        return
-      }
-
-      // Use centralized API client for task updates
-      await tasksApi.update(taskId, { status })
+    // Use React Query mutation with automatic optimistic updates
+    updateTaskStatusMutation.mutate({ id: taskId, status }, {
+      onSuccess: async () => {
 
       if (status === 'completed') {
         try {
@@ -613,20 +620,14 @@ export function ProfessionalMilestoneSystem({
         console.warn('Failed to log audit trail:', auditError)
       }
       
-      // Recalculate milestone progress after task update
-      // Find the milestone that contains this task and recalculate its progress
-      const supabaseClient = await getSupabaseClient()
-      const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
-      if (milestone) {
-        await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
+        // Recalculate milestone progress after task update
+        const supabaseClient = await getSupabaseClient()
+        const milestone = milestones.find((m: any) => m.tasks?.some((t: any) => t.id === taskId))
+        if (milestone) {
+          await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
+        }
       }
-      
-      await loadData() // This will trigger progress recalculation
-    } catch (err) {
-      handleApiError(err, {
-        fallbackMessage: 'Failed to update task status'
-      })
-    }
+    })
   }
 
   const deleteTask = async (taskId: string) => {
@@ -634,60 +635,50 @@ export function ProfessionalMilestoneSystem({
       return
     }
 
-    try {
-      const supabase = await getSupabaseClient()
-      
-      // Validate that taskId is actually a task ID, not a booking ID
-      if (!taskId || taskId === bookingId) {
-        console.error('Invalid taskId provided to deleteTask:', taskId, 'bookingId:', bookingId)
-        toast.error('Invalid task ID provided')
-        return
-      }
-      
-      // Additional validation: ensure taskId is a valid UUID
-      const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
-      if (!isUuid(taskId)) {
-        console.error('❌ Invalid UUID format for taskId:', taskId)
-        toast.error('Invalid task ID format')
-        return
-      }
-      
-      // Use centralized API client for task deletion
-      await tasksApi.delete(taskId)
-      
-      toast.success('Task deleted successfully')
-      
-      // Log audit trail for task deletion
-      try {
-        const supabase = await getSupabaseClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          await supabase.from('audit_logs').insert({
-            booking_id: bookingId,
-            entity: 'task',
-            entity_id: taskId,
-            action: 'delete',
-            user_id: user.id,
-            created_at: new Date().toISOString()
-          })
-        }
-      } catch (auditError) {
-        console.warn('Failed to log audit trail:', auditError)
-      }
-      
-      // Recalculate milestone progress after task deletion
-      const supabaseClient = await getSupabaseClient()
-      const milestone = milestones.find(m => m.tasks?.some((t: any) => t.id === taskId))
-      if (milestone) {
-        await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
-      }
-      
-      await loadData() // This will trigger progress recalculation
-    } catch (err) {
-      handleApiError(err, {
-        fallbackMessage: 'Failed to delete task'
-      })
+    // Validate that taskId is actually a task ID, not a booking ID
+    if (!taskId || taskId === bookingId) {
+      console.error('Invalid taskId provided to deleteTask:', taskId, 'bookingId:', bookingId)
+      toast.error('Invalid task ID provided')
+      return
     }
+    
+    // Additional validation: ensure taskId is a valid UUID
+    const isUuid = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+    if (!isUuid(taskId)) {
+      console.error('❌ Invalid UUID format for taskId:', taskId)
+      toast.error('Invalid task ID format')
+      return
+    }
+
+    // Use React Query mutation with automatic optimistic updates
+    deleteTaskMutation.mutate(taskId, {
+      onSuccess: async () => {
+        // Log audit trail for task deletion
+        try {
+          const supabase = await getSupabaseClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            await supabase.from('audit_logs').insert({
+              booking_id: bookingId,
+              entity: 'task',
+              entity_id: taskId,
+              action: 'delete',
+              user_id: user.id,
+              created_at: new Date().toISOString()
+            })
+          }
+        } catch (auditError) {
+          console.warn('Failed to log audit trail:', auditError)
+        }
+        
+        // Recalculate milestone progress after task deletion
+        const supabaseClient = await getSupabaseClient()
+        const milestone = milestones.find((m: any) => m.tasks?.some((t: any) => t.id === taskId))
+        if (milestone) {
+          await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
+        }
+      }
+    })
   }
 
   const editTask = (task: Task) => {
@@ -1022,17 +1013,17 @@ export function ProfessionalMilestoneSystem({
   }
 
 
-  // Drag & Drop handlers
-  const handleDragStart = (e: React.DragEvent, milestoneId: string) => {
+  // Drag & Drop handlers (optimized with useCallback)
+  const handleDragStart = React.useCallback((e: React.DragEvent, milestoneId: string) => {
     setDraggedMilestone(milestoneId)
     e.dataTransfer.effectAllowed = 'move'
-  }
+  }, [])
 
-  const handleDragOver = (e: React.DragEvent, milestoneId: string) => {
+  const handleDragOver = React.useCallback((e: React.DragEvent, milestoneId: string) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setDragOverMilestone(milestoneId)
-  }
+  }, [])
 
   // Simpler reordering via buttons
   const moveMilestone = async (milestoneId: string, direction: 'up' | 'down') => {
@@ -1045,7 +1036,7 @@ export function ProfessionalMilestoneSystem({
         return
       }
 
-      const index = milestones.findIndex(m => m.id === milestoneId)
+      const index = milestones.findIndex((m: any) => m.id === milestoneId)
       if (index === -1) return
       const targetIndex = direction === 'up' ? index - 1 : index + 1
       if (targetIndex < 0 || targetIndex >= milestones.length) return
@@ -1056,12 +1047,12 @@ export function ProfessionalMilestoneSystem({
 
       const supabase = await getSupabaseClient()
       await Promise.all(
-        newMilestones.map((m, i) =>
+        newMilestones.map((m: any, i: number) =>
           supabase.from('milestones').update({ order_index: i }).eq('id', m.id)
         )
       )
 
-      setMilestones(newMilestones)
+      await refetchMilestones()
       toast.success('Milestone reordered')
     } catch (error) {
       console.error('Reorder error:', error)
@@ -1069,11 +1060,11 @@ export function ProfessionalMilestoneSystem({
     }
   }
 
-  const handleDragLeave = () => {
+  const handleDragLeave = React.useCallback(() => {
     setDragOverMilestone(null)
-  }
+  }, [])
 
-  const handleDrop = async (e: React.DragEvent, targetMilestoneId: string) => {
+  const handleDrop = React.useCallback(async (e: React.DragEvent, targetMilestoneId: string) => {
     e.preventDefault()
 
     if (!draggedMilestone || draggedMilestone === targetMilestoneId) {
@@ -1083,8 +1074,8 @@ export function ProfessionalMilestoneSystem({
     }
 
     try {
-      const draggedIndex = milestones.findIndex(m => m.id === draggedMilestone)
-      const targetIndex  = milestones.findIndex(m => m.id === targetMilestoneId)
+      const draggedIndex = milestones.findIndex((m: any) => m.id === draggedMilestone)
+      const targetIndex  = milestones.findIndex((m: any) => m.id === targetMilestoneId)
       if (draggedIndex === -1 || targetIndex === -1) return
 
       const newMilestones = [...milestones]
@@ -1093,12 +1084,14 @@ export function ProfessionalMilestoneSystem({
 
       const supabase = await getSupabaseClient()
       await Promise.all(
-        newMilestones.map((m, i) =>
+        newMilestones.map((m: any, i: number) =>
           supabase.from('milestones').update({ order_index: i }).eq('id', m.id)
         )
       )
 
-      setMilestones(newMilestones)
+      // Note: Drag & drop uses manual state for instant feedback
+      // React Query will refetch after mutations complete
+      await refetchMilestones()
       toast.success('Milestone order updated successfully')
     } catch (error) {
       console.error('Error reordering milestones:', error)
@@ -1107,7 +1100,7 @@ export function ProfessionalMilestoneSystem({
       setDraggedMilestone(null)
       setDragOverMilestone(null)
     }
-  }
+  }, [draggedMilestone, milestones, refetchMilestones])
 
   // Action/Comment handlers
   const handleTaskAction = (task: Task, action: 'comment' | 'flag' | 'assign' | 'priority') => {
@@ -1243,12 +1236,15 @@ export function ProfessionalMilestoneSystem({
   // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Milestones</h3>
-          <p className="text-gray-600">Please wait while we load your project data...</p>
-        </div>
+      <div className={`space-y-6 ${className}`}>
+        {/* Header Skeleton */}
+        <DashboardHeaderSkeleton />
+        
+        {/* Stats Grid Skeleton */}
+        <StatsGridSkeleton count={4} />
+        
+        {/* Milestone List Skeleton */}
+        <MilestoneListSkeleton count={3} />
       </div>
     )
   }
@@ -1567,7 +1563,7 @@ export function ProfessionalMilestoneSystem({
                   <h2 className="text-2xl font-bold">Project Status Overview</h2>
                   <p className="text-indigo-100 text-lg">
                     {milestones.length > 0 ? 
-                      `${milestones.filter(m => m.status === 'completed').length}/${milestones.length} milestones completed` : 
+                      `${milestones.filter((m: any) => m.status === 'completed').length}/${milestones.length} milestones completed` : 
                       'No milestones yet'
                     }
                   </p>
@@ -1575,7 +1571,7 @@ export function ProfessionalMilestoneSystem({
               </div>
               <div className="text-right">
                 <div className="text-3xl font-bold">
-                  {milestones.length > 0 ? Math.round((milestones.filter(m => m.status === 'completed').length / milestones.length) * 100) : 0}%
+                  {milestones.length > 0 ? Math.round((milestones.filter((m: any) => m.status === 'completed').length / milestones.length) * 100) : 0}%
                 </div>
                 <div className="text-indigo-100 text-sm">Complete</div>
               </div>
@@ -1609,10 +1605,10 @@ export function ProfessionalMilestoneSystem({
                   <div>
                     <p className="text-sm font-medium text-green-700 mb-1">Completed</p>
                     <p className="text-3xl font-bold text-green-900">
-                      {milestones.filter(m => m.status === 'completed').length}
+                      {milestones.filter((m: any) => m.status === 'completed').length}
                     </p>
                     <p className="text-xs text-green-600 mt-1">
-                      {milestones.length > 0 ? Math.round((milestones.filter(m => m.status === 'completed').length / milestones.length) * 100) : 0}% complete
+                      {milestones.length > 0 ? Math.round((milestones.filter((m: any) => m.status === 'completed').length / milestones.length) * 100) : 0}% complete
                     </p>
                   </div>
                   <div className="p-3 bg-green-500 rounded-xl">
@@ -1627,7 +1623,7 @@ export function ProfessionalMilestoneSystem({
                   <div>
                     <p className="text-sm font-medium text-orange-700 mb-1">In Progress</p>
                     <p className="text-3xl font-bold text-orange-900">
-                      {milestones.filter(m => m.status === 'in_progress').length}
+                      {milestones.filter((m: any) => m.status === 'in_progress').length}
                     </p>
                     <p className="text-xs text-orange-600 mt-1">Active work</p>
                   </div>
@@ -1643,7 +1639,7 @@ export function ProfessionalMilestoneSystem({
                   <div>
                     <p className="text-sm font-medium text-red-700 mb-1">Critical Path</p>
                     <p className="text-3xl font-bold text-red-900">
-                      {milestones.filter(m => m.critical_path).length}
+                      {milestones.filter((m: any) => m.critical_path).length}
                     </p>
                     <p className="text-xs text-red-600 mt-1">High priority</p>
                   </div>
