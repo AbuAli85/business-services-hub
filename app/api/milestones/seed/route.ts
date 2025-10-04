@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Define template
-    type Template = { title: string; plusDays: number; estimated_hours: number; priority: 'low'|'normal'|'high'|'urgent'; order: number; tasks: { title: string; priority?: 'low'|'normal'|'high'|'urgent' }[] }
+    type Template = { title: string; plusDays: number; estimated_hours: number; order: number; tasks: { title: string }[] }
     const baseDate = new Date()
     const templates: Record<string, Template[]> = {
       content_creation: [
@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
           title: 'Research & Strategy',
           plusDays: 5,
           estimated_hours: 8,
-          priority: 'normal',
           order: 0,
           tasks: [
             { title: 'Collect client requirements' },
@@ -118,7 +117,6 @@ export async function POST(request: NextRequest) {
           title: 'Content Drafting',
           plusDays: 15,
           estimated_hours: 15,
-          priority: 'high',
           order: 1,
           tasks: [
             { title: 'Blog drafts' },
@@ -130,7 +128,6 @@ export async function POST(request: NextRequest) {
           title: 'Review & Feedback',
           plusDays: 19,
           estimated_hours: 6,
-          priority: 'normal',
           order: 2,
           tasks: [
             { title: 'Submit drafts to client' },
@@ -142,7 +139,6 @@ export async function POST(request: NextRequest) {
           title: 'Final Delivery',
           plusDays: 22,
           estimated_hours: 4,
-          priority: 'low',
           order: 3,
           tasks: [
             { title: 'Deliver final approved content package' },
@@ -165,20 +161,12 @@ export async function POST(request: NextRequest) {
         booking_id,
         title: tpl.title,
         status: 'pending' as const,
-        priority: tpl.priority as 'low' | 'normal' | 'high' | 'urgent',
         due_date: toYmd(due),
-        estimated_hours: tpl.estimated_hours,
-        actual_hours: 0,
         progress_percentage: 0,
-        order_index: tpl.order,
-        editable: true,
-        weight: 1.0,
-        created_by: user.id
+        weight: 1.0
       }
       
       console.log('🔍 Milestone creation - Inserting data:', {
-        priority: milestoneData.priority,
-        priorityType: typeof milestoneData.priority,
         milestoneData
       })
       
@@ -212,29 +200,13 @@ export async function POST(request: NextRequest) {
       }
 
       const tasksToInsert = tpl.tasks.map(t => {
-        // Ensure priority is always a valid value
-        const validPriorities = ['low', 'normal', 'high', 'urgent'] as const
-        const taskPriority = (t.priority && validPriorities.includes(t.priority as any)) 
-          ? t.priority 
-          : 'normal'
-        
-        console.log('🔍 Task creation - Priority validation:', {
-          originalPriority: t.priority,
-          normalizedPriority: taskPriority,
-          isValid: validPriorities.includes(taskPriority as any)
-        })
-        
         return {
           milestone_id: milestone.id,
           title: t.title,
           description: '',
           status: 'pending',
-          priority: taskPriority,
           progress_percentage: 0,
-          estimated_hours: 0,
-          actual_hours: 0,
-          editable: true,
-          created_by: user.id
+          actual_hours: 0
         }
       })
 
