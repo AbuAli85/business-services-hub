@@ -123,12 +123,28 @@ export default function ProfilePage() {
       const role = user.user_metadata?.role || 'client'
       setUserRole(role)
 
-      // Fetch profile data
-      const { data: profileData } = await supabase
+      // Fetch profile data with timeout protection
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+      
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
+        .abortSignal(controller.signal)
+      
+      clearTimeout(timeoutId)
+
+      if (profileError) {
+        console.warn('Profile fetch error:', profileError)
+        if (profileError.code === '57014') {
+          setError('Profile data is taking too long to load. Please try again.')
+        } else {
+          setError('Failed to load profile data')
+        }
+        return
+      }
 
       if (profileData) {
         setProfile(profileData)
@@ -149,13 +165,21 @@ export default function ProfilePage() {
 
       // Fetch company data for both providers and clients
       if (role === 'provider' || role === 'client') {
-        const { data: companyData } = await supabase
+        const companyController = new AbortController()
+        const companyTimeoutId = setTimeout(() => companyController.abort(), 5000)
+        
+        const { data: companyData, error: companyError } = await supabase
           .from('companies')
           .select('*')
           .eq('owner_id', user.id)
           .single()
-
-        if (companyData) {
+          .abortSignal(companyController.signal)
+        
+        clearTimeout(companyTimeoutId)
+        
+        if (companyError) {
+          console.warn('Company fetch error:', companyError)
+        } else if (companyData) {
           setCompany(companyData)
         }
       }
