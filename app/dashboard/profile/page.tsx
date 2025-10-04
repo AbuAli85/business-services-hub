@@ -123,18 +123,12 @@ export default function ProfilePage() {
       const role = user.user_metadata?.role || 'client'
       setUserRole(role)
 
-      // Fetch profile data with timeout protection
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-      
+      // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
-        .abortSignal(controller.signal)
-      
-      clearTimeout(timeoutId)
 
       if (profileError) {
         console.warn('Profile fetch error:', profileError)
