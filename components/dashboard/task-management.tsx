@@ -84,10 +84,8 @@ export function TaskManagement({
         status: 'pending',
         progress: 0,
         tags: [],
-        steps: [],
-        approval_status: 'pending',
-        assigned_to: undefined,
-        created_by: undefined
+        order_index: 0,
+        assigned_to: undefined
       })
 
       setNewTask({
@@ -296,8 +294,8 @@ export function TaskManagement({
                           <Badge className={getStatusColor(task.status)}>
                             {task.status.replace('_', ' ')}
                           </Badge>
-                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                            {task.priority}
+                          <Badge variant="outline" className={getPriorityColor(task.priority || 'normal')}>
+                            {task.priority || 'normal'}
                           </Badge>
                           {isOverdue && (
                             <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -387,26 +385,7 @@ export function TaskManagement({
                           </>
                         )}
 
-                        {userRole === 'client' && task.approval_status === 'pending' && (
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              onClick={() => onTaskUpdate(task.id, { approval_status: 'approved' })}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onTaskUpdate(task.id, { approval_status: 'rejected' })}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        )}
+                        {/* Approval status functionality removed - not available in Task type */}
                       </div>
                     </div>
 
