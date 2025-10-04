@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient } from '@/utils/supabase/server'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -30,7 +29,7 @@ export async function POST(request: NextRequest) {
   console.log('🚀 MILESTONES SEED API ROUTE CALLED - START')
   try {
     console.log('🌱 Milestones seed API called')
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await createClient()
     const body = await request.json()
     const { booking_id, plan } = SeedSchema.parse(body)
 
