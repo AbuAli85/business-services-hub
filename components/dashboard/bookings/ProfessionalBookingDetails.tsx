@@ -52,7 +52,8 @@ import {
   PieChart,
   ArrowUpRight,
   ArrowDownRight,
-  Minus
+  Minus,
+  ArrowLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -65,6 +66,7 @@ interface ProfessionalBookingDetailsProps {
   onDecline?: () => void
   onExport?: () => void
   onShare?: () => void
+  onBack?: () => void
 }
 
 function formatCurrency(amount: number, currency: string = 'OMR'): string {
@@ -143,7 +145,8 @@ export function ProfessionalBookingDetails({
   onApprove,
   onDecline,
   onExport,
-  onShare
+  onShare,
+  onBack
 }: ProfessionalBookingDetailsProps) {
   const [activeTab, setActiveTab] = useState('overview')
   const [showEditModal, setShowEditModal] = useState(false)
@@ -225,6 +228,20 @@ export function ProfessionalBookingDetails({
 
   return (
     <div className="space-y-6">
+      {/* Back Button */}
+      {onBack && (
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Bookings
+          </Button>
+        </div>
+      )}
+
       {/* Professional Header */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-50 to-indigo-50">
         <CardHeader className="pb-4">

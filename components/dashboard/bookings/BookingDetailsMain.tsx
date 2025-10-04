@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, X, Clock, MessageSquare, FileText, BarChart3, Download, Share2, Mail } from 'lucide-react'
@@ -19,6 +20,7 @@ interface BookingDetailsMainProps {
 }
 
 export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [showEditModal, setShowEditModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -32,6 +34,10 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
     declineBooking,
     refresh
   } = useBookingDetails({ userRole })
+
+  const handleBack = useCallback(() => {
+    router.push('/dashboard/bookings')
+  }, [router])
 
   const handleApprove = useCallback(async () => {
     const success = await approveBooking()
@@ -184,6 +190,7 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
         onDecline={handleDecline}
         onExport={handleExport}
         onShare={handleShare}
+        onBack={handleBack}
       />
 
       {/* Quick Actions */}
