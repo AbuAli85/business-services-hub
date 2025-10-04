@@ -31,18 +31,11 @@ export async function safeFetchProfile(userId: string): Promise<ProfileData | nu
   const supabase = createClient()
   
   try {
-    // Create AbortController for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-    
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, email, role, phone, company_name, created_at, verification_status, profile_completed')
       .eq('id', userId)
       .single()
-      .abortSignal(controller.signal)
-    
-    clearTimeout(timeoutId)
     
     if (error) {
       console.warn('Profile fetch error:', error)
@@ -51,11 +44,7 @@ export async function safeFetchProfile(userId: string): Promise<ProfileData | nu
     
     return data
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('Profile fetch timed out for user:', userId)
-    } else {
-      console.error('Profile fetch failed:', error)
-    }
+    console.error('Profile fetch failed:', error)
     return null
   }
 }
@@ -67,18 +56,11 @@ export async function safeFetchCompany(ownerId: string): Promise<CompanyData | n
   const supabase = createClient()
   
   try {
-    // Create AbortController for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-    
     const { data, error } = await supabase
       .from('companies')
       .select('id, name, owner_id, created_at')
       .eq('owner_id', ownerId)
       .single()
-      .abortSignal(controller.signal)
-    
-    clearTimeout(timeoutId)
     
     if (error) {
       console.warn('Company fetch error:', error)
@@ -87,11 +69,7 @@ export async function safeFetchCompany(ownerId: string): Promise<CompanyData | n
     
     return data
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('Company fetch timed out for owner:', ownerId)
-    } else {
-      console.error('Company fetch failed:', error)
-    }
+    console.error('Company fetch failed:', error)
     return null
   }
 }
@@ -103,17 +81,10 @@ export async function safeFetchProfiles(userIds: string[]): Promise<ProfileData[
   const supabase = createClient()
   
   try {
-    // Create AbortController for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout for batch
-    
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, email, role, phone, company_name, created_at, verification_status, profile_completed')
       .in('id', userIds)
-      .abortSignal(controller.signal)
-    
-    clearTimeout(timeoutId)
     
     if (error) {
       console.warn('Batch profile fetch error:', error)
@@ -122,11 +93,7 @@ export async function safeFetchProfiles(userIds: string[]): Promise<ProfileData[
     
     return data || []
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('Batch profile fetch timed out for users:', userIds)
-    } else {
-      console.error('Batch profile fetch failed:', error)
-    }
+    console.error('Batch profile fetch failed:', error)
     return []
   }
 }

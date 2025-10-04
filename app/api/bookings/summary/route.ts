@@ -69,8 +69,6 @@ export async function GET(request: NextRequest) {
     const DAYS_BACK = 180
     const MAX_ROWS = 2000
     const sinceIso = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString()
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 12000)
 
     // Get ALL bookings for summary statistics (no pagination)
     let query = supabase
@@ -89,7 +87,7 @@ export async function GET(request: NextRequest) {
     // Cap rows to avoid huge payloads
     query = query.range(0, MAX_ROWS - 1)
 
-    const { data: allBookings, error: queryError } = await query.abortSignal(controller.signal)
+    const { data: allBookings, error: queryError } = await query
 
     if (queryError) {
       console.error('Summary API: Query error:', queryError)
@@ -116,7 +114,6 @@ export async function GET(request: NextRequest) {
       // Try to filter by same window if column exists; harmless if ignored by RLS
       .gte('created_at', sinceIso)
       .limit(MAX_ROWS)
-      .abortSignal(controller.signal)
 
     // Calculate summary statistics
     const bookingsData = allBookings || []

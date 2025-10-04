@@ -1,6 +1,14 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  return {
+    title: `Booking Milestones #${params.id.slice(0, 8)} | SmartPRO Dashboard`,
+    description: 'Track project milestones, tasks, and progress for your booking',
+  }
+}
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -429,11 +437,11 @@ export default function MilestonesPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleBack}
+                  onClick={() => router.push(`/dashboard/bookings/${bookingId}`)}
                   className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to Bookings
+                  Back to Details
                 </Button>
                 <div>
                   <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">

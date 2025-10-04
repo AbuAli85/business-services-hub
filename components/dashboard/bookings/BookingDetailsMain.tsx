@@ -1,154 +1,51 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, X, Clock, MessageSquare, FileText, BarChart3, Download, Share2, Mail } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { ArrowLeft, RefreshCw, Calendar, User, Settings, MessageSquare, Package } from 'lucide-react'
+import { StatusPill } from '@/components/ui/StatusPill'
+import { formatMuscat } from '@/lib/dates'
 import { useBookingDetails } from '@/hooks/useBookingDetails'
-import { BookingDetailsHeader } from './BookingDetailsHeader'
-import { BookingDetailsOverview } from './BookingDetailsOverview'
-import { BookingDetailsParticipants } from './BookingDetailsParticipants'
-import { ProgressTabs } from '../progress-tabs'
-import { ProfessionalBookingDetails } from './ProfessionalBookingDetails'
-import { toast } from 'sonner'
-import { exportToCSV, exportToPDF, exportSingleBookingPDF } from '@/lib/export-utils'
-import { shareBookingViaEmail } from '@/lib/email-utils'
+import { Breadcrumb } from '@/components/ui/Breadcrumb'
 
 interface BookingDetailsMainProps {
-  userRole: 'client' | 'provider' | 'admin'
+  userRole: string
 }
 
 export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
+  const params = useParams()
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(false)
+  const bookingId = params.id as string
 
   const {
     booking,
+    userRole: bookingUserRole,
+    currentUserId,
     loading,
     error,
-    isUpdating,
-    approveBooking,
-    declineBooking,
-    refresh
-  } = useBookingDetails({ userRole })
+    actionBusy,
+    loadBookingData,
+    handleAction,
+    normalizeStatus
+  } = useBookingDetails(bookingId)
 
-  const handleBack = useCallback(() => {
+  const handleBack = () => {
     router.push('/dashboard/bookings')
-  }, [router])
+  }
 
-  const handleApprove = useCallback(async () => {
-    const success = await approveBooking()
-    if (success) {
-      toast.success('Booking approved successfully')
-    }
-  }, [approveBooking])
-
-  const handleDecline = useCallback(async () => {
-    const success = await declineBooking()
-    if (success) {
-      toast.success('Booking declined')
-    }
-  }, [declineBooking])
-
-  const handleExport = useCallback((format: 'json' | 'csv' | 'pdf' = 'pdf') => {
-    if (!booking) return
-    
-    try {
-      if (format === 'pdf') {
-        exportSingleBookingPDF(booking)
-        toast.success('PDF export opened in print dialog')
-      } else if (format === 'json') {
-        const exportData = {
-          bookingId: booking.id,
-          status: booking.status,
-          serviceTitle: booking.service?.title || booking.title || 'N/A',
-          clientName: booking.client?.full_name || 'N/A',
-          providerName: booking.provider?.full_name || 'N/A',
-          amount: booking.amount || 0,
-          currency: booking.currency || 'OMR',
-          createdAt: booking.created_at,
-          scheduledDate: booking.scheduled_date,
-          notes: booking.notes,
-          exportedAt: new Date().toISOString()
-        }
-        
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `booking-${booking.id.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.json`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-        
-        toast.success('JSON export downloaded')
-      }
-    } catch (error) {
-      console.error('Export error:', error)
-      toast.error('Failed to export booking')
-    }
-  }, [booking])
-
-  const handleShare = useCallback(async (method: 'native' | 'email' | 'clipboard' = 'native') => {
-    if (!booking) return
-    
-    try {
-      const shareUrl = `${window.location.origin}/dashboard/bookings/${booking.id}`
-      const shareText = `Booking: ${booking.service?.title || booking.title || 'Service'} - Status: ${booking.status}`
-      
-      if (method === 'email') {
-        // Share via email
-        shareBookingViaEmail(booking, {
-          subject: `Booking Details: ${booking.service?.title || booking.title}`,
-          includeLink: true
-        })
-        toast.success('Email client opened')
-      } else if (method === 'clipboard') {
-        // Copy to clipboard
-        await navigator.clipboard.writeText(shareUrl)
-        toast.success('Booking link copied to clipboard')
-      } else {
-        // Use Web Share API if available
-        if (navigator.share) {
-          await navigator.share({
-            title: shareText,
-            text: `Check out this booking details`,
-            url: shareUrl
-          })
-          toast.success('Booking shared successfully')
-        } else {
-          // Fallback: Copy to clipboard
-          await navigator.clipboard.writeText(shareUrl)
-          toast.success('Booking link copied to clipboard')
-        }
-      }
-    } catch (error) {
-      // User cancelled or error occurred
-      if ((error as Error).name !== 'AbortError') {
-        console.error('Share error:', error)
-        toast.error('Failed to share booking')
-      }
-    }
-  }, [booking])
+  const handleViewMilestones = () => {
+    router.push(`/dashboard/bookings/${bookingId}/milestones`)
+  }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-24 bg-gray-200 rounded"></div>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="h-64 bg-gray-200 rounded"></div>
-            <div className="h-64 bg-gray-200 rounded"></div>
-          </div>
+      <div className="container mx-auto p-6">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading booking details...</p>
         </div>
       </div>
     )
@@ -156,69 +53,261 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-500 mb-4">
-          <X className="h-12 w-12 mx-auto" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">Error Loading Booking</h3>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <Button onClick={refresh}>Try Again</Button>
+      <div className="container mx-auto p-6">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="p-6 text-center">
+            <h3 className="text-lg font-semibold mb-2">Error Loading Booking</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <div className="space-y-2">
+              <Button onClick={handleBack} className="w-full">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Bookings
+              </Button>
+              <Button variant="outline" onClick={loadBookingData} className="w-full">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   if (!booking) {
     return (
-      <div className="text-center py-12">
-        <div className="text-gray-500 mb-4">
-          <FileText className="h-12 w-12 mx-auto" />
-        </div>
-        <h3 className="text-lg font-semibold mb-2">Booking Not Found</h3>
-        <p className="text-gray-600">The booking you're looking for doesn't exist.</p>
+      <div className="container mx-auto p-6">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="p-6 text-center">
+            <h3 className="text-lg font-semibold mb-2">Booking Not Found</h3>
+            <p className="text-gray-600 mb-4">The requested booking could not be found.</p>
+            <Button onClick={handleBack} className="w-full">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Bookings
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
+  const statusNorm = normalizeStatus(booking)
+  const canApprove = (bookingUserRole === 'admin' || bookingUserRole === 'provider') && statusNorm === 'pending'
+  const canStart = (bookingUserRole === 'provider' || bookingUserRole === 'admin') && ['approved', 'confirmed'].includes(String(booking.status))
+
   return (
-    <div className="space-y-6">
-      {/* Professional Booking Details */}
-      <ProfessionalBookingDetails
-        booking={booking}
-        userRole={userRole}
-        onEdit={() => setShowEditModal(true)}
-        onApprove={handleApprove}
-        onDecline={handleDecline}
-        onExport={handleExport}
-        onShare={handleShare}
-        onBack={handleBack}
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header with Navigation */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Bookings
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">{booking.title}</h1>
+            <p className="text-gray-600 mt-1">Booking #{booking.id.slice(0, 8)}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {/* Quick Actions */}
+          {canApprove && (
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700"
+              disabled={actionBusy !== null}
+              onClick={() => handleAction('approve')}
+            >
+              {actionBusy === 'approve' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Approve'}
+            </Button>
+          )}
+          {canApprove && (
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={actionBusy !== null}
+              onClick={() => handleAction('decline')}
+            >
+              {actionBusy === 'decline' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Decline'}
+            </Button>
+          )}
+          {canStart && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={actionBusy !== null}
+              onClick={() => handleAction('start_project')}
+            >
+              {actionBusy === 'start_project' ? <RefreshCw className="h-4 w-4 animate-spin" /> : 'Start Project'}
+            </Button>
+          )}
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadBookingData}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Breadcrumb */}
+      <Breadcrumb 
+        items={[
+          { label: 'Bookings', href: '/dashboard/bookings' },
+          { 
+            label: `Booking #${booking.id.slice(0, 8)}`, 
+            icon: <Package className="h-4 w-4" />
+          }
+        ]} 
       />
 
-      {/* Quick Actions */}
-      {(userRole === 'admin' || userRole === 'provider') && (
-        <div className="flex gap-2">
-          {booking.status === 'pending' && (
-            <>
-              <Button
-                onClick={handleApprove}
-                disabled={isUpdating}
-                className="flex items-center gap-2"
-              >
-                <CheckCircle className="h-4 w-4" />
-                Approve
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDecline}
-                disabled={isUpdating}
-                className="flex items-center gap-2"
-              >
-                <X className="h-4 w-4" />
-                Decline
-              </Button>
-            </>
-          )}
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Booking Details */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Status Overview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="h-5 w-5" />
+                <span>Booking Status</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <StatusPill status={booking.status} />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Created {formatMuscat(booking.created_at)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-gray-900">
+                    {booking.total_price} {booking.currency}
+                  </p>
+                  <p className="text-sm text-gray-600">Total Value</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Service Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Service Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-medium text-gray-900">{booking.service.name}</h4>
+                {booking.service.description && (
+                  <p className="text-sm text-gray-600 mt-1">{booking.service.description}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Scheduled Date</p>
+                <p className="text-gray-900">{formatMuscat(booking.scheduled_date)}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Navigation Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button
+                  variant="outline"
+                  onClick={handleViewMilestones}
+                  className="flex items-center justify-center space-x-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span>View Milestones</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/messages')}
+                  className="flex items-center justify-center space-x-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Send Message</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      )}
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Client Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="h-5 w-5" />
+                <span>Client</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="font-medium text-gray-900">{booking.client.full_name}</p>
+                {booking.client.company_name && (
+                  <p className="text-sm text-gray-600">{booking.client.company_name}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Email</p>
+                <p className="text-sm">{booking.client.email}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Provider Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="h-5 w-5" />
+                <span>Provider</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="font-medium text-gray-900">{booking.provider.full_name}</p>
+                {booking.provider.company_name && (
+                  <p className="text-sm text-gray-600">{booking.provider.company_name}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Email</p>
+                <p className="text-sm">{booking.provider.email}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Role Badge */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-center">
+                <Badge 
+                  className={
+                    bookingUserRole === 'provider' ? 'bg-blue-100 text-blue-800' :
+                    bookingUserRole === 'client' ? 'bg-green-100 text-green-800' :
+                    'bg-purple-100 text-purple-800'
+                  }
+                >
+                  {bookingUserRole === 'provider' ? 'Provider View' :
+                   bookingUserRole === 'client' ? 'Client View' :
+                   'Admin View'}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

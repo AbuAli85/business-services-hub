@@ -77,11 +77,7 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit
     query = query.range(offset, offset + limit - 1)
     
-    // Run with a timeout guard to avoid hanging
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 12000)
-    const { data: services, error } = await query.abortSignal(controller.signal)
-    clearTimeout(timeout)
+    const { data: services, error } = await query
 
     if (error) {
       console.error('Error fetching services:', error)

@@ -166,8 +166,6 @@ export default function ClientDashboard() {
   const fetchAllClientData = async (userId: string) => {
     try {
       const supabase = await getSupabaseClient()
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 10000)
 
       // One bookings query (client-specific, indexed path)
       const eighteenMonthsAgo = new Date()
@@ -191,7 +189,6 @@ export default function ClientDashboard() {
         .gte('created_at', eighteenMonthsAgo.toISOString())
         .order('created_at', { ascending: false })
         .limit(50)
-        .abortSignal((controller as any).signal)
 
       if (bookingsError) {
         logger.error('Error fetching bookings:', bookingsError)
@@ -206,12 +203,10 @@ export default function ClientDashboard() {
       const providerIds = Array.from(new Set((bookings || []).map((b: any) => b.provider_id).filter(Boolean)))
 
       const [servicesResponse, providersResponse, reviewsResponse] = await Promise.all([
-        serviceIds.length ? supabase.from('services').select('id, title').in('id', serviceIds).abortSignal((controller as any).signal) : Promise.resolve({ data: [], error: null } as any),
-        providerIds.length ? supabase.from('profiles').select('id, full_name, company_name').in('id', providerIds).abortSignal((controller as any).signal) : Promise.resolve({ data: [], error: null } as any),
-        supabase.from('reviews').select('rating').eq('client_id', userId).abortSignal((controller as any).signal)
+        serviceIds.length ? supabase.from('services').select('id, title').in('id', serviceIds) : Promise.resolve({ data: [], error: null } as any),
+        providerIds.length ? supabase.from('profiles').select('id, full_name, company_name').in('id', providerIds) : Promise.resolve({ data: [], error: null } as any),
+        supabase.from('reviews').select('rating').eq('client_id', userId)
       ])
-
-      clearTimeout(timeout)
 
       const services = (servicesResponse as any).data || []
       const providers = (providersResponse as any).data || []

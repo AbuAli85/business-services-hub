@@ -238,7 +238,6 @@ export default function AdminServicesPage() {
             company_name
           )
         `, { count: 'exact' })
-        .abortSignal(signal)
 
       if (searchQuery) {
         const like = `%${searchQuery}%`
@@ -272,11 +271,9 @@ export default function AdminServicesPage() {
       try {
         const [{ data: statRows }, { data: revRows }] = await Promise.all([
           supabase
-            .rpc('services_stats', { p_search: searchQuery || null, p_status: statusFilter || null })
-            .abortSignal(signal),
+            .rpc('services_stats', { p_search: searchQuery || null, p_status: statusFilter || null }),
           supabase
             .rpc('bookings_revenue_stats', { p_search: searchQuery || null, p_status: statusFilter || null })
-            .abortSignal(signal)
         ])
         const s = statRows?.[0] as any
         const r = revRows?.[0] as any

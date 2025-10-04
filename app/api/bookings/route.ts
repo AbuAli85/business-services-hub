@@ -464,11 +464,7 @@ export async function GET(request: NextRequest) {
     // Pagination
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
-    // Add timeout to avoid Vercel 504s (reduced to 8 seconds)
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-    const { data, count, error: queryError } = await query.range(from, to).abortSignal(controller.signal)
-    clearTimeout(timeout)
+    const { data, count, error: queryError } = await query.range(from, to)
 
     if (queryError) {
       // Graceful fallback on timeout to avoid 504 cascade

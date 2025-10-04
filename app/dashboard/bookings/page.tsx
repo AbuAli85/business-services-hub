@@ -707,6 +707,7 @@ export default function BookingsPage() {
 					  { key: 'actions', header: 'Actions', widthClass: 'w-40', render: (r:any) => (
 						  <div className="flex items-center gap-2">
                             <Button size="sm" variant="outline" onClick={()=> router.push(`/dashboard/bookings/${r.id}`)} aria-label="View details">Details</Button>
+                            <Button size="sm" variant="outline" onClick={()=> router.push(`/dashboard/bookings/${r.id}/milestones`)} aria-label="View milestones">Milestones</Button>
 								{canManageBookings && !((r?.approval_status === 'approved') || (r?.status === 'approved') || (r?.status === 'confirmed')) && (
 							  <Button size="sm" variant="outline" onClick={()=> approveBooking(r.id)} aria-label="Approve booking">Approve</Button>
 							)}
@@ -778,6 +779,7 @@ export default function BookingsPage() {
 					userRole={userRole}
 					onViewDetails={(id) => router.push(`/dashboard/bookings/${id}`)}
 					onViewProgress={(id) => router.push(`/dashboard/bookings/${id}/milestones`)}
+					onViewMilestones={(id) => router.push(`/dashboard/bookings/${id}/milestones`)}
 					onInvoiceAction={async (action, bookingId) => {
 					  if (action === 'view_invoice') {
 						const inv = invoiceByBooking.get(String(bookingId)); if (inv) router.push(getInvoiceHref(inv.id))
@@ -879,6 +881,7 @@ export default function BookingsPage() {
                         }}
                         onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
                         onViewProgress={(id) => { router.push(`/dashboard/bookings/${booking.id}/milestones`) }}
+                        onViewMilestones={(id) => { router.push(`/dashboard/bookings/${booking.id}/milestones`) }}
                         onInvoiceAction={async (action) => {
                           if (action === 'view_invoice') {
                             const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
