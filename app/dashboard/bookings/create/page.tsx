@@ -31,6 +31,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { format, addDays, startOfToday } from 'date-fns'
+import { BookingBreadcrumb } from '@/components/dashboard/bookings/BookingBreadcrumb'
 
 interface Service {
   id: string
@@ -201,8 +202,13 @@ export default function CreateBookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedService || !formData.scheduled_date) {
-      toast.error('Please fill in all required fields')
+    if (!selectedService) {
+      toast.error('Please select a service before submitting')
+      return
+    }
+
+    if (!formData.scheduled_date) {
+      toast.error('Please select a date before submitting')
       return
     }
 
@@ -252,7 +258,21 @@ export default function CreateBookingPage() {
       }
 
       const { booking } = await res.json()
-      toast.success('Booking created successfully!')
+      toast.success(
+        <span>
+          Booking created successfully!{' '}
+          <a
+            href={`/dashboard/bookings/${booking.id}`}
+            className="text-blue-600 underline hover:text-blue-800"
+            onClick={(e) => {
+              e.preventDefault()
+              router.push(`/dashboard/bookings/${booking.id}`)
+            }}
+          >
+            View Booking
+          </a>
+        </span>
+      )
       router.push(`/dashboard/bookings/${booking.id}`)
     } catch (error) {
       console.error('Error creating booking:', error)
@@ -287,6 +307,9 @@ export default function CreateBookingPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Breadcrumb */}
+      <BookingBreadcrumb current="Create Booking" />
+      
       {/* Header */}
       <div className="flex items-center space-x-4">
         <Button variant="outline" onClick={() => router.back()}>

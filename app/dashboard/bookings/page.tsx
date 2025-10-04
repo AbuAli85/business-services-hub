@@ -779,7 +779,6 @@ export default function BookingsPage() {
 					userRole={userRole}
 					onViewDetails={(id) => router.push(`/dashboard/bookings/${id}`)}
 					onViewProgress={(id) => router.push(`/dashboard/bookings/${id}/milestones`)}
-					onViewMilestones={(id) => router.push(`/dashboard/bookings/${id}/milestones`)}
 					onInvoiceAction={async (action, bookingId) => {
 					  if (action === 'view_invoice') {
 						const inv = invoiceByBooking.get(String(bookingId)); if (inv) router.push(getInvoiceHref(inv.id))
@@ -881,7 +880,6 @@ export default function BookingsPage() {
                         }}
                         onViewDetails={(id) => { router.push(`/dashboard/bookings/${booking.id}`) }}
                         onViewProgress={(id) => { router.push(`/dashboard/bookings/${booking.id}/milestones`) }}
-                        onViewMilestones={(id) => { router.push(`/dashboard/bookings/${booking.id}/milestones`) }}
                         onInvoiceAction={async (action) => {
                           if (action === 'view_invoice') {
                             const inv = invoiceByBooking.get(String(booking.id)); if (inv) router.push(getInvoiceHref(inv.id))
