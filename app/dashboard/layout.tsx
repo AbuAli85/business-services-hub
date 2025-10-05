@@ -484,13 +484,11 @@ export default function DashboardLayout({
       setUser(finalUser)
       console.log('✅ User set successfully, loading should be false now')
       
-      // Clear the timeout since we succeeded
-      clearTimeout(checkUserTimeout)
+      // User check completed successfully
       
     } catch (error) {
       console.error('❌ Error checking user:', error)
       logger.error('Error checking user:', error)
-      clearTimeout(checkUserTimeout)
       router.push('/auth/sign-in')
     } finally {
       console.log('🏁 Setting loading to false')
