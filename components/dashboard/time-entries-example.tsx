@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, supabase } from '@/lib/supabase'
 import { TimeEntry } from '@/types/progress'
 
 interface TimeEntriesExampleProps {
@@ -23,7 +23,8 @@ export function TimeEntriesExample({ bookingId }: TimeEntriesExampleProps) {
       setError(null)
       
       // ✅ CORRECT WAY: Use the service method that handles the relationship chain
-      const { data: entries, error } = await supabase
+      const supabaseClient = await getSupabaseClient()
+      const { data: entries, error } = await supabaseClient
         .from('time_entries')
         .select('*')
         .eq('booking_id', bookingId)

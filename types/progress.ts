@@ -68,6 +68,8 @@ export interface MilestoneApproval {
 }
 
 export interface TimeEntry {
+  duration_minutes: number;
+  is_active: any;
   id: string;
   milestone_id?: string;
   task_id?: string;
