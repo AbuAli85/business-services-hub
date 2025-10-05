@@ -58,7 +58,7 @@ const nextConfig = {
               "img-src 'self' data: blob: https:",
               "script-src 'self' 'unsafe-inline' https: https://js.hcaptcha.com",
               "style-src 'self' 'unsafe-inline'",
-              "font-src 'self' data:",
+              "font-src 'self' data: https://fonts.gstatic.com https://vercel.live",
               "connect-src 'self' https: wss: https://vercel.live https://*.vercel.live wss://*.vercel.live https://hcaptcha.com https://*.hcaptcha.com",
               "frame-src 'self' https://vercel.live https://*.vercel.live https://hcaptcha.com https://*.hcaptcha.com https://newassets.hcaptcha.com",
               "frame-ancestors 'self'",
