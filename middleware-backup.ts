@@ -128,7 +128,7 @@ export async function middleware(req: NextRequest) {
     'https://vercel.live',
     'https://*.vercel.live'
   ].join(' ')
-  res.headers.set('Content-Security-Policy', `default-src 'self'; img-src 'self' data: https: blob:; connect-src ${connectSrc}; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src ${frameSrc}; base-uri 'self'; form-action 'self'`)
+  res.headers.set('Content-Security-Policy', `default-src 'self'; img-src 'self' data: https: blob:; connect-src ${connectSrc}; script-src ${scriptSrc}; style-src 'self' 'unsafe-inline'; font-src 'self' data: https://fonts.gstatic.com https://vercel.live; frame-src ${frameSrc}; base-uri 'self'; form-action 'self'`)
 
   // Handle preflight quickly
   if (req.method === 'OPTIONS') {
