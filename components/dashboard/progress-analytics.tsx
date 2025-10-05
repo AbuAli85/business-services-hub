@@ -58,7 +58,14 @@ export function ProgressAnalytics({ bookingId, className = '' }: ProgressAnalyti
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`/api/progress/calculate?booking_id=${bookingId}`)
+      // Add cache-busting timestamp to force fresh data
+      const timestamp = new Date().getTime()
+      const response = await fetch(`/api/progress/calculate?booking_id=${bookingId}&_t=${timestamp}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
       
       if (!response.ok) {
         throw new Error('Failed to load progress analytics')
@@ -66,7 +73,15 @@ export function ProgressAnalytics({ bookingId, className = '' }: ProgressAnalyti
 
       const result = await response.json()
       
+      console.log('📊 Progress Analytics API response:', result)
+      
       if (result.success && result.analytics) {
+        console.log('✅ Analytics data:', {
+          overall: result.analytics.booking_progress,
+          milestones: `${result.analytics.completed_milestones}/${result.analytics.total_milestones}`,
+          tasks: `${result.analytics.completed_tasks}/${result.analytics.total_tasks}`,
+          fallback: result.fallback
+        })
         setAnalytics(result.analytics)
       } else {
         throw new Error(result.error || 'Failed to load analytics')
