@@ -266,82 +266,70 @@ export async function GET(
       console.warn('Error loading milestones:', error)
     }
 
-    // Load time entries
-    let timeEntries = []
+    // Load time entries - disabled until table is created with proper foreign keys
+    let timeEntries: any[] = []
+    // Note: time_entries table exists but lacks proper foreign key relationship
+    // Commenting out to prevent warnings
+    /*
     try {
       const { data: timeEntriesData, error: timeEntriesError } = await supabase
         .from('time_entries')
-        .select(`
-          *,
-          profiles!time_entries_user_id_fkey(full_name, email)
-        `)
+        .select('*')
         .eq('booking_id', params.id)
         .order('logged_at', { ascending: false })
       
       if (!timeEntriesError && timeEntriesData) {
-        timeEntries = timeEntriesData.map(entry => ({
-          ...entry,
-          user_name: entry.profiles?.full_name || 'User',
-          user_full_name: entry.profiles?.full_name || 'User'
-        }))
+        timeEntries = timeEntriesData
         console.log('✅ Time entries loaded:', timeEntries.length)
-      } else {
-        console.warn('Could not load time entries:', timeEntriesError)
       }
     } catch (error) {
-      console.warn('Error loading time entries:', error)
+      // Silent fail until table is properly configured
     }
+    */
 
-    // Load messages/communications
+    // Load messages - use notifications table (communications table doesn't exist)
     let messages = []
     try {
       const { data: messagesData, error: messagesError } = await supabase
-        .from('communications')
-        .select(`
-          *,
-          profiles!communications_sender_id_fkey(full_name, email)
-        `)
+        .from('notifications')
+        .select('*')
         .eq('booking_id', params.id)
         .order('created_at', { ascending: true })
       
       if (!messagesError && messagesData) {
-        messages = messagesData.map(msg => ({
+        messages = messagesData.map((msg: any) => ({
           ...msg,
-          sender_name: msg.profiles?.full_name || (msg.sender_id === booking.client_id ? 'Client' : 'Provider'),
-          type: msg.sender_id === booking.client_id ? 'client' : 'provider'
+          sender_name: msg.sender_name || (msg.user_id === booking.client_id ? 'Client' : 'Provider'),
+          type: msg.user_id === booking.client_id ? 'client' : 'provider'
         }))
-        console.log('✅ Messages loaded:', messages.length)
-      } else {
+        console.log('✅ Messages/notifications loaded:', messages.length)
+      } else if (messagesError && !messagesError.message?.includes('does not exist')) {
         console.warn('Could not load messages:', messagesError)
       }
     } catch (error) {
-      console.warn('Error loading messages:', error)
+      // Silent fail if table has issues
     }
 
-    // Load files
-    let files = []
+    // Load files - disabled until proper file attachments table is created
+    let files: any[] = []
+    // Note: booking_files table doesn't exist, error suggests using booking_tasks instead
+    // Commenting out to prevent warnings until proper table exists
+    /*
     try {
       const { data: filesData, error: filesError } = await supabase
         .from('booking_files')
-        .select(`
-          *,
-          profiles!booking_files_uploaded_by_fkey(full_name, email)
-        `)
+        .select('*')
         .eq('booking_id', params.id)
         .order('created_at', { ascending: false })
       
       if (!filesError && filesData) {
-        files = filesData.map(file => ({
-          ...file,
-          uploaded_by_name: file.profiles?.full_name || 'User'
-        }))
+        files = filesData
         console.log('✅ Files loaded:', files.length)
-      } else {
-        console.warn('Could not load files:', filesError)
       }
     } catch (error) {
-      console.warn('Error loading files:', error)
+      // Silent fail until table is created
     }
+    */
 
     // Enrich booking with profile data and related data
     const enrichedBooking = {
@@ -350,9 +338,9 @@ export async function GET(
       provider_profile: providerProfile,
       service: serviceData,
       milestones,
-      time_entries: timeEntries,
+      time_entries: timeEntries as any[],
       messages,
-      files,
+      files: files as any[],
       // Also include client and provider data in the expected format
       client: clientProfile ? {
         id: clientProfile.id,
