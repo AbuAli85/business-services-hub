@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, RefreshCw, Download, Share2, Settings, User, Shield, Eye, AlertTriangle, Target } from 'lucide-react'
-import { ProfessionalMilestoneSystem } from '@/components/dashboard/professional-milestone-system'
-import { ClientMilestoneViewer } from '@/components/dashboard/client-milestone-viewer'
+import { ImprovedMilestoneSystem } from '@/components/dashboard/improved-milestone-system'
+import { ProgressAnalytics } from '@/components/dashboard/progress-analytics'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 import { StatusPill } from '@/components/ui/StatusPill'
@@ -794,10 +794,17 @@ export default function MilestonesPage() {
               </Card>
             )
           }
-          return userRole === 'provider' ? (
-            <ProfessionalMilestoneSystem bookingId={bookingId} />
-          ) : (
-            <ClientMilestoneViewer bookingId={bookingId} />
+          return (
+            <div className="space-y-6">
+              {/* Progress Analytics Dashboard */}
+              <ProgressAnalytics bookingId={bookingId} />
+              
+              {/* Improved Milestone System */}
+              <ImprovedMilestoneSystem 
+                bookingId={bookingId} 
+                userRole={userRole}
+              />
+            </div>
           )
         })()}
       </div>
