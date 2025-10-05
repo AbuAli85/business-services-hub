@@ -193,7 +193,14 @@ export default function BookingsPage() {
     console.log('📊 Calculating stats with:', {
       bookingsCount: bookings.length,
       invoicesCount: invoices.length,
-      hasSummaryStats: !!summaryStats
+      hasSummaryStats: !!summaryStats,
+      sampleBooking: bookings[0] ? {
+        id: bookings[0].id,
+        status: bookings[0].status,
+        total_amount: bookings[0].total_amount,
+        amount: bookings[0].amount,
+        amount_cents: bookings[0].amount_cents
+      } : null
     })
     
     const calculatedStats = calculateBookingStats(bookings, invoices, summaryStats)
