@@ -24,6 +24,7 @@ interface Booking {
   approval_status?: string
   client_id?: string
   provider_id?: string
+  progress_percentage?: number
   service: {
     name: string
     description?: string
@@ -40,7 +41,7 @@ interface Booking {
   }
   created_at: string
   scheduled_date: string
-  total_price: number
+  total_amount: number
   currency: string
 }
 
@@ -148,8 +149,8 @@ export default function MilestonesPage() {
           approval_status,
           created_at,
           scheduled_date,
-          total_price,
-          amount,
+          total_amount,
+          progress_percentage,
           currency,
           client_id,
           provider_id,
@@ -269,7 +270,8 @@ export default function MilestonesPage() {
         },
         created_at: bookingData.created_at,
         scheduled_date: bookingData.scheduled_date,
-        total_price: bookingData.total_price || bookingData.amount || 0,
+        total_amount: bookingData.total_amount || 0,
+        progress_percentage: bookingData.progress_percentage || 0,
         currency: bookingData.currency || 'OMR'
       }
 
@@ -321,6 +323,80 @@ export default function MilestonesPage() {
 
   const handleBack = () => {
     router.push('/dashboard/bookings')
+  }
+
+  const handleExport = async () => {
+    if (!booking) return
+    
+    try {
+      toast.info('Preparing export...')
+      
+      // Create export data
+      const exportData = {
+        booking: {
+          id: booking.id,
+          title: booking.title,
+          status: booking.status,
+          service: booking.service.name,
+          client: booking.client.full_name,
+          provider: booking.provider.full_name,
+          total_amount: booking.total_amount,
+          currency: booking.currency,
+          created_at: booking.created_at,
+          scheduled_date: booking.scheduled_date,
+          progress_percentage: booking.progress_percentage
+        },
+        milestones: {
+          total: milestonesTotal || 0,
+          completed: milestonesCompleted || 0
+        },
+        tasks: {
+          total: tasksTotal || 0,
+          completed: tasksCompleted || 0
+        }
+      }
+      
+      // Create and download JSON file
+      const dataStr = JSON.stringify(exportData, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `booking-${booking.id}-milestones-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      toast.success('Export completed successfully')
+    } catch (error) {
+      console.error('Export failed:', error)
+      toast.error('Export failed. Please try again.')
+    }
+  }
+
+  const handleShare = async () => {
+    if (!booking) return
+    
+    try {
+      const shareData = {
+        title: `Booking: ${booking.title}`,
+        text: `View milestone progress for ${booking.service.name} - ${booking.client.full_name}`,
+        url: window.location.href
+      }
+      
+      if (navigator.share) {
+        await navigator.share(shareData)
+        toast.success('Shared successfully')
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(shareData.url)
+        toast.success('Link copied to clipboard')
+      }
+    } catch (error) {
+      console.error('Share failed:', error)
+      toast.error('Share failed. Please try again.')
+    }
   }
 
   // Use unified action handler instead of duplicated approve/decline
@@ -537,6 +613,7 @@ export default function MilestonesPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={handleExport}
                   className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
                 >
                   <Download className="h-4 w-4" />
@@ -546,6 +623,7 @@ export default function MilestonesPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={handleShare}
                   className="flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-sm"
                 >
                   <Share2 className="h-4 w-4" />
@@ -590,7 +668,19 @@ export default function MilestonesPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-600">Value</p>
-                  <p className="text-gray-900 font-semibold">{booking.total_price} {booking.currency}</p>
+                  <p className="text-gray-900 font-semibold">{booking.total_amount} {booking.currency}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Progress</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${booking.progress_percentage || 0}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">{booking.progress_percentage || 0}%</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
