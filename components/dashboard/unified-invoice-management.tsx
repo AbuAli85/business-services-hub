@@ -97,6 +97,8 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
   const [filteredInvoices, setFilteredInvoices] = useState<InvoiceRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   const [stats, setStats] = useState<InvoiceStats>({
     total: 0,
     paid: 0,
@@ -144,20 +146,44 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
     try {
       setLoading(true)
       
-      // Use the proper API endpoint that includes all relationships
-      const response = await fetch(`/api/invoices?role=${userRole}&userId=${userId}`)
+      // Add timeout and retry logic for the invoices API call
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      let retryCount = 0
+      const maxRetries = 3
+      let lastError: Error | null = null
       
-      const data = await response.json()
-      const invoicesData = data.invoices || []
-      
-      logger.debug('📊 Fetched invoices:', invoicesData.length, 'invoices')
-      
-      // Enrich invoice data with additional calculations
-      const enrichedInvoices = invoicesData.map((invoice: any) => {
+      while (retryCount <= maxRetries) {
+        try {
+          // Use the proper API endpoint that includes all relationships
+          const response = await fetch(`/api/invoices?role=${userRole}&userId=${userId}`, {
+            signal: controller.signal,
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          })
+          
+          clearTimeout(timeoutId)
+          
+          if (!response.ok) {
+            if (response.status === 504 && retryCount < maxRetries) {
+              logger.warn(`⚠️ Invoice API returned 504, retrying... (${retryCount + 1}/${maxRetries})`)
+              retryCount++
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)) // Exponential backoff
+              continue
+            }
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          
+          const data = await response.json()
+          const invoicesData = data.invoices || []
+          
+          logger.debug('📊 Fetched invoices:', invoicesData.length, 'invoices')
+          
+          // Enrich invoice data with additional calculations
+          const enrichedInvoices = invoicesData.map((invoice: any) => {
         // Calculate due date and overdue status
         const dueDate = invoice.due_date || (() => {
           const createdDate = new Date(invoice.created_at)
@@ -180,19 +206,54 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
           due_date: dueDate,
           isOverdue,
           invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`
+          }
+          })
+          
+          setInvoices(enrichedInvoices)
+          calculateStats(enrichedInvoices)
+          
+          logger.debug('✅ Invoices loaded successfully:', enrichedInvoices.length)
+          return // Success, exit retry loop
+          
+        } catch (error: any) {
+          lastError = error
+          clearTimeout(timeoutId)
+          
+          if (error.name === 'AbortError') {
+            logger.warn('⚠️ Invoice API request was aborted due to timeout')
+            break
+          }
+          
+          if (retryCount < maxRetries) {
+            logger.warn(`⚠️ Invoice API error, retrying... (${retryCount + 1}/${maxRetries}):`, error.message)
+            retryCount++
+            await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)) // Exponential backoff
+          } else {
+            break
+          }
         }
-      })
+      }
       
-      setInvoices(enrichedInvoices)
-      calculateStats(enrichedInvoices)
+      // If we get here, all retries failed
+      if (lastError) {
+        throw lastError
+      }
       
-      logger.debug('✅ Invoices loaded successfully:', enrichedInvoices.length)
     } catch (error) {
-      logger.error('❌ Error fetching invoices:', error)
-      toast.error('Failed to fetch invoices')
+      logger.error('❌ Error fetching invoices after retries:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch invoices'
+      setError(errorMessage)
+      setRetryCount(prev => prev + 1)
+      toast.error(`Failed to fetch invoices: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRetry = () => {
+    setError(null)
+    setRetryCount(0)
+    fetchInvoices()
   }
 
   const calculateStats = (invoicesData: InvoiceRecord[]) => {
@@ -505,7 +566,42 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading invoices...</p>
+          {retryCount > 0 && (
+            <p className="text-sm text-gray-500 mt-2">Retry attempt: {retryCount}</p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center max-w-md">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Failed to Load Invoices</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={handleRetry} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+              <Button onClick={() => window.location.reload()} variant="default" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reload Page
+              </Button>
+            </div>
+            {retryCount > 0 && (
+              <p className="text-sm text-red-500 mt-3">
+                This is retry attempt {retryCount}. If the issue persists, please contact support.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
