@@ -202,15 +202,37 @@ export default function ClientDashboard() {
       const serviceIds = Array.from(new Set((bookings || []).map((b: any) => b.service_id).filter(Boolean)))
       const providerIds = Array.from(new Set((bookings || []).map((b: any) => b.provider_id).filter(Boolean)))
 
-      const [servicesResponse, providersResponse, reviewsResponse] = await Promise.all([
+      // Add timeout protection for profile queries
+      const profileController = new AbortController()
+      const profileTimeout = setTimeout(() => profileController.abort(), 5000)
+      
+      const [servicesResponse, providersResponse, reviewsResponse] = await Promise.allSettled([
         serviceIds.length ? supabase.from('services').select('id, title').in('id', serviceIds) : Promise.resolve({ data: [], error: null } as any),
-        providerIds.length ? supabase.from('profiles').select('id, full_name, company_name').in('id', providerIds) : Promise.resolve({ data: [], error: null } as any),
+        providerIds.length ? supabase.from('profiles').select('id, full_name, company_name').in('id', providerIds).abortSignal(profileController.signal) : Promise.resolve({ data: [], error: null } as any),
         supabase.from('reviews').select('rating').eq('client_id', userId)
       ])
+      
+      clearTimeout(profileTimeout)
 
-      const services = (servicesResponse as any).data || []
-      const providers = (providersResponse as any).data || []
-      const reviews = (reviewsResponse as any).data || []
+      // Handle Promise.allSettled results
+      const services = servicesResponse.status === 'fulfilled' ? (servicesResponse.value as any).data || [] : []
+      const providers = providersResponse.status === 'fulfilled' ? (providersResponse.value as any).data || [] : []
+      const reviews = reviewsResponse.status === 'fulfilled' ? (reviewsResponse.value as any).data || [] : []
+      
+      // Handle profile query errors gracefully
+      if (providersResponse.status === 'rejected') {
+        const error = providersResponse.reason
+        console.warn('⏰ Profile enrichment query failed, continuing without provider names:', error)
+      } else if (providersResponse.status === 'fulfilled' && (providersResponse.value as any).error) {
+        const error = (providersResponse.value as any).error
+        if (error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('canceling statement')) {
+          console.warn('⏰ Profile enrichment query timed out, continuing without provider names')
+        } else if (error.code === '54001') {
+          console.warn('⏰ Stack depth limit exceeded in profile query, continuing without provider names')
+        } else {
+          console.warn('⚠️ Profile enrichment query failed:', error)
+        }
+      }
 
       // Compute stats from a single dataset
       const totalBookings = bookings?.length || 0

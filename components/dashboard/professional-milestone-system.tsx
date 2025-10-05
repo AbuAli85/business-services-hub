@@ -638,12 +638,10 @@ export function ProfessionalMilestoneSystem({
         console.warn('Failed to log audit trail:', auditError)
       }
       
-        // Recalculate milestone progress after task update
-        const supabaseClient = await getSupabaseClient()
-        const milestone = milestones.find((m: any) => m.tasks?.some((t: any) => t.id === taskId))
-        if (milestone) {
-          await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
-        }
+      // ✅ No manual progress calculation needed!
+      // The API endpoint already handles the full cascade:
+      // Task update → Milestone progress recalc → Booking progress recalc
+      // React Query will automatically refetch via invalidateQueries in onSettled
       }
     })
   }
@@ -689,12 +687,9 @@ export function ProfessionalMilestoneSystem({
           console.warn('Failed to log audit trail:', auditError)
         }
         
-        // Recalculate milestone progress after task deletion
-        const supabaseClient = await getSupabaseClient()
-        const milestone = milestones.find((m: any) => m.tasks?.some((t: any) => t.id === taskId))
-        if (milestone) {
-          await calculateAndUpdateMilestoneProgress(milestone, supabaseClient)
-        }
+        // ✅ No manual progress calculation needed!
+        // The API DELETE endpoint already handles the full cascade:
+        // Task delete → Milestone progress recalc → Booking progress recalc
       }
     })
   }
@@ -898,11 +893,9 @@ export function ProfessionalMilestoneSystem({
 
         toast.success('Task updated successfully')
         
-        // Recalculate milestone progress after task update
-        if (selectedMilestone) {
-          const supabaseClient = await getSupabaseClient()
-          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabaseClient)
-        }
+        // ✅ No manual progress calculation needed!
+        // The API PATCH endpoint already handles the full cascade:
+        // Task update → Milestone progress recalc → Booking progress recalc
       } else {
         // Validate milestone is selected
         if (!selectedMilestone) {
@@ -968,11 +961,9 @@ export function ProfessionalMilestoneSystem({
           console.warn('Failed to log audit trail:', auditError)
         }
         
-        // Recalculate milestone progress after task creation
-        if (selectedMilestone) {
-          const supabaseClient = await getSupabaseClient()
-          await calculateAndUpdateMilestoneProgress(selectedMilestone, supabaseClient)
-        }
+        // ✅ No manual progress calculation needed!
+        // The API POST endpoint already handles the full cascade:
+        // Task create → Milestone progress recalc → Booking progress recalc
       }
       
       // Reload data to show updated tasks

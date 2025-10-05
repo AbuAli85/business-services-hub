@@ -232,16 +232,17 @@ export default function SmartCommunicationCenter({
   }
 
   const loadCommunicationStats = async () => {
-    // This would typically come from analytics
-    const mockStats: CommunicationStats = {
-      total_messages: 42,
-      response_rate: 95,
-      avg_response_time: '< 2 hours',
-      satisfaction_score: 4.8,
+    // Calculate stats from actual messages
+    const totalMessages = messages.length
+    const stats: CommunicationStats = {
+      total_messages: totalMessages,
+      response_rate: 0, // Would need to calculate based on message thread analysis
+      avg_response_time: 'N/A', // Would need timestamps analysis
+      satisfaction_score: 0, // Would need feedback/ratings
       preferred_channel: 'Message',
-      peak_activity_time: '2:00 PM - 4:00 PM'
+      peak_activity_time: 'N/A' // Would need time-based analysis
     }
-    setCommunicationStats(mockStats)
+    setCommunicationStats(stats)
   }
 
   const generateSmartSuggestions = () => {

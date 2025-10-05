@@ -1,7 +1,7 @@
 export type AnyBooking = {
   status?: string | null
   approval_status?: string | null
-  amount_cents?: number | null
+  total_amount?: number | null
   totalAmount?: number | null
   amount?: number | null
   total_price?: number | null
@@ -18,7 +18,7 @@ export function isBookingApproved(booking: AnyBooking | null | undefined): boole
 
 export function deriveAmount(booking: AnyBooking | null | undefined): number {
   if (!booking) return 0
-  if (typeof booking.amount_cents === 'number') return booking.amount_cents / 100
+  if (typeof booking.total_amount === 'number') return booking.total_amount
   if (typeof booking.totalAmount === 'number') return booking.totalAmount
   if (typeof booking.amount === 'number') return booking.amount
   if (typeof booking.total_price === 'number') return booking.total_price

@@ -1,7 +1,7 @@
 // Standardized Progress Tracking Types
 // This file contains all the core types used across the progress tracking system
 
-export type TaskStatus = "pending" | "in_progress" | "completed";
+export type TaskStatus = "pending" | "in_progress" | "completed" | "cancelled";
 export type MilestoneStatus = "pending" | "in_progress" | "completed" | "cancelled" | "on_hold";
 export type UserRole = "provider" | "client" | "admin";
 
@@ -11,10 +11,11 @@ export interface Task {
   title: string;
   description?: string;
   status: TaskStatus;
-  progress?: number;
+  progress_percentage?: number; // ✅ Fixed: Use progress_percentage to match database
   due_date?: string;
   created_at: string;
   updated_at: string;
+  completed_at?: string;
   estimated_hours?: number;
   actual_hours?: number;
   priority?: "low" | "normal" | "high" | "urgent";
@@ -39,7 +40,7 @@ export interface Milestone {
   description?: string;
   status: MilestoneStatus;
   due_date: string;
-  progress: number;
+  progress_percentage: number; // ✅ Fixed: Use progress_percentage to match database
   tasks: Task[];
   created_at: string;
   updated_at: string;
@@ -67,6 +68,8 @@ export interface MilestoneApproval {
 }
 
 export interface TimeEntry {
+  duration_minutes: number;
+  is_active: any;
   id: string;
   milestone_id?: string;
   task_id?: string;
@@ -119,7 +122,7 @@ export interface TimelineItem {
   priority: "low" | "normal" | "high" | "urgent";
   due_date: string;
   assigned_to?: string;
-  progress_percentage: number;
+  progress_percentage: number; // ✅ Already correct
   order_index: number;
   created_at: string;
   updated_at: string;

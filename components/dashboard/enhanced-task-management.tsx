@@ -220,7 +220,7 @@ export function EnhancedTaskManagement({
                       (priorityOrder[b.priority as keyof typeof priorityOrder] || 0)
           break
         case 'progress':
-          comparison = (a.progress || 0) - (b.progress || 0)
+          comparison = (a.progress_percentage || 0) - (b.progress_percentage || 0)
           break
         case 'title':
           comparison = a.title.localeCompare(b.title)
@@ -250,7 +250,7 @@ export function EnhancedTaskManagement({
         estimated_hours: newTask.estimated_hours,
         due_date: newTask.due_date || undefined,
         status: 'pending',
-        progress: 0,
+        progress_percentage: 0,
         tags: newTask.tags,
         assigned_to: newTask.assigned_to || undefined,
         order_index: 0
@@ -296,7 +296,7 @@ export function EnhancedTaskManagement({
   // Handle task progress change
   const handleProgressChange = async (taskId: string, progress: number) => {
     try {
-      await onTaskUpdate(taskId, { progress })
+      await onTaskUpdate(taskId, { progress_percentage: progress })
     } catch (error) {
       console.error('Error updating task progress:', error)
     }
@@ -408,7 +408,7 @@ export function EnhancedTaskManagement({
 
   // Get trend indicator
   const getTrendIndicator = (task: Task) => {
-    const progress = task.progress || 0
+    const progress = task.progress_percentage || 0
     const now = new Date()
     const dueDate = task.due_date ? new Date(task.due_date) : null
     const createdDate = new Date(task.created_at)
@@ -540,7 +540,7 @@ export function EnhancedTaskManagement({
             const isEditing = editingTask === task.id
             const overdue = isOverdue(task)
             const trend = getTrendIndicator(task)
-            const progress = task.progress || 0
+            const progress = task.progress_percentage || 0
 
             return (
               <motion.div

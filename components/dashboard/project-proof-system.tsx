@@ -146,54 +146,8 @@ export function ProjectProofSystem({
             duration: entry.duration
           })),
           
-          // Simulated proof items for demonstration
-          ...(milestone.status === 'completed' ? [
-            {
-              id: `screenshot-${milestone.id}-1`,
-              type: 'screenshot' as const,
-              title: 'Final Deliverable Screenshot',
-              description: 'Screenshot showing completed work',
-              url: '/api/placeholder/800/600',
-              thumbnail: '/api/placeholder/200/150',
-              milestoneId: milestone.id,
-              createdBy: 'Team Member',
-              createdAt: new Date(milestone.updated_at || milestone.created_at),
-              status: 'approved' as const,
-              tags: ['deliverable', 'screenshot', 'final'],
-              fileSize: 1024 * 1024 // 1MB
-            },
-            {
-              id: `document-${milestone.id}-1`,
-              type: 'document' as const,
-              title: 'Technical Documentation',
-              description: 'Complete technical documentation for this milestone',
-              url: '/api/placeholder/document.pdf',
-              milestoneId: milestone.id,
-              createdBy: 'Team Member',
-              createdAt: new Date(milestone.updated_at || milestone.created_at),
-              status: 'approved' as const,
-              tags: ['documentation', 'technical', 'deliverable'],
-              fileSize: 2 * 1024 * 1024 // 2MB
-            }
-          ] : []),
-          
-          // In-progress proof items
-          ...(milestone.status === 'in_progress' ? [
-            {
-              id: `progress-${milestone.id}-1`,
-              type: 'screenshot' as const,
-              title: 'Work in Progress Screenshot',
-              description: 'Current state of work being completed',
-              url: '/api/placeholder/800/600',
-              thumbnail: '/api/placeholder/200/150',
-              milestoneId: milestone.id,
-              createdBy: 'Team Member',
-              createdAt: new Date(),
-              status: 'pending' as const,
-              tags: ['work-in-progress', 'screenshot', 'update'],
-              fileSize: 800 * 1024 // 800KB
-            }
-          ] : [])
+          // Note: Additional proof items like screenshots and documents should be uploaded via the system
+          // This system tracks existing evidence like comments, approvals, and time entries
         ]
 
         // Categorize proof items
@@ -214,7 +168,7 @@ export function ProjectProofSystem({
           milestoneId: milestone.id,
           milestoneTitle: milestone.title,
           status: milestone.status,
-          progress: milestone.progress || 0,
+          progress: milestone.progress_percentage || 0,
           proofItems,
           completionEvidence,
           approvalEvidence,

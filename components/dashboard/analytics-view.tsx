@@ -15,7 +15,7 @@ import {
   Timer,
   Activity
 } from 'lucide-react'
-import { Milestone, TimeEntry } from '@/lib/progress-tracking'
+import { Milestone, TimeEntry } from '@/types/progress'
 import { startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval } from 'date-fns'
 import { safeFormatDate } from '@/lib/date-utils'
 
@@ -93,9 +93,9 @@ export function AnalyticsView({
       const dailyHours = new Map<string, number>()
       
       timeEntries.forEach(entry => {
-        if (entry.duration_minutes) {
-          const date = safeFormatDate(entry.created_at, 'yyyy-MM-dd')
-          const hours = entry.duration_minutes / 60
+        if (entry.duration_hours) {
+          const date = safeFormatDate(entry.logged_at, 'yyyy-MM-dd')
+          const hours = entry.duration_hours
           dailyHours.set(date, (dailyHours.get(date) || 0) + hours)
         }
       })

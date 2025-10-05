@@ -32,7 +32,7 @@ import {
   X
 } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
-import { ProgressIndicator, CompactProgressIndicator } from './ProgressIndicator'
+import { Progress } from '@/components/ui/progress'
 import { ServiceDisplay, ServiceTitle } from './ServiceDisplay'
 import { AmountDisplay, CompactAmountDisplay } from './AmountDisplay'
 import { ImprovedQuickActions } from './ImprovedQuickActions'
@@ -332,21 +332,13 @@ export function ImprovedBookingCard({
           </div>
 
           {/* Progress Section */}
-          {!isCompact && (
-            <ProgressIndicator
-              status={status}
-              approval_status={approvalStatus}
-              progress_percentage={progressPercentage}
-            />
-          )}
-          
-          {isCompact && (
-            <CompactProgressIndicator
-              status={status}
-              approval_status={approvalStatus}
-              progress_percentage={progressPercentage}
-            />
-          )}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">Progress</span>
+              <span className="font-medium">{progressPercentage}%</span>
+            </div>
+            <Progress value={progressPercentage} className={isCompact ? 'h-1' : 'h-2'} />
+          </div>
 
           {/* Details Grid */}
           <div className={`grid grid-cols-1 ${isCompact ? 'sm:grid-cols-2 gap-2 text-xs' : 'sm:grid-cols-3 gap-3 text-sm'}`}>

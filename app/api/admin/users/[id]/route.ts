@@ -21,7 +21,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const callerId = tokenUser.user.id
     const metaRole = (tokenUser.user.user_metadata as any)?.role
     if (metaRole !== 'admin') {
-      const { data: me } = await supabase.from('profiles').select('role').eq('id', callerId).single()
+      // Add timeout protection for profile query
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 5000)
+      
+      const { data: me, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', callerId)
+        .abortSignal(controller.signal)
+        .single()
+      
+      clearTimeout(timeout)
+      
+      if (profileError) {
+        console.warn('⚠️ Admin profile check failed:', profileError)
+        return NextResponse.json({ error: 'Profile check failed' }, { status: 500 })
+      }
+      
       if ((me?.role || 'client') !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

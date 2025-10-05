@@ -175,6 +175,7 @@ export default function BookingsPage() {
   // Calculate statistics. If there are no bookings, prefer zeroed stats to avoid confusing mismatches.
   const stats = useMemo(() => {
     if (!bookings || bookings.length === 0) {
+      console.log('📊 No bookings data, returning zero stats')
       return {
         total: 0,
         completed: 0,
@@ -188,12 +189,51 @@ export default function BookingsPage() {
         readyToLaunch: 0
       }
     }
-    return calculateBookingStats(bookings, invoices, summaryStats)
+    
+    console.log('📊 Calculating stats with:', {
+      bookingsCount: bookings.length,
+      invoicesCount: invoices.length,
+      hasSummaryStats: !!summaryStats,
+      sampleBooking: bookings[0] ? {
+        id: bookings[0].id,
+        status: bookings[0].status,
+        total_amount: bookings[0].total_amount,
+        amount: bookings[0].amount,
+        amount_cents: bookings[0].amount_cents
+      } : null
+    })
+    
+    const calculatedStats = calculateBookingStats(bookings, invoices, summaryStats)
+    
+    console.log('📊 Calculated stats:', calculatedStats)
+    
+    return calculatedStats
   }, [bookings, invoices, summaryStats])
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const paginatedBookings = filteredBookings
+  
+  // Log sample booking data for debugging
+  useEffect(() => {
+    if (paginatedBookings.length > 0) {
+      console.log('🔍 Sample booking data:', {
+        total: paginatedBookings.length,
+        sample: {
+          id: paginatedBookings[0].id,
+          service_title: paginatedBookings[0].service_title,
+          client_name: paginatedBookings[0].client_name,
+          provider_name: paginatedBookings[0].provider_name,
+          status: paginatedBookings[0].status,
+          amount: paginatedBookings[0].amount,
+          amount_cents: paginatedBookings[0].amount_cents,
+          total_amount: paginatedBookings[0].total_amount,
+          progress_percentage: paginatedBookings[0].progress_percentage,
+          invoice_status: paginatedBookings[0].invoice_status
+        }
+      })
+    }
+  }, [paginatedBookings])
 
   // Persist preferences
   useEffect(() => {
@@ -645,8 +685,29 @@ export default function BookingsPage() {
               }
             }}
             onArchive={async () => {
-              toast.info('Archive feature coming soon')
-              // Future implementation: Archive selected bookings
+              try {
+                const ids = Array.from(selectedIds)
+                if (ids.length === 0) {
+                  toast.error('No bookings selected')
+                  return
+                }
+                
+                const supabase = await getSupabaseClient()
+                const { error } = await supabase
+                  .from('bookings')
+                  .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+                  .in('id', ids)
+                
+                if (error) throw error
+                
+                toast.success(`${ids.length} booking(s) archived`)
+                setSelectedIds(new Set())
+                setSelectAll(false)
+                refresh(true)
+              } catch (error) {
+                console.error('Archive error:', error)
+                toast.error('Failed to archive bookings')
+              }
             }}
           />
         </div>
@@ -828,7 +889,20 @@ export default function BookingsPage() {
 					  } else if (action === 'edit') {
 						router.push(`/dashboard/bookings/${bookingId}/edit`)
 					  } else if (action === 'download') {
-						toast.info('Download feature coming soon')
+						const booking = paginatedBookings.find(b => b.id === bookingId)
+						if (booking) {
+						  const bookingData = JSON.stringify(booking, null, 2)
+						  const blob = new Blob([bookingData], { type: 'application/json' })
+						  const url = URL.createObjectURL(blob)
+						  const link = document.createElement('a')
+						  link.href = url
+						  link.download = `booking-${bookingId}-${new Date().toISOString().split('T')[0]}.json`
+						  document.body.appendChild(link)
+						  link.click()
+						  document.body.removeChild(link)
+						  URL.revokeObjectURL(url)
+						  toast.success('Booking data downloaded')
+						}
 					  }
 					}}
 					selectedIds={selectedIds}

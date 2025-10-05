@@ -29,7 +29,6 @@ import {
 } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
 import { AmountDisplay } from './AmountDisplay'
-import { ProgressIndicator } from './ProgressIndicator'
 
 export interface BookingDetailModalProps {
   open: boolean
@@ -157,14 +156,18 @@ export function BookingDetailModal({
               <CardHeader>
                 <CardTitle className="text-lg">Project Progress</CardTitle>
               </CardHeader>
-              <CardContent>
-                <ProgressIndicator
-                  status={status}
-                  approval_status={approvalStatus}
-                  progress_percentage={progressPercentage}
-                  milestones_completed={milestones.filter(m => m.completed).length}
-                  milestones_total={milestones.length}
-                />
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Overall Progress</span>
+                    <span className="text-sm text-gray-600">{progressPercentage}%</span>
+                  </div>
+                  <Progress value={progressPercentage} className="h-2" />
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Milestones Completed</span>
+                  <span className="font-medium">{milestones.filter(m => m.completed).length} / {milestones.length}</span>
+                </div>
               </CardContent>
             </Card>
 

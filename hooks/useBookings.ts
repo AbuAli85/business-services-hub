@@ -11,6 +11,8 @@ export interface Booking {
   provider_name?: string
   status: string
   approval_status?: string
+  total_amount?: number
+  amount?: number
   amount_cents?: number
   currency?: string
   created_at: string
@@ -20,7 +22,11 @@ export interface Booking {
   client_id?: string
   provider_id?: string
   client_email?: string
+  provider_email?: string
   notes?: string
+  invoice_status?: string
+  raw_status?: string
+  display_status?: string
 }
 
 export interface Invoice {
@@ -28,6 +34,7 @@ export interface Invoice {
   booking_id: string
   status: string
   amount: number
+  total_amount?: number
   currency: string
   created_at: string
 }
@@ -210,6 +217,7 @@ export function useBookings(options: UseBookingsOptions = {}) {
 
       // Load invoices separately
       try {
+        console.log('📥 Fetching invoices from /api/invoices...')
         const invoiceRes = await fetch('/api/invoices', {
           credentials: 'include',
           headers,
@@ -221,12 +229,22 @@ export function useBookings(options: UseBookingsOptions = {}) {
           if (contentType && contentType.includes('application/json')) {
             const invoiceJson = await invoiceRes.json()
             const invoicesData = invoiceJson.invoices || []
+            console.log('✅ Invoices loaded:', {
+              count: invoicesData.length,
+              statuses: invoicesData.reduce((acc: Record<string, number>, inv: any) => {
+                acc[inv.status] = (acc[inv.status] || 0) + 1
+                return acc
+              }, {}),
+              totalAmount: invoicesData.reduce((sum: number, inv: any) => sum + (inv.amount || inv.total_amount || 0), 0)
+            })
             setState(prev => ({ ...prev, invoices: invoicesData }))
           } else {
             console.warn('⚠️ Invoice API returned non-JSON response:', contentType)
           }
         } else {
           console.warn('⚠️ Invoice API returned error status:', invoiceRes.status)
+          const errorText = await invoiceRes.text().catch(() => 'Unable to read error')
+          console.warn('⚠️ Invoice API error:', errorText)
         }
       } catch (invoiceError: any) {
         if (invoiceError?.name !== 'AbortError') {

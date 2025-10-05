@@ -1,8 +1,13 @@
 import React, { useState } from 'react'
 import { StatusPill } from '@/components/ui/StatusPill'
 import { normalizeStatus } from '@/lib/status'
-import { safePercent } from '@/lib/progress'
 import { formatMuscat } from '@/lib/dates'
+
+// Inline safePercent helper (was from deleted @/lib/progress)
+const safePercent = (done: number, total: number): number => {
+  if (total === 0) return 0
+  return Math.round((done / total) * 100)
+}
 
 type Totals = {
   milestonesDone: number

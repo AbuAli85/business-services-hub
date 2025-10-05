@@ -144,9 +144,9 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Convert to cents for consistent storage with validation
-    const amount_cents = Math.max(0, Math.round((amount ?? 0) * 100))
-    if (!Number.isFinite(amount_cents)) {
+    // Validate amount (stored as decimal, not cents)
+    const total_amount = Math.max(0, amount ?? 0)
+    if (!Number.isFinite(total_amount)) {
       const response = NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
       Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v))
       return response
@@ -182,13 +182,12 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         approval_status: 'pending',
         operational_status: 'new',
-        amount_cents,
+        total_amount,
         currency: service.currency || 'OMR',
         payment_status: 'pending',
         estimated_duration,
         location,
         total_price: amount, // Keep legacy fields for compatibility
-        total_amount: amount,
         amount: amount // Keep legacy field for compatibility
       })
       .select(`
@@ -278,7 +277,7 @@ export async function POST(request: NextRequest) {
         service_name: service.title,
         booking_title: booking.service_title,
         scheduled_date: booking.scheduled_date,
-        total_amount: (booking.amount_cents ?? 0) / 100,
+        total_amount: booking.total_amount ?? 0,
         currency: booking.currency
       })
     } catch (notificationError) {
@@ -388,7 +387,7 @@ export async function GET(request: NextRequest) {
         client_id, client_name, client_email, client_company, client_avatar,
         provider_id, provider_name, provider_email, provider_company, provider_avatar,
         progress, total_milestones, completed_milestones, raw_status, approval_status, display_status,
-        payment_status, invoice_status, invoice_id, amount_cents, amount, currency,
+        payment_status, invoice_status, invoice_id, total_amount, currency,
         created_at, updated_at, due_at, requirements, notes, scheduled_date, location
       `, { count: 'planned' })
       .gte('created_at', sinceIso)
@@ -486,31 +485,50 @@ export async function GET(request: NextRequest) {
       const ids = rows.map((b:any) => b.id)
       console.log(`🔍 Fetching progress for ${ids.length} bookings`)
       
-      // Try the proper progress view first
-      const { data: progressRows, error: progressError } = await supabase
-        .from('v_booking_progress')
-        .select('booking_id, booking_progress')
+      // Always calculate from milestones - never use hardcoded values
+      const { data: milestonesForProgress, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('id, booking_id, progress_percentage, weight, status')
         .in('booking_id', ids)
       
-      if (progressError) {
-        console.warn('⚠️ Progress view error:', progressError)
-        // Fallback to simple status-based progress
-        for (const booking of rows) {
-          const status = booking.display_status || 'pending_review'
-          let progress = booking.progress || 0
-          if (status === 'completed') progress = 100
-          else if (status === 'in_progress') progress = Math.max(progress, 50)
-          else if (status === 'approved') progress = Math.max(progress, 25)
-          else if (status === 'pending') progress = 10
-          progressMap.set(String(booking.id), progress)
+      if (milestonesError) {
+        console.warn('⚠️ Could not fetch milestones for progress:', milestonesError)
+        // Set all to 0 if we can't fetch data (don't guess)
+        for (const id of ids) {
+          progressMap.set(String(id), 0)
         }
       } else {
-        console.log(`✅ Progress data fetched: ${progressRows?.length || 0} records`)
-        for (const pr of progressRows || []) {
-          // Use booking_progress from the view
-          const progress = pr.booking_progress ?? 0
-          progressMap.set(String(pr.booking_id), Number(progress))
+        // Calculate weighted progress for each booking
+        const progressByBooking = new Map<string, { totalWeight: number; weightedProgress: number }>()
+        
+        for (const milestone of (milestonesForProgress || [])) {
+          const bookingId = String(milestone.booking_id)
+          if (!progressByBooking.has(bookingId)) {
+            progressByBooking.set(bookingId, { totalWeight: 0, weightedProgress: 0 })
+          }
+          
+          const data = progressByBooking.get(bookingId)!
+          const weight = milestone.weight || 1
+          const progress = milestone.progress_percentage || 0
+          
+          data.totalWeight += weight
+          data.weightedProgress += (progress * weight)
+          progressByBooking.set(bookingId, data)
         }
+        
+        // Apply calculated progress to all bookings
+        for (const id of ids) {
+          const data = progressByBooking.get(String(id))
+          if (data && data.totalWeight > 0) {
+            const overallProgress = Math.round(data.weightedProgress / data.totalWeight)
+            progressMap.set(String(id), overallProgress)
+          } else {
+            // No milestones = 0 progress (accurate, not guessed)
+            progressMap.set(String(id), 0)
+          }
+        }
+        
+        console.log(`✅ Progress calculated from ${milestonesForProgress?.length || 0} milestones for ${ids.length} bookings`)
       }
     }
 
@@ -570,17 +588,28 @@ export async function GET(request: NextRequest) {
           const provider = profileMap.get(booking.provider_id)
           const invoice = invoiceMap.get(booking.id)
           
+          // Convert total_amount (decimal OMR) to amount_cents for UI compatibility
+          const totalAmount = booking.total_amount || 0
+          const amountCents = Math.round(totalAmount * 100)
+          
           const result = {
             ...booking,
             progress_percentage: progressMap.get(String(booking.id)) ?? 0,
-            service_title: service?.title || 'Service',
-            service_description: service?.description || '',
-            service_category: service?.category || '',
-            client_name: client?.full_name || 'Client',
-            client_email: client?.email || '',
-            provider_name: provider?.full_name || 'Provider',
-            provider_email: provider?.email || '',
-            invoice_status: invoice?.status || null,
+            service_title: booking.service_title || service?.title || 'Service',
+            service_description: booking.service_description || service?.description || '',
+            service_category: booking.service_category || service?.category || '',
+            client_name: booking.client_name || client?.full_name || 'Client',
+            client_email: booking.client_email || client?.email || '',
+            provider_name: booking.provider_name || provider?.full_name || 'Provider',
+            provider_email: booking.provider_email || provider?.email || '',
+            // Add both formats for compatibility
+            amount: totalAmount,
+            amount_cents: amountCents,
+            // Map status fields for UI compatibility
+            status: booking.raw_status || booking.display_status || 'pending',
+            approval_status: booking.approval_status || null,
+            // Invoice data
+            invoice_status: invoice?.status || booking.invoice_status || null,
             invoice_amount: invoice?.amount || null
           }
           
@@ -610,6 +639,21 @@ export async function GET(request: NextRequest) {
           transformedCount: transformed.length
         })
         
+        // Log sample transformed data for verification
+        if (transformed.length > 0) {
+          console.log('📋 Sample transformed booking:', {
+            id: transformed[0].id,
+            service_title: transformed[0].service_title,
+            client_name: transformed[0].client_name,
+            provider_name: transformed[0].provider_name,
+            status: transformed[0].status,
+            amount: transformed[0].amount,
+            amount_cents: transformed[0].amount_cents,
+            progress_percentage: transformed[0].progress_percentage,
+            invoice_status: transformed[0].invoice_status
+          })
+        }
+        
         return transformed
       })(),
       new Promise((_, reject) => 
@@ -618,19 +662,28 @@ export async function GET(request: NextRequest) {
     ]).catch(() => {
       // Fallback: return basic data without enrichment
       console.warn('⚠️ Data enrichment timed out, returning basic booking data')
-      return rows.map(booking => ({
-        ...booking,
-        progress_percentage: progressMap.get(String(booking.id)) ?? 0,
-        service_title: 'Service',
-        service_description: '',
-        service_category: '',
-        client_name: 'Client',
-        client_email: '',
-        provider_name: 'Provider',
-        provider_email: '',
-        invoice_status: null,
-        invoice_amount: null
-      }))
+      return rows.map(booking => {
+        const totalAmount = booking.total_amount || 0
+        const amountCents = Math.round(totalAmount * 100)
+        
+        return {
+          ...booking,
+          progress_percentage: progressMap.get(String(booking.id)) ?? 0,
+          service_title: booking.service_title || 'Service',
+          service_description: booking.service_description || '',
+          service_category: booking.service_category || '',
+          client_name: booking.client_name || 'Client',
+          client_email: booking.client_email || '',
+          provider_name: booking.provider_name || 'Provider',
+          provider_email: booking.provider_email || '',
+          amount: totalAmount,
+          amount_cents: amountCents,
+          status: booking.raw_status || booking.display_status || 'pending',
+          approval_status: booking.approval_status || null,
+          invoice_status: booking.invoice_status || null,
+          invoice_amount: null
+        }
+      })
     }) : []
 
     const payload = {
@@ -1075,7 +1128,7 @@ export async function PATCH(request: NextRequest) {
             service_name: booking.service_title || 'Service',
             booking_title: booking.service_title || 'Booking',
             scheduled_date: booking.scheduled_date,
-            total_amount: (booking.amount_cents ?? 0) / 100,
+            total_amount: booking.total_amount ?? 0,
             currency: booking.currency
           })
 
@@ -1127,7 +1180,7 @@ export async function PATCH(request: NextRequest) {
               service_name: booking.service_title || 'Service',
               booking_title: booking.service_title || 'Booking',
               scheduled_date: booking.scheduled_date,
-              amount: (booking.amount_cents ?? 0) / 100,
+              amount: booking.total_amount ?? 0,
               currency: booking.currency
             },
             priority: 'high'

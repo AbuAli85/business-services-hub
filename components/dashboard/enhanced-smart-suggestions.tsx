@@ -202,7 +202,7 @@ export function EnhancedSmartSuggestions({
       // Check for slow progress
       const slowProgressMilestones = milestones.filter(m => {
         if (m.status === 'completed') return false
-        const progress = m.progress || 0
+        const progress = m.progress_percentage || 0
         const startDate = new Date(m.created_at)
         const endDate = new Date(m.due_date)
         const totalDays = differenceInDays(endDate, startDate)

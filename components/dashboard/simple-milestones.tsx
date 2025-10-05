@@ -1333,7 +1333,7 @@ export function SimpleMilestones({
                   title: task.title,
                   description: task.description,
                   status: 'pending',
-                  progress: 0,
+                  progress_percentage: 0,
                   priority: task.priority,
                   milestone_id: showSmartTaskGenerator!,
                   order_index: 0,

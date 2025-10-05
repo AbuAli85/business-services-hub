@@ -28,7 +28,7 @@ import {
   User,
   MessageSquare
 } from 'lucide-react'
-import { Milestone, Task, TimeEntry } from '@/lib/progress-tracking'
+import { Milestone, Task, TimeEntry } from '@/types/progress'
 import { formatDistanceToNow, isAfter, isBefore } from 'date-fns'
 import { safeFormatDate } from '@/lib/date-utils'
 import { toast } from 'sonner'
@@ -82,12 +82,10 @@ export function TaskManagement({
         estimated_hours: newTask.estimated_hours,
         due_date: newTask.due_date || undefined,
         status: 'pending',
-        progress_percentage: 0,
+        progress_percentage: 0, // ✅ Fixed: Use progress_percentage
         tags: [],
-        steps: [],
-        approval_status: 'pending',
-        assigned_to: undefined,
-        created_by: undefined
+        order_index: 0,
+        assigned_to: undefined
       })
 
       setNewTask({
@@ -118,7 +116,7 @@ export function TaskManagement({
   // Handle task progress change
   const handleTaskProgressChange = async (taskId: string, progress: number) => {
     try {
-      await onTaskUpdate(taskId, { progress_percentage: progress })
+      await onTaskUpdate(taskId, { progress_percentage: progress }) // ✅ Fixed: Use progress_percentage
     } catch (error) {
       console.error('Error updating task progress:', error)
     }
@@ -296,8 +294,8 @@ export function TaskManagement({
                           <Badge className={getStatusColor(task.status)}>
                             {task.status.replace('_', ' ')}
                           </Badge>
-                          <Badge variant="outline" className={getPriorityColor(task.priority)}>
-                            {task.priority}
+                          <Badge variant="outline" className={getPriorityColor(task.priority || 'normal')}>
+                            {task.priority || 'normal'}
                           </Badge>
                           {isOverdue && (
                             <AlertTriangle className="h-4 w-4 text-red-500" />
@@ -329,9 +327,9 @@ export function TaskManagement({
                         <div className="mt-3">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-sm font-medium text-gray-700">Progress</span>
-                            <span className="text-sm text-gray-500">{task.progress_percentage}%</span>
+                            <span className="text-sm text-gray-500">{task.progress_percentage || 0}%</span>
                           </div>
-                          <Progress value={task.progress_percentage} className="h-2" />
+                          <Progress value={task.progress_percentage || 0} className="h-2" />
                         </div>
                       </div>
 
@@ -387,26 +385,7 @@ export function TaskManagement({
                           </>
                         )}
 
-                        {userRole === 'client' && task.approval_status === 'pending' && (
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              onClick={() => onTaskUpdate(task.id, { approval_status: 'approved' })}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onTaskUpdate(task.id, { approval_status: 'rejected' })}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        )}
+                        {/* Approval status functionality removed - not available in Task type */}
                       </div>
                     </div>
 
@@ -420,7 +399,7 @@ export function TaskManagement({
                               type="number"
                               min="0"
                               max="100"
-                              value={task.progress_percentage}
+                              value={task.progress_percentage || 0}
                               onChange={(e) => handleTaskProgressChange(task.id, Number(e.target.value))}
                               className="mt-1"
                             />

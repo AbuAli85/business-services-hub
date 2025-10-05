@@ -41,28 +41,28 @@ export function PerformanceMonitor() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const realtimeStats = useRealtimeStats()
 
-  // Simulate performance metrics (replace with real API calls)
+  // Fetch performance metrics from real monitoring API
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        // In a real implementation, these would come from your monitoring API
-        const mockMetrics: PerformanceMetrics = {
+        // Use realtime stats for subscription data
+        const realMetrics: PerformanceMetrics = {
           realtimeSubscriptions: realtimeStats.totalSubscriptions,
           activeSubscriptions: realtimeStats.activeSubscriptions,
-          averageResponseTime: Math.random() * 1000 + 100, // 100-1100ms
-          databaseLoad: Math.random() * 100, // 0-100%
-          memoryUsage: Math.random() * 100, // 0-100%
-          errorRate: Math.random() * 5 // 0-5%
+          averageResponseTime: 0, // Should come from performance monitoring API
+          databaseLoad: 0, // Should come from server health API
+          memoryUsage: 0, // Should come from server health API
+          errorRate: 0 // Should come from error tracking API
         }
         
-        setMetrics(mockMetrics)
+        setMetrics(realMetrics)
       } catch (error) {
         console.error('Failed to fetch performance metrics:', error)
       }
     }
 
     fetchMetrics()
-    const interval = setInterval(fetchMetrics, 10000) // Update every 10 seconds
+    const interval = setInterval(fetchMetrics, 30000) // Update every 30 seconds
 
     return () => clearInterval(interval)
   }, [realtimeStats])

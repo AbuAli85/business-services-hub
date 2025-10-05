@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getSupabaseClient } from '@/lib/supabase'
-import { ProgressTrackingService, TimeEntry } from '@/lib/progress-tracking'
+import { getSupabaseClient, supabase } from '@/lib/supabase'
+import { TimeEntry } from '@/types/progress'
 
 interface TimeEntriesExampleProps {
   bookingId: string
@@ -23,7 +23,14 @@ export function TimeEntriesExample({ bookingId }: TimeEntriesExampleProps) {
       setError(null)
       
       // ✅ CORRECT WAY: Use the service method that handles the relationship chain
-      const entries = await ProgressTrackingService.getTimeEntriesByBookingId(bookingId)
+      const supabaseClient = await getSupabaseClient()
+      const { data: entries, error } = await supabaseClient
+        .from('time_entries')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
       setTimeEntries(entries)
       
     } catch (err) {
@@ -137,7 +144,7 @@ export function TimeEntriesExample({ bookingId }: TimeEntriesExampleProps) {
           Use the relationship chain: <code>bookings → milestones → tasks → time_entries</code>
         </p>
         <p className="text-sm text-yellow-700">
-          Use <code>ProgressTrackingService.getTimeEntriesByBookingId(bookingId)</code> instead.
+          Use direct Supabase queries instead.
         </p>
       </div>
     </div>

@@ -13,10 +13,17 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react'
-import { Milestone, TaskComment } from '@/lib/progress-tracking'
+import { Milestone, Comment } from '@/types/progress'
+
+// Extended interface for task comments with additional properties
+interface TaskComment extends Comment {
+  is_internal: boolean;
+  comment?: string; // Legacy field name
+  content: string; // Current field name
+}
 import { safeFormatDistanceToNow } from '@/lib/date-utils'
-import { ProgressTrackingService } from '@/lib/progress-tracking'
 import { toast } from 'sonner'
+import { getSupabaseClient } from '@/lib/supabase-client'
 
 interface CommentsSectionProps {
   milestone: Milestone
@@ -41,9 +48,21 @@ export function CommentsSection({
         setLoading(true)
         const allComments: TaskComment[] = []
         
+        const supabase = await getSupabaseClient()
+        
         for (const task of milestone.tasks) {
-          const taskComments = await ProgressTrackingService.getTaskComments(task.id)
-          allComments.push(...taskComments)
+          const { data: taskComments, error } = await supabase
+            .from('task_comments')
+            .select('*')
+            .eq('task_id', task.id)
+            .order('created_at', { ascending: true })
+          
+          if (error) {
+            console.error('Error loading task comments:', error)
+            continue
+          }
+          
+          allComments.push(...(taskComments || []))
         }
         
         // Sort by creation date
@@ -79,12 +98,21 @@ export function CommentsSection({
       const userId = 'current-user-id' // TODO: Get from auth context
       const isInternal = userRole === 'provider' // Providers can make internal comments
       
-      const newCommentData = await ProgressTrackingService.addTaskComment(
-        firstTask.id,
-        userId,
-        newComment.trim(),
-        isInternal
-      )
+      const supabase = await getSupabaseClient()
+      
+      const { data: newCommentData, error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: firstTask.id,
+          booking_id: milestone.booking_id,
+          user_id: userId,
+          content: newComment.trim(),
+          is_internal: isInternal
+        })
+        .select()
+        .single()
+
+      if (error) throw error
 
       setComments(prev => [...prev, newCommentData])
       setNewComment('')
@@ -103,10 +131,12 @@ export function CommentsSection({
   // Group comments by task
   const commentsByTask = visibleComments.reduce((acc, comment) => {
     const taskId = comment.task_id
-    if (!acc[taskId]) {
-      acc[taskId] = []
+    if (taskId) {
+      if (!acc[taskId]) {
+        acc[taskId] = []
+      }
+      acc[taskId].push(comment)
     }
-    acc[taskId].push(comment)
     return acc
   }, {} as Record<string, TaskComment[]>)
 
@@ -222,7 +252,7 @@ export function CommentsSection({
                         </div>
                         
                         <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
-                          {comment.comment}
+                          {comment.content || comment.comment || 'No content'}
                         </p>
                       </div>
                     ))}

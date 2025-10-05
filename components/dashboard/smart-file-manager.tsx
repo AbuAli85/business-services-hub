@@ -138,93 +138,9 @@ export default function SmartFileManager({
   const loadFiles = async () => {
     try {
       setLoading(true)
-      // Mock data for now - would integrate with Supabase Storage
-      const mockFiles: FileItem[] = [
-        {
-          id: '1',
-          name: 'Project Requirements.pdf',
-          type: 'file',
-          mime_type: 'application/pdf',
-          size: 2048576, // 2MB
-          path: '/project-requirements.pdf',
-          url: '#',
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          uploaded_by: {
-            id: 'user1',
-            full_name: 'John Client',
-            avatar_url: undefined
-          },
-          tags: ['requirements', 'initial'],
-          description: 'Initial project requirements and specifications',
-          is_shared: true,
-          download_count: 3,
-          version: 1,
-          status: 'ready',
-          permissions: {
-            can_view: true,
-            can_edit: userRole === 'client',
-            can_delete: userRole === 'client',
-            can_share: true
-          }
-        },
-        {
-          id: '2',
-          name: 'Design Mockups',
-          type: 'folder',
-          mime_type: 'folder',
-          size: 0,
-          path: '/design-mockups',
-          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          uploaded_by: {
-            id: 'user2',
-            full_name: 'Sarah Provider',
-            avatar_url: undefined
-          },
-          tags: ['design', 'mockups'],
-          description: 'Initial design concepts and mockups',
-          is_shared: true,
-          download_count: 0,
-          version: 1,
-          status: 'ready',
-          permissions: {
-            can_view: true,
-            can_edit: userRole === 'provider',
-            can_delete: userRole === 'provider',
-            can_share: true
-          }
-        },
-        {
-          id: '3',
-          name: 'progress-screenshot.png',
-          type: 'file',
-          mime_type: 'image/png',
-          size: 1024000, // 1MB
-          path: '/progress-screenshot.png',
-          url: '#',
-          created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-          updated_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-          uploaded_by: {
-            id: 'user2',
-            full_name: 'Sarah Provider',
-            avatar_url: undefined
-          },
-          tags: ['progress', 'screenshot'],
-          description: 'Latest progress screenshot',
-          is_shared: true,
-          download_count: 1,
-          version: 1,
-          status: 'ready',
-          permissions: {
-            can_view: true,
-            can_edit: userRole === 'provider',
-            can_delete: userRole === 'provider',
-            can_share: true
-          }
-        }
-      ]
-      setFiles(mockFiles)
+      // TODO: Integrate with Supabase Storage API to fetch real files
+      // For now, show empty state - files will be displayed once uploaded through the system
+      setFiles([])
     } catch (error) {
       console.error('Error loading files:', error)
       toast.error('Failed to load files')

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase'
-import { ProgressTrackingService } from '@/lib/progress-tracking'
 
 // GET /api/time-entries/[bookingId] - Get time entries for a specific booking
 export async function GET(

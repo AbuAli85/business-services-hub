@@ -93,15 +93,28 @@ export class ProfileManager {
     try {
       const supabase = await getSupabaseClient()
       
-      // Try to get profile from database
+      // Add timeout protection to prevent hanging queries
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+      
+      // Try to get profile from database with timeout
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
+        .abortSignal(controller.signal)
         .maybeSingle()
+      
+      clearTimeout(timeout)
 
       if (error) {
         console.warn('⚠️ Profile fetch error:', error)
+        
+        // Handle timeout errors specifically
+        if (error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('canceling statement')) {
+          console.warn('⏰ Profile query timed out for user:', userId)
+          return null
+        }
         
         // Handle specific error cases gracefully
         if (error.code === 'PGRST116') {
@@ -114,11 +127,19 @@ export class ProfileManager {
           console.log('🔄 Permission denied, trying with admin client...')
           try {
             const adminSupabase = await getSupabaseAdminClient()
+            
+            // Add timeout protection for admin query too
+            const adminController = new AbortController()
+            const adminTimeout = setTimeout(() => adminController.abort(), 5000)
+            
             const { data: adminProfile, error: adminError } = await adminSupabase
               .from('profiles')
               .select('*')
               .eq('id', userId)
+              .abortSignal(adminController.signal)
               .maybeSingle()
+            
+            clearTimeout(adminTimeout)
             
             if (adminError) {
               console.error('❌ Admin client also failed:', adminError)
@@ -370,14 +391,28 @@ export class ProfileManager {
       }
 
       const supabase = await getSupabaseClient()
+      
+      // Add timeout protection for company query
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 5000)
+      
       const { data: company, error } = await supabase
         .from('companies')
         .select('name, logo_url')
         .eq('id', profile.company_id)
+        .abortSignal(controller.signal)
         .maybeSingle()
+      
+      clearTimeout(timeout)
 
       if (error) {
         console.warn('⚠️ Company fetch error:', error)
+        
+        // Handle timeout errors specifically
+        if (error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('canceling statement')) {
+          console.warn('⏰ Company query timed out for company:', profile.company_id)
+        }
+        
         return null
       }
 

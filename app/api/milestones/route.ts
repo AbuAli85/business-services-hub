@@ -347,6 +347,31 @@ export async function PATCH(request: NextRequest) {
       updateData.completed_at = new Date().toISOString()
     }
 
+    // Recalculate progress_percentage from tasks if not explicitly provided
+    if (!validatedData.progress_percentage) {
+      try {
+        const { data: milestoneTasks } = await supabase
+          .from('tasks')
+          .select('status')
+          .eq('milestone_id', milestoneId)
+        
+        if (milestoneTasks) {
+          const totalTasks = milestoneTasks.length
+          const completedTasks = milestoneTasks.filter(t => t.status === 'completed').length
+          const calculatedProgress = totalTasks > 0 
+            ? Math.round((completedTasks / totalTasks) * 100) 
+            : 0
+          
+          updateData.progress_percentage = calculatedProgress
+          updateData.completed_tasks = completedTasks
+          updateData.total_tasks = totalTasks
+          console.log(`✅ Recalculated milestone progress: ${calculatedProgress}% (${completedTasks}/${totalTasks} tasks)`)
+        }
+      } catch (progressError) {
+        console.warn('⚠️ Could not recalculate milestone progress:', progressError)
+      }
+    }
+
     const { data: updatedMilestone, error: updateError } = await supabase
       .from('milestones')
       .update(updateData)
@@ -376,6 +401,58 @@ export async function PATCH(request: NextRequest) {
         { error: 'Failed to update milestone', details: updateError.message, hint: updateError.hint },
         { status: 500, headers: corsHeaders }
       )
+    }
+
+    // Trigger booking progress recalculation cascade
+    try {
+      // Add timeout protection for RPC call
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+      
+      const { error: bookingProgressError } = await supabase
+        .rpc('calculate_booking_progress', {
+          booking_id: milestone.booking_id
+        }).abortSignal(controller.signal)
+      
+      clearTimeout(timeout)
+
+      if (bookingProgressError) {
+        console.warn('⚠️ RPC calculate_booking_progress failed, using fallback:', bookingProgressError)
+        
+        // Handle stack depth errors specifically
+        if (bookingProgressError.code === '54001') {
+          console.warn('⏰ Stack depth limit exceeded in calculate_booking_progress, skipping RPC call')
+        }
+        
+        // Fallback: Direct calculation
+        const { data: bookingMilestonesData } = await supabase
+          .from('milestones')
+          .select('progress_percentage, weight')
+          .eq('booking_id', milestone.booking_id)
+
+        if (bookingMilestonesData) {
+          const totalWeight = bookingMilestonesData.reduce((sum, m) => sum + (m.weight || 1), 0)
+          const weightedProgress = bookingMilestonesData.reduce(
+            (sum, m) => sum + ((m.progress_percentage || 0) * (m.weight || 1)),
+            0
+          )
+          const bookingProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0
+
+          await supabase
+            .from('bookings')
+            .update({ 
+              progress_percentage: bookingProgress,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', milestone.booking_id)
+
+          console.log(`✅ Booking progress updated after milestone change: ${bookingProgress}%`)
+        }
+      } else {
+        console.log('✅ Booking progress updated via RPC after milestone change')
+      }
+    } catch (bookingCascadeError) {
+      console.warn('⚠️ Booking cascade update failed (non-critical):', bookingCascadeError)
     }
 
     return NextResponse.json(

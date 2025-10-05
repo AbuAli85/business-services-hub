@@ -205,7 +205,8 @@ export function EnhancedMilestoneManagement({
         estimated_hours: newMilestone.estimated_hours,
         weight: 1.0,
         order_index: milestones.length,
-        is_overdue: false
+        is_overdue: false,
+        progress_percentage: 0 // ✅ Fixed: Add required progress_percentage field
       })
 
       setNewMilestone({
@@ -245,7 +246,7 @@ export function EnhancedMilestoneManagement({
   // Handle milestone progress change
   const handleProgressChange = async (milestoneId: string, progress: number) => {
     try {
-      await onMilestoneUpdate(milestoneId, { progress })
+      await onMilestoneUpdate(milestoneId, { progress_percentage: progress })
     } catch (error) {
       console.error('Error updating milestone progress:', error)
     }
@@ -362,7 +363,7 @@ export function EnhancedMilestoneManagement({
 
   // Calculate milestone progress
   const calculateMilestoneProgress = (milestone: Milestone) => {
-    if (milestone.tasks.length === 0) return milestone.progress || 0
+    if (milestone.tasks.length === 0) return milestone.progress_percentage || 0
     
     const completedTasks = milestone.tasks.filter(task => task.status === 'completed').length
     return Math.round((completedTasks / milestone.tasks.length) * 100)

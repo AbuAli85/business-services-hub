@@ -58,24 +58,87 @@ export function calculateBookingStats(
   // Fallback to current page calculation
   const total = bookings.length
   
-  const completed = bookings.filter(b => getDerivedStatus(b, new Map()) === 'delivered').length
+  const completed = bookings.filter(b => {
+    const status = getDerivedStatus(b, new Map())
+    return status === 'delivered' || status === 'completed' || b.status === 'completed' || b.status === 'delivered'
+  }).length
   const inProgress = bookings.filter(b => getDerivedStatus(b, new Map()) === 'in_production').length
   const approved = bookings.filter(b => 
     b.status === 'approved' || b.approval_status === 'approved'
   ).length
   const pending = bookings.filter(b => getDerivedStatus(b, new Map()) === 'pending_review').length
   
-  const totalRevenue = invoices
-    .filter(inv => ['issued', 'paid'].includes(inv.status))
-    .reduce((sum, inv) => sum + (inv.amount || 0), 0)
+  // Calculate revenue from all invoices (draft, issued, paid) to show actual amounts
+  // Filter out 'void' invoices only
+  // Calculate revenue from invoices first (preferred method)
+  const invoiceRevenue = invoices
+    .filter(inv => inv.status !== 'void')
+    .reduce((sum, inv) => {
+      const amount = inv.amount || inv.total_amount || 0
+      console.log('📊 Invoice for revenue:', { 
+        id: inv.id, 
+        booking_id: inv.booking_id, 
+        status: inv.status, 
+        amount 
+      })
+      return sum + amount
+    }, 0)
+  
+  // Fallback: Calculate revenue from booking amounts if invoices are empty or insufficient
+  const bookingRevenue = bookings
+    .filter(b => ['approved', 'in_production', 'completed', 'delivered'].includes(b.status || getDerivedStatus(b, new Map())))
+    .reduce((sum, b) => {
+      const amount = b.total_amount || b.amount || 0
+      console.log('📊 Booking for revenue:', { 
+        id: b.id, 
+        status: b.status, 
+        amount 
+      })
+      return sum + amount
+    }, 0)
+  
+  // Use invoice revenue if available, otherwise fallback to booking revenue
+  const totalRevenue = invoiceRevenue > 0 ? invoiceRevenue : bookingRevenue
+  
+  console.log('💰 Revenue calculation:', {
+    totalInvoices: invoices.length,
+    nonVoidInvoices: invoices.filter(inv => inv.status !== 'void').length,
+    invoiceRevenue,
+    bookingRevenue,
+    totalRevenue,
+    usingInvoiceRevenue: invoiceRevenue > 0,
+    invoiceDetails: invoices.map(inv => ({
+      id: inv.id,
+      status: inv.status,
+      amount: inv.amount,
+      total_amount: inv.total_amount,
+      booking_id: inv.booking_id
+    }))
+  })
 
   const projectedBillings = bookings
     .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b, new Map())))
-    .reduce((sum, b) => sum + ((b.amount_cents ?? 0) / 100), 0)
+    .reduce((sum, b) => sum + (b.total_amount ?? 0), 0)
   
   const avgCompletionTime = 7.2
   const pendingApproval = pending
   const readyToLaunch = bookings.filter(b => getDerivedStatus(b, new Map()) === 'ready_to_launch').length
+
+  const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0
+
+  console.log('📊 Status breakdown:', {
+    total,
+    completed,
+    inProgress,
+    pending,
+    approved,
+    completionRate,
+    statusCounts: bookings.map(b => ({
+      id: b.id,
+      status: b.status,
+      derivedStatus: getDerivedStatus(b, new Map())
+    }))
+  })
 
   return { 
     total, 

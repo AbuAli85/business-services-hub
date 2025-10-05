@@ -88,7 +88,7 @@ export function generateReport(bookings: Booking[], options: ReportOptions = {})
  */
 function calculateSummary(bookings: Booking[]): ReportData['summary'] {
   const totalRevenue = bookings.reduce((sum, b) => {
-    return sum + (b.amount_cents ? b.amount_cents / 100 : 0)
+    return sum + (b.total_amount || 0)
   }, 0)
 
   const averageBookingValue = bookings.length > 0 ? totalRevenue / bookings.length : 0
@@ -127,7 +127,7 @@ function generateAnalytics(bookings: Booking[]): ReportData['analytics'] {
     const current = byStatusMap.get(status) || { count: 0, revenue: 0 }
     byStatusMap.set(status, {
       count: current.count + 1,
-      revenue: current.revenue + (b.amount_cents ? b.amount_cents / 100 : 0)
+      revenue: current.revenue + (b.total_amount || 0)
     })
   })
   const byStatus = Array.from(byStatusMap.entries()).map(([status, data]) => ({
@@ -142,7 +142,7 @@ function generateAnalytics(bookings: Booking[]): ReportData['analytics'] {
     const current = byClientMap.get(client) || { count: 0, revenue: 0 }
     byClientMap.set(client, {
       count: current.count + 1,
-      revenue: current.revenue + (b.amount_cents ? b.amount_cents / 100 : 0)
+      revenue: current.revenue + (b.total_amount || 0)
     })
   })
   const byClient = Array.from(byClientMap.entries())
@@ -156,7 +156,7 @@ function generateAnalytics(bookings: Booking[]): ReportData['analytics'] {
     const current = byProviderMap.get(provider) || { count: 0, revenue: 0 }
     byProviderMap.set(provider, {
       count: current.count + 1,
-      revenue: current.revenue + (b.amount_cents ? b.amount_cents / 100 : 0)
+      revenue: current.revenue + (b.total_amount || 0)
     })
   })
   const byProvider = Array.from(byProviderMap.entries())
@@ -171,7 +171,7 @@ function generateAnalytics(bookings: Booking[]): ReportData['analytics'] {
     const current = byMonthMap.get(month) || { count: 0, revenue: 0 }
     byMonthMap.set(month, {
       count: current.count + 1,
-      revenue: current.revenue + (b.amount_cents ? b.amount_cents / 100 : 0)
+      revenue: current.revenue + (b.total_amount || 0)
     })
   })
   const byMonth = Array.from(byMonthMap.entries()).map(([month, data]) => ({
@@ -186,7 +186,7 @@ function generateAnalytics(bookings: Booking[]): ReportData['analytics'] {
     const current = byServiceMap.get(service) || { count: 0, revenue: 0 }
     byServiceMap.set(service, {
       count: current.count + 1,
-      revenue: current.revenue + (b.amount_cents ? b.amount_cents / 100 : 0)
+      revenue: current.revenue + (b.total_amount || 0)
     })
   })
   const byService = Array.from(byServiceMap.entries())

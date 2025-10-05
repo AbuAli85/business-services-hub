@@ -150,17 +150,58 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
       setBooking(bookingData)
 
       // Load client and provider profiles separately (email comes from auth, not profiles)
-      const { data: clientData, error: clientError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('id', bookingData.client_id)
-        .maybeSingle() // Use maybeSingle instead of single to handle no rows
-
-      const { data: providerData, error: providerError } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('id', bookingData.provider_id)
-        .maybeSingle() // Use maybeSingle instead of single to handle no rows
+      // Add timeout protection for profile queries
+      const profileController = new AbortController()
+      const profileTimeout = setTimeout(() => profileController.abort(), 5000) // 5 second timeout
+      
+      const [clientResponse, providerResponse] = await Promise.allSettled([
+        supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('id', bookingData.client_id)
+          .abortSignal(profileController.signal)
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('id, full_name')
+          .eq('id', bookingData.provider_id)
+          .abortSignal(profileController.signal)
+          .maybeSingle()
+      ])
+      
+      clearTimeout(profileTimeout)
+      
+      // Handle profile query results
+      const clientData = clientResponse.status === 'fulfilled' ? clientResponse.value.data : null
+      const clientError = clientResponse.status === 'fulfilled' ? clientResponse.value.error : clientResponse.status === 'rejected' ? clientResponse.reason : null
+      
+      const providerData = providerResponse.status === 'fulfilled' ? providerResponse.value.data : null
+      const providerError = providerResponse.status === 'fulfilled' ? providerResponse.value.error : providerResponse.status === 'rejected' ? providerResponse.reason : null
+      
+      // Log profile query errors gracefully
+      if (clientResponse.status === 'rejected') {
+        console.warn('⏰ Client profile query failed, continuing without client name:', clientResponse.reason)
+      } else if (clientError) {
+        if (clientError.code === '57014' || clientError.message?.includes('timeout') || clientError.message?.includes('canceling statement')) {
+          console.warn('⏰ Client profile query timed out, continuing without client name')
+        } else if (clientError.code === '54001') {
+          console.warn('⏰ Stack depth limit exceeded in client profile query, continuing without client name')
+        } else {
+          console.warn('⚠️ Client profile query failed:', clientError)
+        }
+      }
+      
+      if (providerResponse.status === 'rejected') {
+        console.warn('⏰ Provider profile query failed, continuing without provider name:', providerResponse.reason)
+      } else if (providerError) {
+        if (providerError.code === '57014' || providerError.message?.includes('timeout') || providerError.message?.includes('canceling statement')) {
+          console.warn('⏰ Provider profile query timed out, continuing without provider name')
+        } else if (providerError.code === '54001') {
+          console.warn('⏰ Stack depth limit exceeded in provider profile query, continuing without provider name')
+        } else {
+          console.warn('⚠️ Provider profile query failed:', providerError)
+        }
+      }
 
       // Load messages
       const { data: messagesData, error: messagesError } = await supabase
@@ -201,8 +242,8 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
           sender_role: senderProfile?.role || 'client',
           created_at: msg.created_at,
           is_own_message: msg.sender_id === user.id,
-          attachments: [], // Mock attachments for now
-          reactions: [] // Mock reactions for now
+          attachments: (msg as any).attachments || [], // Get from message if available
+          reactions: (msg as any).reactions || [] // Get from message if available
         }
       }) || []
 
