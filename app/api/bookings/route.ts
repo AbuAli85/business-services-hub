@@ -485,31 +485,50 @@ export async function GET(request: NextRequest) {
       const ids = rows.map((b:any) => b.id)
       console.log(`🔍 Fetching progress for ${ids.length} bookings`)
       
-      // Try the proper progress view first
-      const { data: progressRows, error: progressError } = await supabase
-        .from('v_booking_progress')
-        .select('booking_id, booking_progress')
+      // Always calculate from milestones - never use hardcoded values
+      const { data: milestonesForProgress, error: milestonesError } = await supabase
+        .from('milestones')
+        .select('id, booking_id, progress_percentage, weight, status')
         .in('booking_id', ids)
       
-      if (progressError) {
-        console.warn('⚠️ Progress view error:', progressError)
-        // Fallback to simple status-based progress
-        for (const booking of rows) {
-          const status = booking.display_status || 'pending_review'
-          let progress = booking.progress || 0
-          if (status === 'completed') progress = 100
-          else if (status === 'in_progress') progress = Math.max(progress, 50)
-          else if (status === 'approved') progress = Math.max(progress, 25)
-          else if (status === 'pending') progress = 10
-          progressMap.set(String(booking.id), progress)
+      if (milestonesError) {
+        console.warn('⚠️ Could not fetch milestones for progress:', milestonesError)
+        // Set all to 0 if we can't fetch data (don't guess)
+        for (const id of ids) {
+          progressMap.set(String(id), 0)
         }
       } else {
-        console.log(`✅ Progress data fetched: ${progressRows?.length || 0} records`)
-        for (const pr of progressRows || []) {
-          // Use booking_progress from the view
-          const progress = pr.booking_progress ?? 0
-          progressMap.set(String(pr.booking_id), Number(progress))
+        // Calculate weighted progress for each booking
+        const progressByBooking = new Map<string, { totalWeight: number; weightedProgress: number }>()
+        
+        for (const milestone of (milestonesForProgress || [])) {
+          const bookingId = String(milestone.booking_id)
+          if (!progressByBooking.has(bookingId)) {
+            progressByBooking.set(bookingId, { totalWeight: 0, weightedProgress: 0 })
+          }
+          
+          const data = progressByBooking.get(bookingId)!
+          const weight = milestone.weight || 1
+          const progress = milestone.progress_percentage || 0
+          
+          data.totalWeight += weight
+          data.weightedProgress += (progress * weight)
+          progressByBooking.set(bookingId, data)
         }
+        
+        // Apply calculated progress to all bookings
+        for (const id of ids) {
+          const data = progressByBooking.get(String(id))
+          if (data && data.totalWeight > 0) {
+            const overallProgress = Math.round(data.weightedProgress / data.totalWeight)
+            progressMap.set(String(id), overallProgress)
+          } else {
+            // No milestones = 0 progress (accurate, not guessed)
+            progressMap.set(String(id), 0)
+          }
+        }
+        
+        console.log(`✅ Progress calculated from ${milestonesForProgress?.length || 0} milestones for ${ids.length} bookings`)
       }
     }
 

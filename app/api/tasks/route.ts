@@ -246,10 +246,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update milestone task counts
-    await supabase.rpc('recalc_milestone_progress', {
-      p_milestone_id: validatedData.milestone_id
-    })
+    // ✅ HIGH PRIORITY: Full cascade - Milestone → Booking progress
+    try {
+      // Step 1: Recalculate milestone progress
+      await supabase.rpc('recalc_milestone_progress', {
+        p_milestone_id: validatedData.milestone_id
+      })
+      
+      // Step 2: Trigger booking progress recalculation
+      const { error: bookingProgressError } = await supabase
+        .rpc('calculate_booking_progress', {
+          booking_id: milestone.booking_id
+        })
+      
+      if (bookingProgressError) {
+        console.warn('⚠️ RPC calculate_booking_progress failed, using fallback:', bookingProgressError)
+        
+        // Fallback: Direct calculation
+        const { data: bookingMilestonesData } = await supabase
+          .from('milestones')
+          .select('progress_percentage, weight')
+          .eq('booking_id', milestone.booking_id)
+      
+        if (bookingMilestonesData) {
+          const totalWeight = bookingMilestonesData.reduce((sum, m) => sum + (m.weight || 1), 0)
+          const weightedProgress = bookingMilestonesData.reduce(
+            (sum, m) => sum + ((m.progress_percentage || 0) * (m.weight || 1)),
+            0
+          )
+          const bookingProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0
+      
+          await supabase
+            .from('bookings')
+            .update({ 
+              progress_percentage: bookingProgress,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', milestone.booking_id)
+      
+          console.log(`✅ Booking progress updated after task create: ${bookingProgress}%`)
+        }
+      } else {
+        console.log('✅ Booking progress updated via RPC after task create')
+      }
+    } catch (cascadeError) {
+      console.warn('⚠️ Progress cascade update failed (non-critical):', cascadeError)
+    }
 
     return NextResponse.json(
       { task },
@@ -547,21 +589,91 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Recalculate milestone progress using the new RPC function (optional)
+    // Recalculate milestone progress and trigger cascade to booking
     let milestoneProgress = null
     try {
+      // Step 1: Try RPC function for milestone progress
       const { data: progressData, error: progressError } = await supabase
         .rpc('recalc_milestone_progress', {
           p_milestone_id: task.milestone_id
         })
 
       if (progressError) {
-        console.warn('Error recalculating milestone progress (non-critical):', progressError)
+        console.warn('⚠️ RPC recalc_milestone_progress failed, using fallback:', progressError)
+        
+        // Fallback: Direct calculation
+        const { data: milestoneTasksData } = await supabase
+          .from('tasks')
+          .select('status')
+          .eq('milestone_id', task.milestone_id)
+
+        if (milestoneTasksData) {
+          const totalTasks = milestoneTasksData.length
+          const completedTasks = milestoneTasksData.filter(t => t.status === 'completed').length
+          const calculatedProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+
+          await supabase
+            .from('milestones')
+            .update({ 
+              progress_percentage: calculatedProgress,
+              completed_tasks: completedTasks,
+              total_tasks: totalTasks,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', task.milestone_id)
+
+          milestoneProgress = calculatedProgress
+          console.log(`✅ Milestone progress updated: ${calculatedProgress}% (${completedTasks}/${totalTasks} tasks)`)
+        }
       } else {
         milestoneProgress = progressData
+        console.log('✅ Milestone progress updated via RPC')
       }
-    } catch (rpcError) {
-      console.warn('RPC recalc_milestone_progress not available (non-critical):', rpcError)
+
+      // Step 2: Trigger booking progress recalculation
+      try {
+        const { error: bookingProgressError } = await supabase
+          .rpc('calculate_booking_progress', {
+            booking_id: milestone.booking_id
+          })
+
+        if (bookingProgressError) {
+          console.warn('⚠️ RPC calculate_booking_progress failed, using fallback:', bookingProgressError)
+          
+          // Fallback: Direct calculation
+          const { data: bookingMilestonesData } = await supabase
+            .from('milestones')
+            .select('progress_percentage, weight')
+            .eq('booking_id', milestone.booking_id)
+
+          if (bookingMilestonesData) {
+            const totalWeight = bookingMilestonesData.reduce((sum, m) => sum + (m.weight || 1), 0)
+            const weightedProgress = bookingMilestonesData.reduce(
+              (sum, m) => sum + ((m.progress_percentage || 0) * (m.weight || 1)),
+              0
+            )
+            const bookingProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0
+
+            await supabase
+              .from('bookings')
+              .update({ 
+                progress_percentage: bookingProgress,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', milestone.booking_id)
+
+            console.log(`✅ Booking progress updated: ${bookingProgress}%`)
+          }
+        } else {
+          console.log('✅ Booking progress updated via RPC')
+        }
+      } catch (bookingCascadeError) {
+        console.warn('⚠️ Booking cascade update failed (non-critical):', bookingCascadeError)
+      }
+
+      console.log('✅ Full progress cascade completed: Task → Milestone → Booking')
+    } catch (cascadeError) {
+      console.error('❌ Progress cascade error:', cascadeError)
     }
 
     // Broadcast realtime update to booking channel (optional)
@@ -710,10 +822,52 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Update milestone progress
-    await supabase.rpc('recalc_milestone_progress', {
-      p_milestone_id: task.milestone_id
-    })
+    // ✅ HIGH PRIORITY: Full cascade - Milestone → Booking progress
+    try {
+      // Step 1: Recalculate milestone progress
+      await supabase.rpc('recalc_milestone_progress', {
+        p_milestone_id: task.milestone_id
+      })
+      
+      // Step 2: Trigger booking progress recalculation
+      const { error: bookingProgressError } = await supabase
+        .rpc('calculate_booking_progress', {
+          booking_id: milestone.booking_id
+        })
+      
+      if (bookingProgressError) {
+        console.warn('⚠️ RPC calculate_booking_progress failed, using fallback:', bookingProgressError)
+        
+        // Fallback: Direct calculation
+        const { data: bookingMilestonesData } = await supabase
+          .from('milestones')
+          .select('progress_percentage, weight')
+          .eq('booking_id', milestone.booking_id)
+      
+        if (bookingMilestonesData) {
+          const totalWeight = bookingMilestonesData.reduce((sum, m) => sum + (m.weight || 1), 0)
+          const weightedProgress = bookingMilestonesData.reduce(
+            (sum, m) => sum + ((m.progress_percentage || 0) * (m.weight || 1)),
+            0
+          )
+          const bookingProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0
+      
+          await supabase
+            .from('bookings')
+            .update({ 
+              progress_percentage: bookingProgress,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', milestone.booking_id)
+      
+          console.log(`✅ Booking progress updated after task delete: ${bookingProgress}%`)
+        }
+      } else {
+        console.log('✅ Booking progress updated via RPC after task delete')
+      }
+    } catch (cascadeError) {
+      console.warn('⚠️ Progress cascade update failed (non-critical):', cascadeError)
+    }
 
     return NextResponse.json(
       { message: 'Task deleted successfully' },

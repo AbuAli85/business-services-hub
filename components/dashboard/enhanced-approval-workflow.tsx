@@ -146,17 +146,8 @@ export function EnhancedApprovalWorkflow({
           submittedAt: new Date(milestone.created_at),
           dueDate: milestone.due_date ? new Date(milestone.due_date) : undefined,
           description: milestone.description || 'Milestone completion request',
-          deliverables: [
-            'Final deliverable',
-            'Documentation',
-            'Testing results',
-            'Client handover materials'
-          ],
-          attachments: [
-            'deliverable-screenshot.png',
-            'technical-documentation.pdf',
-            'test-results.xlsx'
-          ],
+          deliverables: milestone.tasks?.filter(t => t.status === 'completed').map(t => t.title) || [],
+          attachments: [], // Real attachments should come from file upload system
           clientNotes: latestApproval?.notes,
           providerNotes: comments.find(c => c.type === 'provider_note')?.content,
           revisionCount: approvals.filter(a => a.status === 'rejected').length,

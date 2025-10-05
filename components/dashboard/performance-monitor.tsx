@@ -255,12 +255,12 @@ export function PerformanceMonitor({ bookingId, className }: PerformanceMonitorP
         // Collect current performance data
         const performanceData = {
           booking_id: bookingId,
-          active_users: Math.floor(Math.random() * 10) + 1, // Mock data
-          realtime_connections: Math.floor(Math.random() * 5) + 1,
-          api_response_time: Math.floor(Math.random() * 500) + 100,
-          database_query_time: Math.floor(Math.random() * 200) + 50,
-          memory_usage: Math.floor(Math.random() * 50) + 30,
-          cpu_usage: Math.floor(Math.random() * 30) + 10,
+          active_users: 1, // Current user (would need session tracking for actual count)
+          realtime_connections: metrics?.realtimeConnections || 0,
+          api_response_time: metrics?.apiResponseTime || 0,
+          database_query_time: metrics?.dbQueryTime || 0,
+          memory_usage: 0, // Requires server-side monitoring
+          cpu_usage: 0, // Requires server-side monitoring
           milestones_loaded: metrics?.milestonesLoaded || 0,
           tasks_loaded: metrics?.tasksLoaded || 0,
           drag_drop_operations: metrics?.dragDropOperations || 0,

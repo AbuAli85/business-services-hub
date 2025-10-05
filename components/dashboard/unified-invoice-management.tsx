@@ -221,11 +221,11 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
       paidAmount,
       pendingAmount,
       overdueAmount,
-      // Mock trend data - in real app, calculate from previous period
-      totalTrend: Math.random() * 20 - 10,
-      paidTrend: Math.random() * 20 - 10,
-      pendingTrend: Math.random() * 20 - 10,
-      revenueTrend: Math.random() * 20 - 10
+      // Trends should be calculated from previous period data
+      totalTrend: 0,
+      paidTrend: 0,
+      pendingTrend: 0,
+      revenueTrend: 0
     })
   }
 
@@ -384,8 +384,19 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
       
       toast.success(`Exported ${selectedInvoices.size} invoices to CSV`)
     } else {
-      // PDF export would be implemented here
-      toast.success(`PDF export for ${selectedInvoices.size} invoices coming soon`)
+      // Export as JSON for now (PDF generation requires additional library)
+      const selectedData = filteredInvoices.filter(inv => selectedInvoices.has(inv.id))
+      const jsonData = JSON.stringify(selectedData, null, 2)
+      const blob = new Blob([jsonData], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `invoices-export-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success(`Exported ${selectedInvoices.size} invoices to JSON`)
     }
   }
 
@@ -487,8 +498,8 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
   }
 
   const handlePayInvoice = (invoice: InvoiceRecord) => {
-    // Navigate to payment page
-    toast.success('Payment functionality coming soon!')
+    // Navigate to invoice details where payment can be processed
+    window.location.href = `/dashboard/invoices/template/${invoice.id}`
   }
 
   if (loading) {
@@ -526,13 +537,13 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
             {userRole !== 'client' && (
               <Button 
                 onClick={() => {
-                  // Generate invoices from bookings
-                  toast.success('Invoice generation coming soon!')
+                  // Navigate to bookings page to create invoices
+                  window.location.href = '/dashboard/bookings'
                 }}
                 className="flex items-center gap-2"
               >
                 <FileText className="h-4 w-4" />
-                Generate Invoices
+                View Bookings
               </Button>
             )}
           </div>
@@ -960,8 +971,18 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
                                 <DropdownMenuSeparator />
                                 
                                 <DropdownMenuItem onClick={() => {
-                                  // Export single invoice
-                                  toast.success('Export functionality coming soon!')
+                                  // Export single invoice as JSON
+                                  const invoiceData = JSON.stringify(invoice, null, 2)
+                                  const blob = new Blob([invoiceData], { type: 'application/json' })
+                                  const url = URL.createObjectURL(blob)
+                                  const link = document.createElement('a')
+                                  link.href = url
+                                  link.download = `invoice-${invoice.invoice_number || invoice.id}-${new Date().toISOString().split('T')[0]}.json`
+                                  document.body.appendChild(link)
+                                  link.click()
+                                  document.body.removeChild(link)
+                                  URL.revokeObjectURL(url)
+                                  toast.success('Invoice exported successfully')
                                 }}>
                                   <Download className="h-4 w-4 mr-2" />
                                   Export

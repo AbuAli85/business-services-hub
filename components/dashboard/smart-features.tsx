@@ -209,48 +209,22 @@ function ProgressNotifications({ bookingId, userRole }: { bookingId: string, use
   const loadNotifications = async () => {
     try {
       setLoading(true)
-      // This would integrate with the notifications system
-      // For now, we'll create some mock notifications based on progress
+      // Fetch real notifications from the database
       const supabase = await getSupabaseClient()
-      const { data: milestones, error } = await supabase
-        .from('milestones')
+      const { data: notificationsData, error } = await supabase
+        .from('notifications')
         .select('*')
         .eq('booking_id', bookingId)
-        .order('created_at', { ascending: true })
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+        .limit(10)
       
-      if (error) throw error
+      if (error && error.code !== 'PGRST116') { // Ignore "not found" errors
+        console.warn('Could not fetch notifications:', error)
+      }
       
-      const mockNotifications: any[] = []
-      
-      // Check for completed milestones
-      const completedMilestones = milestones.filter(m => m.status === 'completed')
-      completedMilestones.forEach(milestone => {
-        mockNotifications.push({
-          id: `milestone-${milestone.id}`,
-          type: 'milestone_completed',
-          title: 'Milestone Completed',
-          message: `"${milestone.title}" has been completed`,
-          timestamp: milestone.completed_at || milestone.updated_at,
-          priority: 'success'
-        })
-      })
-      
-      // Check for tasks pending approval
-      const pendingApprovalTasks = milestones.flatMap((m: any) =>
-        (m.tasks || []).filter((t: any) => t.approval_status === 'pending' && t.status === 'completed')
-      )
-      pendingApprovalTasks.forEach((task: any) => {
-        mockNotifications.push({
-          id: `task-${task.id}`,
-          type: 'task_pending_approval',
-          title: 'Task Pending Approval',
-          message: `"${task.title}" is ready for your approval`,
-          timestamp: task.updated_at,
-          priority: 'warning'
-        })
-      })
-      
-      setNotifications(mockNotifications)
+      // Set notifications or empty array if none found
+      setNotifications(notificationsData || [])
     } catch (error) {
       console.error('Error loading notifications:', error)
     } finally {

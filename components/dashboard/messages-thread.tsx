@@ -201,8 +201,8 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
           sender_role: senderProfile?.role || 'client',
           created_at: msg.created_at,
           is_own_message: msg.sender_id === user.id,
-          attachments: [], // Mock attachments for now
-          reactions: [] // Mock reactions for now
+          attachments: (msg as any).attachments || [], // Get from message if available
+          reactions: (msg as any).reactions || [] // Get from message if available
         }
       }) || []
 
