@@ -163,39 +163,94 @@ export function ImprovedMilestoneSystem({
     }
   }, [bookingId])
 
-  // Update progress with optimized API call
+  // Calculate and update milestone progress directly
   const updateProgress = useCallback(async (milestoneId: string, taskId?: string) => {
     try {
       setProgressLoading(prev => new Set(prev).add(milestoneId))
       
-      const response = await fetch('/api/progress/calculate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          booking_id: bookingId,
-          milestone_id: milestoneId,
-          task_id: taskId
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to update progress')
-      }
-
-      const result = await response.json()
+      const supabase = await getSupabaseClient()
       
-      if (result.success) {
-        // Refresh milestones to get updated data
-        await loadMilestones()
-        toast.success('Progress updated successfully')
-      } else {
-        throw new Error(result.error || 'Failed to update progress')
+      // Get all tasks for this milestone
+      const { data: tasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select('id, status, progress_percentage')
+        .eq('milestone_id', milestoneId)
+      
+      if (tasksError) throw tasksError
+      
+      const totalTasks = tasks?.length || 0
+      const completedTasks = tasks?.filter(t => t.status === 'completed').length || 0
+      const inProgressTasks = tasks?.filter(t => t.status === 'in_progress').length || 0
+      
+      // Calculate progress percentage
+      let progressPercentage = 0
+      if (totalTasks > 0) {
+        progressPercentage = Math.round((completedTasks / totalTasks) * 100)
       }
+      
+      // Determine milestone status automatically based on progress
+      let newStatus = undefined
+      const { data: currentMilestone } = await supabase
+        .from('milestones')
+        .select('status')
+        .eq('id', milestoneId)
+        .single()
+      
+      const currentStatus = currentMilestone?.status
+      
+      // Auto-update status based on progress
+      if (progressPercentage === 100 && currentStatus !== 'completed' && currentStatus !== 'on_hold' && currentStatus !== 'cancelled') {
+        newStatus = 'completed'
+      } else if (progressPercentage > 0 && progressPercentage < 100 && currentStatus === 'pending') {
+        newStatus = 'in_progress'
+      } else if (progressPercentage === 0 && currentStatus === 'in_progress' && inProgressTasks === 0) {
+        newStatus = 'pending'
+      }
+      
+      // Update milestone with new progress and status
+      const updateData: any = {
+        progress_percentage: progressPercentage,
+        total_tasks: totalTasks,
+        completed_tasks: completedTasks,
+        updated_at: new Date().toISOString()
+      }
+      
+      if (newStatus) {
+        updateData.status = newStatus
+        if (newStatus === 'completed') {
+          updateData.completed_at = new Date().toISOString()
+        } else {
+          updateData.completed_at = null
+        }
+      }
+      
+      const { error: updateError } = await supabase
+        .from('milestones')
+        .update(updateData)
+        .eq('id', milestoneId)
+      
+      if (updateError) throw updateError
+      
+      // Refresh milestones to get updated data
+      await loadMilestones()
+      
+      // Also update booking progress
+      try {
+        const response = await fetch('/api/progress/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ booking_id: bookingId })
+        })
+        if (!response.ok) {
+          console.warn('Failed to update booking progress')
+        }
+      } catch (err) {
+        console.warn('Error updating booking progress:', err)
+      }
+      
     } catch (err) {
       console.error('Error updating progress:', err)
-      toast.error(err instanceof Error ? err.message : 'Failed to update progress')
+      toast.error('Failed to update progress')
     } finally {
       setProgressLoading(prev => {
         const newSet = new Set(prev)
@@ -210,10 +265,14 @@ export function ImprovedMilestoneSystem({
     try {
       const supabase = await getSupabaseClient()
       
+      // Update task progress based on status
+      const taskProgress = status === 'completed' ? 100 : status === 'in_progress' ? 50 : 0
+      
       const { error } = await supabase
         .from('tasks')
         .update({ 
           status,
+          progress_percentage: taskProgress,
           updated_at: new Date().toISOString()
         })
         .eq('id', taskId)
@@ -230,6 +289,8 @@ export function ImprovedMilestoneSystem({
       if (taskMilestone) {
         await updateProgress(taskMilestone.id, taskId)
       }
+      
+      toast.success('Task status updated')
     } catch (err) {
       console.error('Error updating task status:', err)
       toast.error('Failed to update task status')
@@ -241,26 +302,37 @@ export function ImprovedMilestoneSystem({
     try {
       const supabase = await getSupabaseClient()
       
+      // Prepare update data
+      const updateData: any = {
+        status,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Handle completed_at timestamp
+      if (status === 'completed') {
+        updateData.completed_at = new Date().toISOString()
+        updateData.progress_percentage = 100
+      } else {
+        updateData.completed_at = null
+      }
+      
       const { error } = await supabase
         .from('milestones')
-        .update({ 
-          status,
-          updated_at: new Date().toISOString(),
-          completed_at: status === 'completed' ? new Date().toISOString() : null
-        })
+        .update(updateData)
         .eq('id', milestoneId)
 
       if (error) {
         throw error
       }
 
-      await updateProgress(milestoneId)
+      // Reload milestones to reflect changes
+      await loadMilestones()
       toast.success('Milestone status updated')
     } catch (err) {
       console.error('Error updating milestone status:', err)
       toast.error('Failed to update milestone status')
     }
-  }, [updateProgress])
+  }, [loadMilestones])
   
   // Create milestone
   const createMilestone = useCallback(async () => {
@@ -290,6 +362,8 @@ export function ImprovedMilestoneSystem({
           weight: milestoneForm.weight,
           status: 'pending',
           progress_percentage: 0,
+          total_tasks: 0,
+          completed_tasks: 0,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -398,6 +472,10 @@ export function ImprovedMilestoneSystem({
       
       const supabase = await getSupabaseClient()
       
+      // Set progress based on initial status
+      const initialProgress = taskForm.status === 'completed' ? 100 : 
+                             taskForm.status === 'in_progress' ? 50 : 0
+      
       const { data, error } = await supabase
         .from('tasks')
         .insert({
@@ -407,7 +485,8 @@ export function ImprovedMilestoneSystem({
           status: taskForm.status,
           due_date: taskForm.due_date || null,
           estimated_hours: taskForm.estimated_hours,
-          progress_percentage: 0,
+          progress_percentage: initialProgress,
+          is_overdue: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -430,12 +509,11 @@ export function ImprovedMilestoneSystem({
       
       // Update progress for the milestone
       await updateProgress(selectedMilestoneId)
-      await loadMilestones()
     } catch (err) {
       console.error('Error creating task:', err)
       toast.error('Failed to create task')
     }
-  }, [selectedMilestoneId, taskForm, updateProgress, loadMilestones])
+  }, [selectedMilestoneId, taskForm, updateProgress])
   
   // Update task
   const updateTask = useCallback(async () => {
@@ -447,6 +525,10 @@ export function ImprovedMilestoneSystem({
       
       const supabase = await getSupabaseClient()
       
+      // Update progress based on status
+      const taskProgress = taskForm.status === 'completed' ? 100 : 
+                          taskForm.status === 'in_progress' ? 50 : 0
+      
       const { error } = await supabase
         .from('tasks')
         .update({
@@ -455,6 +537,7 @@ export function ImprovedMilestoneSystem({
           status: taskForm.status,
           due_date: taskForm.due_date || null,
           estimated_hours: taskForm.estimated_hours,
+          progress_percentage: taskProgress,
           updated_at: new Date().toISOString()
         })
         .eq('id', editingTask.id)
@@ -482,13 +565,11 @@ export function ImprovedMilestoneSystem({
       if (taskMilestone) {
         await updateProgress(taskMilestone.id)
       }
-      
-      await loadMilestones()
     } catch (err) {
       console.error('Error updating task:', err)
       toast.error('Failed to update task')
     }
-  }, [editingTask, taskForm, milestones, updateProgress, loadMilestones])
+  }, [editingTask, taskForm, milestones, updateProgress])
   
   // Delete task
   const deleteTask = useCallback(async (taskId: string, milestoneId: string) => {
