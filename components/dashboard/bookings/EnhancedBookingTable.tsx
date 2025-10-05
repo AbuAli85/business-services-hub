@@ -4,7 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/StatusPill'
-import { ProgressCell } from '@/components/ui/ProgressCell'
+import { Progress } from '@/components/ui/progress'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -254,13 +254,16 @@ export function EnhancedBookingTable({
 
                 {/* Progress Column */}
                 <td className="px-4 py-3">
-                  <ProgressCell 
-                    progress={booking.progress}
-                    totalMilestones={booking.total_milestones}
-                    completedMilestones={booking.completed_milestones}
-                    size="sm"
-                    showMilestones={true}
-                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-600">Progress</span>
+                      <span className="font-medium">{booking.progress}%</span>
+                    </div>
+                    <Progress value={booking.progress} className="h-1.5" />
+                    <div className="text-xs text-gray-500">
+                      {booking.completed_milestones}/{booking.total_milestones} milestones
+                    </div>
+                  </div>
                 </td>
 
                 {/* Payment Column */}
