@@ -105,7 +105,7 @@ export function MilestoneList({
       title: 'New Task',
       description: 'Task description',
       status: 'pending',
-      progress: 0,
+      progress_percentage: 0,
       priority: 'normal',
       order_index: milestones.find(m => m.id === milestoneId)?.tasks.length || 0
     };
@@ -158,13 +158,13 @@ export function MilestoneList({
                 
                 <div className="flex items-center space-x-4">
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">{milestone.progress}%</div>
+                    <div className="text-2xl font-bold text-gray-900">{milestone.progress_percentage}%</div>
                     <div className="text-sm text-gray-600">
                       {completedTasks}/{totalTasks} tasks
                     </div>
                   </div>
                   <div className="w-20">
-                    <Progress value={milestone.progress} className="h-2" />
+                    <Progress value={milestone.progress_percentage} className="h-2" />
                   </div>
                   <div className="text-gray-400">
                     {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}

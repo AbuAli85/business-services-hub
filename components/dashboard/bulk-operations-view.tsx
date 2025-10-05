@@ -170,7 +170,7 @@ export function BulkOperationsView({
         task.milestoneTitle,
         task.status,
         task.priority,
-        (task.progress || 0).toString(),
+        (task.progress_percentage || 0).toString(), // ✅ Fixed: Use progress_percentage
         task.due_date || '',
         (task.estimated_hours || 0).toString(),
         (task.actual_hours || 0).toString()
@@ -452,10 +452,10 @@ export function BulkOperationsView({
                             <div className="w-16 bg-gray-200 rounded-full h-2">
                               <div
                                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${task.progress || 0}%` }}
+                                style={{ width: `${task.progress_percentage || 0}%` }}
                               />
                             </div>
-                            <span className="text-sm text-gray-600">{task.progress || 0}%</span>
+                            <span className="text-sm text-gray-600">{task.progress_percentage || 0}%</span>
                           </div>
                         </td>
                         <td className="px-4 py-3">

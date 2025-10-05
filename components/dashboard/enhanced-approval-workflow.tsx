@@ -69,7 +69,7 @@ interface ApprovalRequest {
   lastRevisionAt?: Date
   estimatedHours: number
   actualHours: number
-  progress: number
+  progress_percentage: number
 }
 
 interface ApprovalStats {
@@ -163,7 +163,7 @@ export function EnhancedApprovalWorkflow({
           lastRevisionAt: approvals.length > 0 ? new Date(approvals[approvals.length - 1].created_at) : undefined,
           estimatedHours: milestone.estimated_hours || 0,
           actualHours: milestone.actual_hours || 0,
-          progress: milestone.progress || 0
+          progress_percentage: milestone.progress_percentage || 0
         }
       })
 
@@ -381,7 +381,7 @@ export function EnhancedApprovalWorkflow({
                     )}
                     <div className="flex items-center gap-1">
                       <Target className="h-4 w-4" />
-                      <span>{request.progress}% Complete</span>
+                      <span>{request.progress_percentage}% Complete</span>
                     </div>
                     {request.revisionCount > 0 && (
                       <div className="flex items-center gap-1">
@@ -404,7 +404,7 @@ export function EnhancedApprovalWorkflow({
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${request.progress}%` }}
+                    style={{ width: `${request.progress_percentage}%` }}
                   />
                 </div>
               </div>
@@ -464,7 +464,7 @@ export function EnhancedApprovalWorkflow({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Progress:</span>
-                      <span className="text-sm text-gray-900">{selectedRequestData.progress}%</span>
+                      <span className="text-sm text-gray-900">{selectedRequestData.progress_percentage}%</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Revisions:</span>

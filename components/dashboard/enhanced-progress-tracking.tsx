@@ -372,7 +372,7 @@ export function EnhancedProgressTracking({
                       (priorityOrder[b.priority as keyof typeof priorityOrder] || 0)
           break
         case 'progress':
-          comparison = a.progress - b.progress
+          comparison = a.progress_percentage - b.progress_percentage
           break
         case 'title':
           comparison = a.title.localeCompare(b.title)

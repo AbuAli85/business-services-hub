@@ -66,7 +66,7 @@ export function MilestoneManagement({
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="outline">{milestone.status}</Badge>
                     <span className="text-sm text-gray-500">
-                      {milestone.progress}% complete
+                      {milestone.progress_percentage}% complete
                     </span>
                   </div>
                 </div>

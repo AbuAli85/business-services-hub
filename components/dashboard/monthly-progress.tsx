@@ -313,11 +313,11 @@ export function MonthlyProgress({ milestones, timeEntries, userRole }: MonthlyPr
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-gray-900">{milestone.progress}%</div>
+                    <div className="text-lg font-bold text-gray-900">{milestone.progress_percentage}%</div>
                     <div className="w-20 bg-gray-200 rounded-full h-2 mt-1">
                     <div 
                       className="bg-blue-500 h-2 rounded-full progress-bar-dynamic"
-                      style={{ width: `${milestone.progress}%` }}
+                      style={{ width: `${milestone.progress_percentage}%` }}
                     ></div>
                     </div>
                   </div>

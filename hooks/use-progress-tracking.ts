@@ -54,7 +54,7 @@ export function useProgressTracking({
       await ProgressDataService.updateTask(taskId, updates)
       
       // Calculate milestone progress if task status changed
-      if (updates.status || updates.progress !== undefined) {
+      if (updates.status || updates.progress_percentage !== undefined) {
         const task = await ProgressDataService.getTask(taskId)
         if (task) {
           const milestone = await ProgressDataService.getMilestone(task.milestone_id)
@@ -89,7 +89,7 @@ export function useProgressTracking({
       
       onProgressUpdate?.({
         milestoneId,
-        milestoneProgress: updates.progress || 0,
+        milestoneProgress: updates.progress_percentage || 0,
         overallProgress
       })
     } catch (error) {
@@ -182,7 +182,7 @@ export function useProgressTracking({
       
       onProgressUpdate?.({
         milestoneId,
-        milestoneProgress: updates.progress || 0,
+        milestoneProgress: updates.progress_percentage || 0,
         overallProgress
       })
     } catch (error) {

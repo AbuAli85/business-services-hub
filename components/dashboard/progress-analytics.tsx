@@ -468,7 +468,7 @@ function calculateMilestonePerformance(milestones: Milestone[]) {
   return milestones.map(milestone => ({
     milestone: milestone.title,
     status: milestone.status,
-    progress: milestone.progress || 0,
+    progress: milestone.progress_percentage || 0,
     tasks: `${milestone.tasks.filter(t => t.status === 'completed').length}/${milestone.tasks.length}`,
     color: milestone.status === 'completed' ? 'bg-green-500' : 
            milestone.status === 'in_progress' ? 'bg-blue-500' : 'bg-gray-500'
@@ -513,7 +513,7 @@ function calculateRiskIndicators(milestones: Milestone[]) {
   // Slow progress
   const slowProgress = milestones.filter(m => {
     if (m.status === 'completed') return false
-    const progress = m.progress || 0
+    const progress = m.progress_percentage || 0
     const startDate = new Date(m.created_at)
     const endDate = new Date(m.due_date)
     const totalDays = differenceInDays(endDate, startDate)

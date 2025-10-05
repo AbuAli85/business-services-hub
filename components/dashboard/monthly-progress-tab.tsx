@@ -343,9 +343,9 @@ export function MonthlyProgressTab({
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">Progress</span>
-                            <span className="text-sm font-medium">{milestone.progress}%</span>
+                            <span className="text-sm font-medium">{milestone.progress_percentage}%</span>
                           </div>
-                          <Progress value={milestone.progress} className="h-2" />
+                          <Progress value={milestone.progress_percentage} className="h-2" />
                           
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <span>{completedTasks}/{totalTasks} tasks completed</span>
@@ -406,7 +406,7 @@ export function MonthlyProgressTab({
                       </p>
                       
                       <div className="flex items-center space-x-4 text-xs text-gray-500">
-                        <span>Progress: {task.progress || 0}%</span>
+                        <span>Progress: {task.progress_percentage || 0}%</span>
                         <span>Actual: {task.actual_hours || 0}h</span>
                         {task.due_date && (
                           <span>

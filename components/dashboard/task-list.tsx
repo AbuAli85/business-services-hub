@@ -75,7 +75,7 @@ export function TaskList({
   };
 
   const handleTaskProgressChange = async (taskId: string, progress: number) => {
-    await onTaskUpdate(taskId, { progress });
+    await onTaskUpdate(taskId, { progress_percentage: progress });
   };
 
   const handleAddTask = async () => {
@@ -84,7 +84,7 @@ export function TaskList({
       title: 'New Task',
       description: 'Task description',
       status: 'pending',
-      progress: 0,
+      progress_percentage: 0,
       priority: 'normal',
       order_index: tasks.length
     };
@@ -178,11 +178,11 @@ export function TaskList({
               <div className="flex items-center space-x-4">
                 {/* Progress */}
                 <div className="text-right min-w-[80px]">
-                  <div className="text-sm font-medium text-gray-900">{task.progress || 0}%</div>
+                  <div className="text-sm font-medium text-gray-900">{task.progress_percentage || 0}%</div>
                   <div className="w-16 bg-gray-200 rounded-full h-2 mt-1">
                     <div 
                       className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${task.progress || 0}%` }}
+                      style={{ width: `${task.progress_percentage || 0}%` }}
                     ></div>
                   </div>
                 </div>
@@ -255,13 +255,13 @@ export function TaskList({
                       type="range"
                       min="0"
                       max="100"
-                      value={task.progress || 0}
+                      value={task.progress_percentage || 0}
                       onChange={(e) => handleTaskProgressChange(task.id, parseInt(e.target.value))}
                       className="w-full task-progress-slider"
                       aria-label={`Progress for ${task.title}`}
                     />
                   </div>
-                  <span className="text-sm text-gray-600 min-w-[40px]">{task.progress || 0}%</span>
+                  <span className="text-sm text-gray-600 min-w-[40px]">{task.progress_percentage || 0}%</span>
                 </div>
               </div>
             )}

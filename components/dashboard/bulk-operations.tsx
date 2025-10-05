@@ -116,7 +116,7 @@ export function BulkOperations({
                   <div className="text-xs text-gray-500">{milestone.status}</div>
                 </div>
                 <Badge variant="outline" className="text-xs">
-                  {milestone.progress}%
+                  {milestone.progress_percentage}%
                 </Badge>
               </div>
             ))}

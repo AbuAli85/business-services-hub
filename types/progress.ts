@@ -11,7 +11,7 @@ export interface Task {
   title: string;
   description?: string;
   status: TaskStatus;
-  progress?: number;
+  progress_percentage?: number; // ✅ Fixed: Use progress_percentage to match database
   due_date?: string;
   created_at: string;
   updated_at: string;
@@ -40,7 +40,7 @@ export interface Milestone {
   description?: string;
   status: MilestoneStatus;
   due_date: string;
-  progress: number;
+  progress_percentage: number; // ✅ Fixed: Use progress_percentage to match database
   tasks: Task[];
   created_at: string;
   updated_at: string;
@@ -122,7 +122,7 @@ export interface TimelineItem {
   priority: "low" | "normal" | "high" | "urgent";
   due_date: string;
   assigned_to?: string;
-  progress_percentage: number;
+  progress_percentage: number; // ✅ Already correct
   order_index: number;
   created_at: string;
   updated_at: string;

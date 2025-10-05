@@ -82,7 +82,7 @@ export function TaskManagement({
         estimated_hours: newTask.estimated_hours,
         due_date: newTask.due_date || undefined,
         status: 'pending',
-        progress: 0,
+        progress_percentage: 0, // ✅ Fixed: Use progress_percentage
         tags: [],
         order_index: 0,
         assigned_to: undefined
@@ -116,7 +116,7 @@ export function TaskManagement({
   // Handle task progress change
   const handleTaskProgressChange = async (taskId: string, progress: number) => {
     try {
-      await onTaskUpdate(taskId, { progress: progress })
+      await onTaskUpdate(taskId, { progress_percentage: progress }) // ✅ Fixed: Use progress_percentage
     } catch (error) {
       console.error('Error updating task progress:', error)
     }
@@ -327,9 +327,9 @@ export function TaskManagement({
                         <div className="mt-3">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-sm font-medium text-gray-700">Progress</span>
-                            <span className="text-sm text-gray-500">{task.progress || 0}%</span>
+                            <span className="text-sm text-gray-500">{task.progress_percentage || 0}%</span>
                           </div>
-                          <Progress value={task.progress || 0} className="h-2" />
+                          <Progress value={task.progress_percentage || 0} className="h-2" />
                         </div>
                       </div>
 
@@ -399,7 +399,7 @@ export function TaskManagement({
                               type="number"
                               min="0"
                               max="100"
-                              value={task.progress || 0}
+                              value={task.progress_percentage || 0}
                               onChange={(e) => handleTaskProgressChange(task.id, Number(e.target.value))}
                               className="mt-1"
                             />

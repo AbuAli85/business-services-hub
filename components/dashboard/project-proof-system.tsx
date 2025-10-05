@@ -214,7 +214,7 @@ export function ProjectProofSystem({
           milestoneId: milestone.id,
           milestoneTitle: milestone.title,
           status: milestone.status,
-          progress: milestone.progress || 0,
+          progress: milestone.progress_percentage || 0,
           proofItems,
           completionEvidence,
           approvalEvidence,

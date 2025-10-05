@@ -236,7 +236,7 @@ export function ClientMilestoneViewer({
           description: milestone.description,
           status: milestone.status,
           due_date: milestone.due_date,
-          progress: milestone.progress,
+          progress_percentage: milestone.progress_percentage,
           created_at: milestone.created_at,
           updated_at: milestone.updated_at
         },
