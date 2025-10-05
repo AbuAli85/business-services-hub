@@ -588,17 +588,28 @@ export async function GET(request: NextRequest) {
           const provider = profileMap.get(booking.provider_id)
           const invoice = invoiceMap.get(booking.id)
           
+          // Convert total_amount (decimal OMR) to amount_cents for UI compatibility
+          const totalAmount = booking.total_amount || 0
+          const amountCents = Math.round(totalAmount * 100)
+          
           const result = {
             ...booking,
             progress_percentage: progressMap.get(String(booking.id)) ?? 0,
-            service_title: service?.title || 'Service',
-            service_description: service?.description || '',
-            service_category: service?.category || '',
-            client_name: client?.full_name || 'Client',
-            client_email: client?.email || '',
-            provider_name: provider?.full_name || 'Provider',
-            provider_email: provider?.email || '',
-            invoice_status: invoice?.status || null,
+            service_title: booking.service_title || service?.title || 'Service',
+            service_description: booking.service_description || service?.description || '',
+            service_category: booking.service_category || service?.category || '',
+            client_name: booking.client_name || client?.full_name || 'Client',
+            client_email: booking.client_email || client?.email || '',
+            provider_name: booking.provider_name || provider?.full_name || 'Provider',
+            provider_email: booking.provider_email || provider?.email || '',
+            // Add both formats for compatibility
+            amount: totalAmount,
+            amount_cents: amountCents,
+            // Map status fields for UI compatibility
+            status: booking.raw_status || booking.display_status || 'pending',
+            approval_status: booking.approval_status || null,
+            // Invoice data
+            invoice_status: invoice?.status || booking.invoice_status || null,
             invoice_amount: invoice?.amount || null
           }
           
@@ -628,6 +639,21 @@ export async function GET(request: NextRequest) {
           transformedCount: transformed.length
         })
         
+        // Log sample transformed data for verification
+        if (transformed.length > 0) {
+          console.log('📋 Sample transformed booking:', {
+            id: transformed[0].id,
+            service_title: transformed[0].service_title,
+            client_name: transformed[0].client_name,
+            provider_name: transformed[0].provider_name,
+            status: transformed[0].status,
+            amount: transformed[0].amount,
+            amount_cents: transformed[0].amount_cents,
+            progress_percentage: transformed[0].progress_percentage,
+            invoice_status: transformed[0].invoice_status
+          })
+        }
+        
         return transformed
       })(),
       new Promise((_, reject) => 
@@ -636,19 +662,28 @@ export async function GET(request: NextRequest) {
     ]).catch(() => {
       // Fallback: return basic data without enrichment
       console.warn('⚠️ Data enrichment timed out, returning basic booking data')
-      return rows.map(booking => ({
-        ...booking,
-        progress_percentage: progressMap.get(String(booking.id)) ?? 0,
-        service_title: 'Service',
-        service_description: '',
-        service_category: '',
-        client_name: 'Client',
-        client_email: '',
-        provider_name: 'Provider',
-        provider_email: '',
-        invoice_status: null,
-        invoice_amount: null
-      }))
+      return rows.map(booking => {
+        const totalAmount = booking.total_amount || 0
+        const amountCents = Math.round(totalAmount * 100)
+        
+        return {
+          ...booking,
+          progress_percentage: progressMap.get(String(booking.id)) ?? 0,
+          service_title: booking.service_title || 'Service',
+          service_description: booking.service_description || '',
+          service_category: booking.service_category || '',
+          client_name: booking.client_name || 'Client',
+          client_email: booking.client_email || '',
+          provider_name: booking.provider_name || 'Provider',
+          provider_email: booking.provider_email || '',
+          amount: totalAmount,
+          amount_cents: amountCents,
+          status: booking.raw_status || booking.display_status || 'pending',
+          approval_status: booking.approval_status || null,
+          invoice_status: booking.invoice_status || null,
+          invoice_amount: null
+        }
+      })
     }) : []
 
     const payload = {

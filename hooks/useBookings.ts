@@ -12,6 +12,8 @@ export interface Booking {
   status: string
   approval_status?: string
   total_amount?: number
+  amount?: number
+  amount_cents?: number
   currency?: string
   created_at: string
   updated_at?: string
@@ -20,7 +22,11 @@ export interface Booking {
   client_id?: string
   provider_id?: string
   client_email?: string
+  provider_email?: string
   notes?: string
+  invoice_status?: string
+  raw_status?: string
+  display_status?: string
 }
 
 export interface Invoice {

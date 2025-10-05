@@ -206,6 +206,27 @@ export default function BookingsPage() {
   // Pagination
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
   const paginatedBookings = filteredBookings
+  
+  // Log sample booking data for debugging
+  useEffect(() => {
+    if (paginatedBookings.length > 0) {
+      console.log('🔍 Sample booking data:', {
+        total: paginatedBookings.length,
+        sample: {
+          id: paginatedBookings[0].id,
+          service_title: paginatedBookings[0].service_title,
+          client_name: paginatedBookings[0].client_name,
+          provider_name: paginatedBookings[0].provider_name,
+          status: paginatedBookings[0].status,
+          amount: paginatedBookings[0].amount,
+          amount_cents: paginatedBookings[0].amount_cents,
+          total_amount: paginatedBookings[0].total_amount,
+          progress_percentage: paginatedBookings[0].progress_percentage,
+          invoice_status: paginatedBookings[0].invoice_status
+        }
+      })
+    }
+  }, [paginatedBookings])
 
   // Persist preferences
   useEffect(() => {
