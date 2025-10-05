@@ -208,11 +208,18 @@ export default function MilestonesPage() {
       if (!clientProfile && bookingData.client_id) {
         console.log('Fallback: Loading client profile for ID:', bookingData.client_id)
         try {
+          // Add timeout protection for profile queries
+          const profileController = new AbortController()
+          const profileTimeout = setTimeout(() => profileController.abort(), 5000) // 5 second timeout
+          
           const { data: clientData, error: clientError } = await supabase
             .from('profiles')
             .select('id, full_name, email, company_name')
             .eq('id', bookingData.client_id)
+            .abortSignal(profileController.signal)
             .maybeSingle()
+          
+          clearTimeout(profileTimeout)
           
           if (!clientError && clientData) {
             clientProfile = clientData
@@ -228,11 +235,18 @@ export default function MilestonesPage() {
       if (!providerProfile && bookingData.provider_id) {
         console.log('Fallback: Loading provider profile for ID:', bookingData.provider_id)
         try {
+          // Add timeout protection for profile queries
+          const profileController2 = new AbortController()
+          const profileTimeout2 = setTimeout(() => profileController2.abort(), 5000) // 5 second timeout
+          
           const { data: providerData, error: providerError } = await supabase
             .from('profiles')
             .select('id, full_name, email, company_name')
             .eq('id', bookingData.provider_id)
+            .abortSignal(profileController2.signal)
             .maybeSingle()
+          
+          clearTimeout(profileTimeout2)
           
           if (!providerError && providerData) {
             providerProfile = providerData
