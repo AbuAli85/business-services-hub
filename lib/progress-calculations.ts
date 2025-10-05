@@ -14,7 +14,7 @@ export interface ProgressCalculationResult {
  */
 export function calculateMilestoneProgress(milestone: Milestone): number {
   if (!milestone.tasks || milestone.tasks.length === 0) {
-    return milestone.progress_percentage || 0
+    return milestone.progress || 0
   }
 
   const completedTasks = milestone.tasks.filter(task => task.status === 'completed').length
@@ -94,7 +94,7 @@ export function updateMilestoneProgress(milestone: Milestone): Milestone {
 
   return {
     ...milestone,
-    progress_percentage: newProgress,
+    progress: newProgress,
     status: newStatus,
     updated_at: new Date().toISOString()
   }
