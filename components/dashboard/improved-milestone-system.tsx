@@ -47,6 +47,7 @@ interface Milestone {
   total_tasks: number
   completed_tasks: number
   tasks: Task[]
+  order_index?: number
 }
 
 interface Task {
@@ -704,6 +705,19 @@ export function ImprovedMilestoneSystem({
   useEffect(() => {
     loadMilestones()
   }, [loadMilestones])
+  
+  // Auto-expand completed milestones to show successful tasks
+  useEffect(() => {
+    if (milestones.length > 0) {
+      const completedMilestoneIds = milestones
+        .filter(m => m.status === 'completed' && (m.tasks?.length || 0) > 0)
+        .map(m => m.id)
+      
+      if (completedMilestoneIds.length > 0) {
+        setExpandedMilestones(new Set(completedMilestoneIds))
+      }
+    }
+  }, [milestones])
 
   if (loading) {
     return (
@@ -825,25 +839,30 @@ export function ImprovedMilestoneSystem({
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleMilestoneExpansion(milestone.id)}
-                      className="h-6 w-6 p-0"
-                    >
-                      {expandedMilestones.has(milestone.id) ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </Button>
+                  <div 
+                    className="flex items-center gap-2 mb-1 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => (milestone.tasks?.length || 0) > 0 && toggleMilestoneExpansion(milestone.id)}
+                  >
+                    {(milestone.tasks?.length || 0) > 0 && (
+                      <div className="flex-shrink-0">
+                        {expandedMilestones.has(milestone.id) ? (
+                          <ChevronDown className="h-5 w-5 text-blue-600" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
+                        )}
+                      </div>
+                    )}
                     <CardTitle className="flex items-center gap-2">
                       {getStatusIcon(milestone.status)}
                       {milestone.title}
                       {isOverdue(milestone) && (
                         <Badge variant="destructive" className="ml-2">
                           Overdue
+                        </Badge>
+                      )}
+                      {(milestone.tasks?.length || 0) > 0 && !expandedMilestones.has(milestone.id) && (
+                        <Badge variant="outline" className="ml-2 text-xs">
+                          {milestone.tasks.length} task{milestone.tasks.length !== 1 ? 's' : ''}
                         </Badge>
                       )}
                     </CardTitle>
@@ -898,22 +917,22 @@ export function ImprovedMilestoneSystem({
                 </div>
 
                 {/* Milestone Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <div className="font-semibold">{milestone.total_tasks}</div>
-                    <div className="text-gray-600">Total Tasks</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm bg-gray-50 p-3 rounded-lg">
+                  <div className="text-center">
+                    <div className="font-bold text-lg text-blue-600">{milestone.total_tasks}</div>
+                    <div className="text-xs text-gray-600 uppercase">Total Tasks</div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-green-600">{milestone.completed_tasks}</div>
-                    <div className="text-gray-600">Completed</div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg text-green-600">{milestone.completed_tasks}</div>
+                    <div className="text-xs text-gray-600 uppercase">Completed</div>
                   </div>
-                  <div>
-                    <div className="font-semibold">{milestone.estimated_hours || 0}h</div>
-                    <div className="text-gray-600">Estimated</div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg text-purple-600">{milestone.estimated_hours || 0}h</div>
+                    <div className="text-xs text-gray-600 uppercase">Estimated</div>
                   </div>
-                  <div>
-                    <div className="font-semibold">{milestone.actual_hours || 0}h</div>
-                    <div className="text-gray-600">Actual</div>
+                  <div className="text-center">
+                    <div className="font-bold text-lg text-orange-600">{milestone.actual_hours || 0}h</div>
+                    <div className="text-xs text-gray-600 uppercase">Actual</div>
                   </div>
                 </div>
 
@@ -978,11 +997,22 @@ export function ImprovedMilestoneSystem({
 
                 {/* Tasks List */}
                 {expandedMilestones.has(milestone.id) && (milestone.tasks?.length || 0) > 0 && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4" />
-                      Tasks ({milestone.completed_tasks}/{milestone.total_tasks})
-                    </h4>
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Tasks ({milestone.completed_tasks}/{milestone.total_tasks})
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleMilestoneExpansion(milestone.id)}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <ChevronDown className="h-4 w-4 mr-1" />
+                        Collapse
+                      </Button>
+                    </div>
                     <div className="space-y-2">
                       {milestone.tasks.map((task) => (
                         <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
@@ -1056,7 +1086,11 @@ export function ImprovedMilestoneSystem({
                 )}
                 
                 {!expandedMilestones.has(milestone.id) && (milestone.tasks?.length || 0) > 0 && (
-                  <div className="text-sm text-gray-600 text-center">
+                  <div 
+                    className="text-sm text-blue-600 text-center p-3 bg-blue-50 hover:bg-blue-100 rounded cursor-pointer border border-blue-200 hover:border-blue-300 transition-all"
+                    onClick={() => toggleMilestoneExpansion(milestone.id)}
+                  >
+                    <ChevronRight className="h-4 w-4 inline-block mr-2" />
                     Click to expand and view {milestone.tasks.length} task{milestone.tasks.length !== 1 ? 's' : ''}
                   </div>
                 )}
