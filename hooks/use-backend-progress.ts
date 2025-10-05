@@ -41,7 +41,7 @@ export function useBackendProgress({
     try {
       setState(prev => ({ ...prev, loading: true, error: null }))
 
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
 
       // Load booking data from v_booking_status
       const { data: bookingData, error: bookingError } = await supabase
@@ -97,7 +97,7 @@ export function useBackendProgress({
     try {
       setState(prev => ({ ...prev, loading: true, error: null }))
 
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       const { error } = await supabase
         .from('tasks')
         .update(updates)
@@ -137,7 +137,7 @@ export function useBackendProgress({
   // Recalculate milestone progress
   const recalculateMilestoneProgress = useCallback(async (milestoneId: string) => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       
       // Get all tasks for this milestone
       const { data: tasks, error: tasksError } = await supabase
