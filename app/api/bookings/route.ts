@@ -144,9 +144,9 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Convert to cents for consistent storage with validation
-    const amount_cents = Math.max(0, Math.round((amount ?? 0) * 100))
-    if (!Number.isFinite(amount_cents)) {
+    // Validate amount (stored as decimal, not cents)
+    const total_amount = Math.max(0, amount ?? 0)
+    if (!Number.isFinite(total_amount)) {
       const response = NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
       Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([k,v]) => response.headers.set(k, v))
       return response
@@ -182,13 +182,12 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         approval_status: 'pending',
         operational_status: 'new',
-        amount_cents,
+        total_amount,
         currency: service.currency || 'OMR',
         payment_status: 'pending',
         estimated_duration,
         location,
         total_price: amount, // Keep legacy fields for compatibility
-        total_amount: amount,
         amount: amount // Keep legacy field for compatibility
       })
       .select(`
@@ -278,7 +277,7 @@ export async function POST(request: NextRequest) {
         service_name: service.title,
         booking_title: booking.service_title,
         scheduled_date: booking.scheduled_date,
-        total_amount: (booking.amount_cents ?? 0) / 100,
+        total_amount: booking.total_amount ?? 0,
         currency: booking.currency
       })
     } catch (notificationError) {
@@ -388,7 +387,7 @@ export async function GET(request: NextRequest) {
         client_id, client_name, client_email, client_company, client_avatar,
         provider_id, provider_name, provider_email, provider_company, provider_avatar,
         progress, total_milestones, completed_milestones, raw_status, approval_status, display_status,
-        payment_status, invoice_status, invoice_id, amount_cents, amount, currency,
+        payment_status, invoice_status, invoice_id, total_amount, currency,
         created_at, updated_at, due_at, requirements, notes, scheduled_date, location
       `, { count: 'planned' })
       .gte('created_at', sinceIso)
@@ -1075,7 +1074,7 @@ export async function PATCH(request: NextRequest) {
             service_name: booking.service_title || 'Service',
             booking_title: booking.service_title || 'Booking',
             scheduled_date: booking.scheduled_date,
-            total_amount: (booking.amount_cents ?? 0) / 100,
+            total_amount: booking.total_amount ?? 0,
             currency: booking.currency
           })
 
@@ -1127,7 +1126,7 @@ export async function PATCH(request: NextRequest) {
               service_name: booking.service_title || 'Service',
               booking_title: booking.service_title || 'Booking',
               scheduled_date: booking.scheduled_date,
-              amount: (booking.amount_cents ?? 0) / 100,
+              amount: booking.total_amount ?? 0,
               currency: booking.currency
             },
             priority: 'high'

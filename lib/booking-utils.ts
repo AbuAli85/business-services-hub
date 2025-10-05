@@ -71,7 +71,7 @@ export function calculateBookingStats(
 
   const projectedBillings = bookings
     .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b, new Map())))
-    .reduce((sum, b) => sum + ((b.amount_cents ?? 0) / 100), 0)
+    .reduce((sum, b) => sum + (b.total_amount ?? 0), 0)
   
   const avgCompletionTime = 7.2
   const pendingApproval = pending

@@ -124,7 +124,7 @@ function generateMultipleBookingsEmailBody(bookings: Booking[]): string {
     lines.push(`${index + 1}. ${booking.service_title || 'Service'}`)
     lines.push(`   Status: ${booking.status}`)
     lines.push(`   Client: ${booking.client_name || 'N/A'}`)
-    lines.push(`   Amount: ${booking.amount_cents ? (booking.amount_cents / 100).toFixed(2) : '0.00'} ${booking.currency || 'OMR'}`)
+    lines.push(`   Amount: ${booking.total_amount ? booking.total_amount.toFixed(2) : '0.00'} ${booking.currency || 'OMR'}`)
     lines.push(`   Progress: ${booking.progress_percentage || 0}%`)
     lines.push('')
   })

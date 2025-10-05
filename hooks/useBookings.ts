@@ -11,7 +11,7 @@ export interface Booking {
   provider_name?: string
   status: string
   approval_status?: string
-  amount_cents?: number
+  total_amount?: number
   currency?: string
   created_at: string
   updated_at?: string

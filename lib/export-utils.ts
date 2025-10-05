@@ -37,7 +37,7 @@ export function exportToCSV(bookings: Booking[], filename: string = 'bookings-ex
     booking.provider_name || 'N/A',
     booking.status || '',
     booking.approval_status || '',
-    booking.amount_cents ? (booking.amount_cents / 100).toFixed(2) : '0.00',
+    booking.total_amount ? booking.total_amount.toFixed(2) : '0.00',
     booking.currency || 'OMR',
     booking.progress_percentage?.toFixed(0) || '0',
     formatDate(booking.created_at),
@@ -110,7 +110,7 @@ function generatePDFHTML(bookings: Booking[]): string {
           ${booking.status}
         </span>
       </td>
-      <td style="padding: 8px; border: 1px solid #e5e7eb;">${booking.amount_cents ? (booking.amount_cents / 100).toFixed(2) : '0.00'} ${booking.currency || 'OMR'}</td>
+      <td style="padding: 8px; border: 1px solid #e5e7eb;">${booking.total_amount ? booking.total_amount.toFixed(2) : '0.00'} ${booking.currency || 'OMR'}</td>
       <td style="padding: 8px; border: 1px solid #e5e7eb;">${booking.progress_percentage?.toFixed(0) || '0'}%</td>
       <td style="padding: 8px; border: 1px solid #e5e7eb;">${formatDate(booking.created_at)}</td>
     </tr>
@@ -391,7 +391,7 @@ function generateSingleBookingPDF(booking: any): string {
         <h3>💰 Financial Details</h3>
         <div class="field">
           <div class="field-label">Amount:</div>
-          <div class="field-value">${booking.amount || 0} ${booking.currency || 'OMR'}</div>
+          <div class="field-value">${booking.total_amount || 0} ${booking.currency || 'OMR'}</div>
         </div>
         <div class="field">
           <div class="field-label">Payment Status:</div>

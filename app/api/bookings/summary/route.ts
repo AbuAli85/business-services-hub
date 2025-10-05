@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       // Get ALL bookings for summary statistics (no pagination) with timeout protection
       let query = supabase
         .from('bookings')
-        .select('id, status, approval_status, amount_cents, currency, service_id, client_id, provider_id, created_at', { count: 'planned' })
+        .select('id, status, approval_status, total_amount, currency, service_id, client_id, provider_id, created_at', { count: 'planned' })
         .gte('created_at', sinceIso)
 
       // Apply role-based filtering
@@ -285,7 +285,7 @@ export async function GET(request: NextRequest) {
       // Projected billings
       const projectedBillings = bookingsData
         .filter((b: any) => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b)))
-        .reduce((sum: number, b: any) => sum + ((b.amount_cents ?? 0) / 100), 0)
+        .reduce((sum: number, b: any) => sum + (b.total_amount ?? 0), 0)
 
       summary = {
         total,
