@@ -1136,6 +1136,79 @@ export function ImprovedMilestoneSystem({
                                 <div className="flex items-center gap-1 ml-2">
                                   {userRole !== 'client' && (
                                     <>
+                                      {/* Quick Mark Complete Button */}
+                                      {task.status !== 'completed' && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => updateTask({
+                                            ...task,
+                                            status: 'completed',
+                                            progress_percentage: 100
+                                          }, milestone.id)}
+                                          className="h-8 w-8 p-0 hover:bg-green-50"
+                                          title="Mark as complete"
+                                        >
+                                          <CheckCircle className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                      )}
+                                      
+                                      {/* Quick Progress Update Buttons */}
+                                      {task.status !== 'completed' && task.progress_percentage < 100 && (
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => updateTask({
+                                              ...task,
+                                              progress_percentage: Math.min(100, task.progress_percentage + 25)
+                                            }, milestone.id)}
+                                            className="h-7 w-7 p-0 hover:bg-blue-50 text-xs font-bold"
+                                            title="Add 25%"
+                                          >
+                                            +25%
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => updateTask({
+                                              ...task,
+                                              progress_percentage: Math.min(100, task.progress_percentage + 50)
+                                            }, milestone.id)}
+                                            className="h-7 w-7 p-0 hover:bg-blue-50 text-xs font-bold"
+                                            title="Add 50%"
+                                          >
+                                            +50%
+                                          </Button>
+                                        </div>
+                                      )}
+
+                                      {/* Quick Status Change Dropdown */}
+                                      <Select
+                                        value={task.status}
+                                        onValueChange={(newStatus) => {
+                                          const progressMap = {
+                                            'pending': 0,
+                                            'in_progress': 50,
+                                            'completed': 100
+                                          }
+                                          updateTask({
+                                            ...task,
+                                            status: newStatus as any,
+                                            progress_percentage: progressMap[newStatus as keyof typeof progressMap] || task.progress_percentage
+                                          }, milestone.id)
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 w-24 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="pending">Pending</SelectItem>
+                                          <SelectItem value="in_progress">In Progress</SelectItem>
+                                          <SelectItem value="completed">Completed</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+
                                       <Button
                                         size="sm"
                                         variant="ghost"
