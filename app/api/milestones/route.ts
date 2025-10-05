@@ -405,13 +405,24 @@ export async function PATCH(request: NextRequest) {
 
     // Trigger booking progress recalculation cascade
     try {
+      // Add timeout protection for RPC call
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 3000) // 3 second timeout
+      
       const { error: bookingProgressError } = await supabase
         .rpc('calculate_booking_progress', {
           booking_id: milestone.booking_id
-        })
+        }).abortSignal(controller.signal)
+      
+      clearTimeout(timeout)
 
       if (bookingProgressError) {
         console.warn('⚠️ RPC calculate_booking_progress failed, using fallback:', bookingProgressError)
+        
+        // Handle stack depth errors specifically
+        if (bookingProgressError.code === '54001') {
+          console.warn('⏰ Stack depth limit exceeded in calculate_booking_progress, skipping RPC call')
+        }
         
         // Fallback: Direct calculation
         const { data: bookingMilestonesData } = await supabase

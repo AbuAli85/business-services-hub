@@ -248,19 +248,34 @@ export async function POST(request: NextRequest) {
 
     // ✅ HIGH PRIORITY: Full cascade - Milestone → Booking progress
     try {
-      // Step 1: Recalculate milestone progress
+      // Step 1: Recalculate milestone progress (with timeout protection)
+      const milestoneController = new AbortController()
+      const milestoneTimeout = setTimeout(() => milestoneController.abort(), 3000) // 3 second timeout
+      
       await supabase.rpc('recalc_milestone_progress', {
         p_milestone_id: validatedData.milestone_id
-      })
+      }).abortSignal(milestoneController.signal)
       
-      // Step 2: Trigger booking progress recalculation
+      clearTimeout(milestoneTimeout)
+      
+      // Step 2: Trigger booking progress recalculation (with timeout protection)
+      const bookingController = new AbortController()
+      const bookingTimeout = setTimeout(() => bookingController.abort(), 3000) // 3 second timeout
+      
       const { error: bookingProgressError } = await supabase
         .rpc('calculate_booking_progress', {
           booking_id: milestone.booking_id
-        })
+        }).abortSignal(bookingController.signal)
+      
+      clearTimeout(bookingTimeout)
       
       if (bookingProgressError) {
         console.warn('⚠️ RPC calculate_booking_progress failed, using fallback:', bookingProgressError)
+        
+        // Handle stack depth errors specifically
+        if (bookingProgressError.code === '54001') {
+          console.warn('⏰ Stack depth limit exceeded in calculate_booking_progress, skipping RPC call')
+        }
         
         // Fallback: Direct calculation
         const { data: bookingMilestonesData } = await supabase
@@ -592,14 +607,24 @@ export async function PATCH(request: NextRequest) {
     // Recalculate milestone progress and trigger cascade to booking
     let milestoneProgress = null
     try {
-      // Step 1: Try RPC function for milestone progress
+      // Step 1: Try RPC function for milestone progress (with timeout protection)
+      const progressController = new AbortController()
+      const progressTimeout = setTimeout(() => progressController.abort(), 3000) // 3 second timeout
+      
       const { data: progressData, error: progressError } = await supabase
         .rpc('recalc_milestone_progress', {
           p_milestone_id: task.milestone_id
-        })
+        }).abortSignal(progressController.signal)
+      
+      clearTimeout(progressTimeout)
 
       if (progressError) {
         console.warn('⚠️ RPC recalc_milestone_progress failed, using fallback:', progressError)
+        
+        // Handle stack depth errors specifically
+        if (progressError.code === '54001') {
+          console.warn('⏰ Stack depth limit exceeded in recalc_milestone_progress, skipping RPC call')
+        }
         
         // Fallback: Direct calculation
         const { data: milestoneTasksData } = await supabase
@@ -824,16 +849,26 @@ export async function DELETE(request: NextRequest) {
 
     // ✅ HIGH PRIORITY: Full cascade - Milestone → Booking progress
     try {
-      // Step 1: Recalculate milestone progress
+      // Step 1: Recalculate milestone progress (with timeout protection)
+      const milestoneController = new AbortController()
+      const milestoneTimeout = setTimeout(() => milestoneController.abort(), 3000) // 3 second timeout
+      
       await supabase.rpc('recalc_milestone_progress', {
         p_milestone_id: task.milestone_id
-      })
+      }).abortSignal(milestoneController.signal)
       
-      // Step 2: Trigger booking progress recalculation
+      clearTimeout(milestoneTimeout)
+      
+      // Step 2: Trigger booking progress recalculation (with timeout protection)
+      const bookingController = new AbortController()
+      const bookingTimeout = setTimeout(() => bookingController.abort(), 3000) // 3 second timeout
+      
       const { error: bookingProgressError } = await supabase
         .rpc('calculate_booking_progress', {
           booking_id: milestone.booking_id
-        })
+        }).abortSignal(bookingController.signal)
+      
+      clearTimeout(bookingTimeout)
       
       if (bookingProgressError) {
         console.warn('⚠️ RPC calculate_booking_progress failed, using fallback:', bookingProgressError)
