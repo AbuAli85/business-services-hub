@@ -640,8 +640,8 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
               <div className="flex items-center space-x-1">
                 <div className="flex space-x-1">
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.1s]"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
                 </div>
                 <span className="text-xs text-gray-500 ml-2">Typing...</span>
               </div>
@@ -700,6 +700,8 @@ export function MessagesThread({ bookingId }: MessagesThreadProps) {
                 className="hidden"
                 id="file-upload"
                 accept="image/*,.pdf,.doc,.docx,.txt"
+                title="Upload files"
+                aria-label="Upload files"
               />
               <label htmlFor="file-upload">
                 <Button
