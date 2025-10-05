@@ -339,9 +339,9 @@ export class ProgressDataService {
       const progress = Math.round((completedTasks / milestone.tasks.length) * 100)
 
       // Update milestone progress
-      await this.updateMilestone(milestoneId, { progress })
+      await this.updateMilestone(milestoneId, { progress_percentage: progress })
 
-      return { ...milestone, progress }
+      return { ...milestone, progress_percentage: progress }
     } catch (error) {
       console.error('Error calculating milestone progress:', error)
       throw error
