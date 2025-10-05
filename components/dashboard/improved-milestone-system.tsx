@@ -575,11 +575,14 @@ export function ImprovedMilestoneSystem({
       if (taskMilestone) {
         await updateProgress(taskMilestone.id)
       }
+      
+      // Reload to show updated data
+      await loadMilestones()
     } catch (err) {
       console.error('Error updating task:', err)
       toast.error('Failed to update task')
     }
-  }, [editingTask, taskForm, milestones, updateProgress])
+  }, [editingTask, taskForm, milestones, updateProgress, loadMilestones])
   
   // Delete task
   const deleteTask = useCallback(async (taskId: string, milestoneId: string) => {
@@ -1044,74 +1047,121 @@ export function ImprovedMilestoneSystem({
                         Collapse
                       </Button>
                     </div>
-                    <div className="space-y-2">
-                      {milestone.tasks.map((task) => (
-                        <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className={`w-2 h-2 rounded-full ${
-                              task.status === 'completed' ? 'bg-green-500' :
-                              task.status === 'in_progress' ? 'bg-blue-500' :
-                              'bg-gray-400'
-                            }`} />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">{task.title}</span>
-                                {task.is_overdue && (
-                                  <Badge variant="destructive" className="text-xs">
-                                    Overdue
-                                  </Badge>
-                                )}
-                              </div>
-                              {task.description && (
-                                <p className="text-xs text-gray-600 mt-1">{task.description}</p>
-                              )}
-                              <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                                {task.due_date && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {new Date(task.due_date).toLocaleDateString()}
-                                  </span>
-                                )}
-                                {(task.estimated_hours ?? 0) > 0 && (
-                                  <span>{task.estimated_hours}h estimated</span>
-                                )}
+                    <div className="space-y-3">
+                      {milestone.tasks.map((task) => {
+                        const taskProgress = task.status === 'completed' ? 100 : 
+                                           task.status === 'in_progress' ? 50 : 
+                                           task.progress_percentage || 0
+                        
+                        return (
+                          <div key={task.id} className="bg-white rounded-lg border-2 border-gray-200 hover:border-blue-300 transition-all">
+                            <div className="p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-start gap-3 flex-1">
+                                  <div className={`w-3 h-3 rounded-full mt-1 flex-shrink-0 ${
+                                    task.status === 'completed' ? 'bg-green-500' :
+                                    task.status === 'in_progress' ? 'bg-blue-500 animate-pulse' :
+                                    'bg-gray-400'
+                                  }`} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-sm font-semibold text-gray-900">{task.title}</span>
+                                      {task.is_overdue && (
+                                        <Badge variant="destructive" className="text-xs">
+                                          Overdue
+                                        </Badge>
+                                      )}
+                                      <Badge className={`text-xs ${
+                                        task.status === 'completed' ? 'bg-green-100 text-green-800 border-green-200' :
+                                        task.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                        'bg-gray-100 text-gray-800 border-gray-200'
+                                      }`}>
+                                        {task.status.replace('_', ' ')}
+                                      </Badge>
+                                    </div>
+                                    {task.description && (
+                                      <p className="text-xs text-gray-600 mb-2">{task.description}</p>
+                                    )}
+                                    
+                                    {/* Task Progress Bar */}
+                                    <div className="mb-2">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-medium text-gray-700">Progress</span>
+                                        <span className={`text-xs font-bold ${
+                                          taskProgress === 100 ? 'text-green-600' :
+                                          taskProgress >= 67 ? 'text-blue-600' :
+                                          taskProgress >= 34 ? 'text-yellow-600' :
+                                          taskProgress > 0 ? 'text-orange-600' :
+                                          'text-gray-600'
+                                        }`}>
+                                          {taskProgress}%
+                                        </span>
+                                      </div>
+                                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                        <div 
+                                          className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(taskProgress)}`}
+                                          style={{ width: `${taskProgress}%` }}
+                                        >
+                                          {taskProgress === 100 && (
+                                            <div className="h-full flex items-center justify-end pr-1">
+                                              <CheckCircle className="h-1.5 w-1.5 text-white" />
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                                      {task.due_date && (
+                                        <span className="flex items-center gap-1">
+                                          <Calendar className="h-3 w-3" />
+                                          {new Date(task.due_date).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                      {(task.estimated_hours ?? 0) > 0 && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          {task.estimated_hours}h est.
+                                        </span>
+                                      )}
+                                      {(task.actual_hours ?? 0) > 0 && (
+                                        <span className="text-purple-600 font-medium">
+                                          {task.actual_hours}h actual
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-1 ml-2">
+                                  {userRole !== 'client' && (
+                                    <>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => openEditTask(task, milestone.id)}
+                                        className="h-8 w-8 p-0 hover:bg-blue-50"
+                                        title="Edit task"
+                                      >
+                                        <Edit className="h-4 w-4 text-blue-600" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => deleteTask(task.id, milestone.id)}
+                                        className="h-8 w-8 p-0 hover:bg-red-50"
+                                        title="Delete task"
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-600" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className={`${
-                              task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              task.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {task.status.replace('_', ' ')}
-                            </Badge>
-                            <span className="text-xs text-gray-600 min-w-[40px] text-right">
-                              {task.progress_percentage}%
-                            </span>
-                            {userRole !== 'client' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => openEditTask(task, milestone.id)}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => deleteTask(task.id, milestone.id)}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 )}
