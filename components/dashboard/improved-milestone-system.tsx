@@ -128,6 +128,27 @@ interface ClientApproval {
   }
 }
 
+interface BookingFile {
+  id: string
+  booking_id: string
+  file_name: string
+  original_name: string
+  file_size: number
+  file_type: string
+  file_url: string
+  category: 'documents' | 'images' | 'contracts' | 'deliverables' | 'other'
+  description?: string
+  uploaded_by: string
+  created_at: string
+  updated_at: string
+  uploaded_by_user?: {
+    id: string
+    full_name: string
+    avatar_url?: string
+    role: string
+  }
+}
+
 interface ImprovedMilestoneSystemProps {
   bookingId: string
   userRole: 'client' | 'provider' | 'admin'
@@ -155,6 +176,7 @@ export function ImprovedMilestoneSystem({
   // Professional features state
   const [showCommentsDialog, setShowCommentsDialog] = useState(false)
   const [showFilesDialog, setShowFilesDialog] = useState(false)
+  const [showBookingFilesDialog, setShowBookingFilesDialog] = useState(false)
   const [selectedTaskForComments, setSelectedTaskForComments] = useState<Task | null>(null)
   const [selectedTaskForFiles, setSelectedTaskForFiles] = useState<Task | null>(null)
   const [newComment, setNewComment] = useState('')
@@ -162,6 +184,9 @@ export function ImprovedMilestoneSystem({
   const [uploadingFile, setUploadingFile] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileDescription, setFileDescription] = useState('')
+  const [fileCategory, setFileCategory] = useState<'documents' | 'images' | 'contracts' | 'deliverables' | 'other'>('documents')
+  const [bookingFiles, setBookingFiles] = useState<BookingFile[]>([])
+  const [loadingBookingFiles, setLoadingBookingFiles] = useState(false)
   
   // Form states
   const [milestoneForm, setMilestoneForm] = useState({
@@ -957,6 +982,131 @@ export function ImprovedMilestoneSystem({
     setShowFilesDialog(true)
   }, [])
 
+  // Load booking files
+  const loadBookingFiles = useCallback(async () => {
+    try {
+      setLoadingBookingFiles(true)
+      const supabase = await getSupabaseClient()
+      
+      const { data, error } = await supabase
+        .from('booking_files')
+        .select(`
+          *,
+          uploaded_by_user:profiles!uploaded_by(id, full_name, avatar_url, role)
+        `)
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      
+      setBookingFiles(data || [])
+    } catch (error) {
+      console.error('Error loading booking files:', error)
+      toast.error('Failed to load files')
+    } finally {
+      setLoadingBookingFiles(false)
+    }
+  }, [bookingId])
+
+  // Upload booking file
+  const uploadBookingFile = useCallback(async (file: File, category: string, description: string) => {
+    try {
+      if (!file) return
+      
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
+      // Check file size (50MB limit for booking files)
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error('File size must be less than 50MB')
+        return
+      }
+
+      setUploadingFile(true)
+
+      // Generate unique file name
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `booking-files/${bookingId}/${category}/${fileName}`
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('booking-files')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('booking-files')
+        .getPublicUrl(filePath)
+
+      // Save file record
+      const { error: dbError } = await supabase
+        .from('booking_files')
+        .insert({
+          booking_id: bookingId,
+          file_name: fileName,
+          original_name: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          file_url: publicUrl,
+          category: category,
+          description: description.trim() || null,
+          uploaded_by: user.id
+        })
+
+      if (dbError) throw dbError
+
+      toast.success('File uploaded successfully')
+      setSelectedFile(null)
+      setFileDescription('')
+      await loadBookingFiles()
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      toast.error('Failed to upload file')
+    } finally {
+      setUploadingFile(false)
+    }
+  }, [bookingId, loadBookingFiles])
+
+  // Delete booking file
+  const deleteBookingFile = useCallback(async (fileId: string, fileName: string) => {
+    try {
+      if (!confirm('Are you sure you want to delete this file?')) return
+      
+      const supabase = await getSupabaseClient()
+      
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('booking-files')
+        .remove([`booking-files/${bookingId}/${fileName}`])
+      
+      if (storageError) console.warn('Storage delete error:', storageError)
+      
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('booking_files')
+        .delete()
+        .eq('id', fileId)
+      
+      if (dbError) throw dbError
+      
+      toast.success('File deleted successfully')
+      await loadBookingFiles()
+    } catch (error) {
+      console.error('Error deleting file:', error)
+      toast.error('Failed to delete file')
+    }
+  }, [bookingId, loadBookingFiles])
+
+  // Open booking files dialog
+  const openBookingFilesDialog = useCallback(() => {
+    setShowBookingFilesDialog(true)
+    loadBookingFiles()
+  }, [loadBookingFiles])
+
   // Load milestones on mount
   useEffect(() => {
     loadMilestones()
@@ -1035,26 +1185,43 @@ export function ImprovedMilestoneSystem({
                 Overall progress across all milestones
               </CardDescription>
             </div>
-            {userRole !== 'client' && (
-              <Button 
-                onClick={() => {
-                  setEditingMilestone(null)
-                  setMilestoneForm({
-                    title: '',
-                    description: '',
-                    priority: 'medium',
-                    due_date: '',
-                    estimated_hours: 0,
-                    weight: 1
-                  })
-                  setShowMilestoneDialog(true)
-                }}
-                className="bg-blue-600 hover:bg-blue-700"
+            <div className="flex items-center gap-2">
+              {/* Booking Files Button */}
+              <Button
+                onClick={openBookingFilesDialog}
+                variant="outline"
+                className="border-purple-200 text-purple-700 hover:bg-purple-50"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                New Milestone
+                <Paperclip className="h-4 w-4 mr-2" />
+                Project Files
+                {bookingFiles.length > 0 && (
+                  <Badge className="ml-2 bg-purple-100 text-purple-800">
+                    {bookingFiles.length}
+                  </Badge>
+                )}
               </Button>
-            )}
+
+              {userRole !== 'client' && (
+                <Button 
+                  onClick={() => {
+                    setEditingMilestone(null)
+                    setMilestoneForm({
+                      title: '',
+                      description: '',
+                      priority: 'medium',
+                      due_date: '',
+                      estimated_hours: 0,
+                      weight: 1
+                    })
+                    setShowMilestoneDialog(true)
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Milestone
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -1066,6 +1233,7 @@ export function ImprovedMilestoneSystem({
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div 
                 className={`h-3 rounded-full transition-all duration-500 ${getProgressColor(overallProgress)}`}
+                // eslint-disable-next-line react/forbid-dom-props
                 style={{ width: `${overallProgress}%` }}
               />
             </div>
@@ -1183,6 +1351,7 @@ export function ImprovedMilestoneSystem({
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div 
                       className={`h-3 rounded-full transition-all duration-500 ${getProgressColor(milestone.progress_percentage)}`}
+                      // eslint-disable-next-line react/forbid-dom-props
                       style={{ width: `${milestone.progress_percentage}%` }}
                     >
                       {milestone.progress_percentage === 100 && (
@@ -1344,6 +1513,7 @@ export function ImprovedMilestoneSystem({
                                       <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                                         <div 
                                           className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(taskProgress)}`}
+                                          // eslint-disable-next-line react/forbid-dom-props
                                           style={{ width: `${taskProgress}%` }}
                                         >
                                           {taskProgress === 100 && (
@@ -1969,6 +2139,7 @@ export function ImprovedMilestoneSystem({
                 <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
                   <div className="flex items-center gap-3">
                     {file.file_type.startsWith('image/') ? (
+                      // eslint-disable-next-line jsx-a11y/alt-text
                       <Image className="h-8 w-8 text-blue-600" />
                     ) : (
                       <FileText className="h-8 w-8 text-gray-600" />
@@ -2018,6 +2189,237 @@ export function ImprovedMilestoneSystem({
                 <div className="text-center py-8 text-gray-500">
                   <Paperclip className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                   <p>No files uploaded yet.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Professional Booking Files Dialog */}
+      <Dialog open={showBookingFilesDialog} onOpenChange={setShowBookingFilesDialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              Project Files & Documents
+            </DialogTitle>
+            <DialogDescription>
+              Upload and manage all project-related files including documents, contracts, deliverables, and images.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Upload Section */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+              <div className="text-center">
+                <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Upload New File</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  Upload documents, images, contracts, deliverables, or any project-related files
+                </p>
+                
+                <div className="space-y-4 max-w-md mx-auto">
+                  {/* File Category Selection */}
+                  <Select value={fileCategory} onValueChange={(value: any) => setFileCategory(value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select file category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="documents">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Documents
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="images">
+                        <div className="flex items-center gap-2">
+                          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                          <Image className="h-4 w-4" />
+                          Images
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="contracts">
+                        <div className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Contracts
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="deliverables">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Deliverables
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="other">
+                        <div className="flex items-center gap-2">
+                          <Paperclip className="h-4 w-4" />
+                          Other
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* File Upload */}
+                  <input
+                    type="file"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                    id="booking-file-upload"
+                    accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.xlsx,.xls,.ppt,.pptx"
+                  />
+                  <label
+                    htmlFor="booking-file-upload"
+                    className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 w-full justify-center"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Choose File
+                  </label>
+                  
+                  {selectedFile && (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                      <p className="text-sm font-medium text-gray-900">Selected: {selectedFile.name}</p>
+                      <p className="text-xs text-gray-500">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                      <p className="text-xs text-gray-500">Type: {selectedFile.type}</p>
+                      
+                      <Input
+                        value={fileDescription}
+                        onChange={(e) => setFileDescription(e.target.value)}
+                        placeholder="File description (optional)"
+                        className="mt-2"
+                      />
+                      
+                      <Button
+                        onClick={() => selectedFile && uploadBookingFile(selectedFile, fileCategory, fileDescription)}
+                        disabled={uploadingFile}
+                        className="mt-2 bg-green-600 hover:bg-green-700 w-full"
+                      >
+                        {uploadingFile ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        Upload File
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Files by Category */}
+            <div className="space-y-6">
+              {['documents', 'images', 'contracts', 'deliverables', 'other'].map((category) => {
+                const categoryFiles = bookingFiles.filter(f => f.category === category)
+                if (categoryFiles.length === 0 && !loadingBookingFiles) return null
+                
+                return (
+                  <div key={category} className="border rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      {category === 'documents' && <FileText className="h-5 w-5 text-blue-600" />}
+                      {category === 'images' && (
+                        // eslint-disable-next-line jsx-a11y/alt-text
+                        <Image className="h-5 w-5 text-green-600" />
+                      )}
+                      {category === 'contracts' && <FileText className="h-5 w-5 text-purple-600" />}
+                      {category === 'deliverables' && <CheckCircle className="h-5 w-5 text-orange-600" />}
+                      {category === 'other' && <Paperclip className="h-5 w-5 text-gray-600" />}
+                      <h4 className="font-medium text-gray-900 capitalize">
+                        {category} ({categoryFiles.length})
+                      </h4>
+                    </div>
+                    
+                    {loadingBookingFiles ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                        <span className="ml-2 text-gray-500">Loading files...</span>
+                      </div>
+                    ) : categoryFiles.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No {category} uploaded yet.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {categoryFiles.map((file) => (
+                          <div key={file.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {file.file_type.startsWith('image/') ? (
+                                  // eslint-disable-next-line jsx-a11y/alt-text
+                                  <Image className="h-8 w-8 text-blue-600 flex-shrink-0" />
+                                ) : (
+                                  <FileText className="h-8 w-8 text-gray-600 flex-shrink-0" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium text-sm text-gray-900 truncate">
+                                    {file.original_name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {(file.file_size / 1024 / 1024).toFixed(2)} MB
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              {userRole !== 'client' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => deleteBookingFile(file.id, file.file_name)}
+                                  className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                                  title="Delete file"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                            
+                            {file.description && (
+                              <p className="text-xs text-gray-600 mb-2 line-clamp-2">{file.description}</p>
+                            )}
+                            
+                            <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                              <span>By {file.uploaded_by_user?.full_name}</span>
+                              <span>{new Date(file.created_at).toLocaleDateString()}</span>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(file.file_url, '_blank')}
+                                className="flex-1 h-8 text-xs"
+                              >
+                                <Eye className="h-3 w-3 mr-1" />
+                                View
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const link = document.createElement('a')
+                                  link.href = file.file_url
+                                  link.download = file.original_name
+                                  link.click()
+                                }}
+                                className="flex-1 h-8 text-xs"
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                Download
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              
+              {bookingFiles.length === 0 && !loadingBookingFiles && (
+                <div className="text-center py-12 text-gray-500">
+                  <Paperclip className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No files uploaded yet</h3>
+                  <p className="text-sm">Upload your first project file to get started.</p>
                 </div>
               )}
             </div>
