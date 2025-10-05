@@ -25,7 +25,20 @@ import {
   Edit,
   Trash2,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Upload,
+  Download,
+  FileText,
+  Image,
+  Paperclip,
+  ThumbsUp,
+  ThumbsDown,
+  Check,
+  XCircle,
+  Eye,
+  Send,
+  Loader2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -63,6 +76,56 @@ interface Task {
   is_overdue: boolean
   created_at: string
   updated_at: string
+  comments?: Comment[]
+  files?: TaskFile[]
+  client_approval?: ClientApproval
+}
+
+interface Comment {
+  id: string
+  content: string
+  created_by: string
+  created_at: string
+  updated_at: string
+  comment_type: 'general' | 'feedback' | 'question' | 'issue'
+  parent_id?: string
+  created_by_user?: {
+    id: string
+    full_name: string
+    avatar_url?: string
+    role: string
+  }
+  replies?: Comment[]
+}
+
+interface TaskFile {
+  id: string
+  file_name: string
+  original_name: string
+  file_size: number
+  file_type: string
+  file_url: string
+  uploaded_by: string
+  created_at: string
+  description?: string
+  uploaded_by_user?: {
+    id: string
+    full_name: string
+    avatar_url?: string
+  }
+}
+
+interface ClientApproval {
+  id: string
+  action: 'approve' | 'reject' | 'request_revision'
+  feedback?: string
+  approved_by: string
+  approved_at: string
+  approved_by_user?: {
+    id: string
+    full_name: string
+    avatar_url?: string
+  }
 }
 
 interface ImprovedMilestoneSystemProps {
@@ -88,6 +151,17 @@ export function ImprovedMilestoneSystem({
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null)
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set())
+  
+  // Professional features state
+  const [showCommentsDialog, setShowCommentsDialog] = useState(false)
+  const [showFilesDialog, setShowFilesDialog] = useState(false)
+  const [selectedTaskForComments, setSelectedTaskForComments] = useState<Task | null>(null)
+  const [selectedTaskForFiles, setSelectedTaskForFiles] = useState<Task | null>(null)
+  const [newComment, setNewComment] = useState('')
+  const [commentType, setCommentType] = useState<'general' | 'feedback' | 'question' | 'issue'>('general')
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [fileDescription, setFileDescription] = useState('')
   
   // Form states
   const [milestoneForm, setMilestoneForm] = useState({
@@ -739,6 +813,150 @@ export function ImprovedMilestoneSystem({
     return 'bg-gray-300'
   }
 
+  // ===== PROFESSIONAL FEATURES =====
+  
+  // Add comment to task
+  const addComment = useCallback(async (taskId: string, content: string, type: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('task_comments')
+        .insert({
+          task_id: taskId,
+          content: content.trim(),
+          comment_type: type,
+          created_by: (await supabase.auth.getUser()).data.user?.id
+        })
+      
+      if (error) throw error
+      
+      toast.success('Comment added successfully')
+      setNewComment('')
+      await loadMilestones() // Reload to get updated comments
+    } catch (error) {
+      console.error('Error adding comment:', error)
+      toast.error('Failed to add comment')
+    }
+  }, [loadMilestones])
+
+  // Upload file to task
+  const uploadFile = useCallback(async (taskId: string, file: File, description: string) => {
+    try {
+      if (!file) return
+      
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
+      // Check file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB')
+        return
+      }
+
+      setUploadingFile(true)
+
+      // Generate unique file name
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const filePath = `task-files/${bookingId}/${taskId}/${fileName}`
+
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('task-files')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('task-files')
+        .getPublicUrl(filePath)
+
+      // Save file record
+      const { error: dbError } = await supabase
+        .from('task_files')
+        .insert({
+          task_id: taskId,
+          file_name: fileName,
+          original_name: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          file_url: publicUrl,
+          uploaded_by: user.id,
+          description: description.trim() || null
+        })
+
+      if (dbError) throw dbError
+
+      toast.success('File uploaded successfully')
+      setSelectedFile(null)
+      setFileDescription('')
+      await loadMilestones() // Reload to get updated files
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      toast.error('Failed to upload file')
+    } finally {
+      setUploadingFile(false)
+    }
+  }, [bookingId, loadMilestones])
+
+  // Client approval actions
+  const handleClientApproval = useCallback(async (taskId: string, action: 'approve' | 'reject' | 'request_revision', feedback?: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('User not authenticated')
+
+      const { error } = await supabase
+        .from('task_approvals')
+        .insert({
+          task_id: taskId,
+          action: action,
+          feedback: feedback?.trim() || null,
+          approved_by: user.id
+        })
+
+      if (error) throw error
+
+      // Update task status based on approval
+      let newStatus = 'pending'
+      if (action === 'approve') newStatus = 'completed'
+      else if (action === 'reject') newStatus = 'pending'
+      else if (action === 'request_revision') newStatus = 'in_progress'
+
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({
+          status: newStatus,
+          progress_percentage: action === 'approve' ? 100 : action === 'request_revision' ? 50 : 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId)
+
+      if (updateError) throw updateError
+
+      toast.success(`Task ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'revision requested'} successfully`)
+      await loadMilestones()
+    } catch (error) {
+      console.error('Error handling approval:', error)
+      toast.error('Failed to process approval')
+    }
+  }, [loadMilestones])
+
+  // Open comments dialog
+  const openCommentsDialog = useCallback((task: Task) => {
+    setSelectedTaskForComments(task)
+    setShowCommentsDialog(true)
+  }, [])
+
+  // Open files dialog
+  const openFilesDialog = useCallback((task: Task) => {
+    setSelectedTaskForFiles(task)
+    setShowFilesDialog(true)
+  }, [])
+
   // Load milestones on mount
   useEffect(() => {
     loadMilestones()
@@ -1255,6 +1473,98 @@ export function ImprovedMilestoneSystem({
                                       </Button>
                                     </>
                                   )}
+
+                                  {/* Professional Action Buttons */}
+                                  <div className="flex items-center gap-1 border-l border-gray-200 pl-2 ml-2">
+                                    {/* Comments Button */}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => openCommentsDialog(task)}
+                                      className="h-8 w-8 p-0 hover:bg-blue-50"
+                                      title={`Comments (${task.comments?.length || 0})`}
+                                    >
+                                      <MessageSquare className="h-4 w-4 text-blue-600" />
+                                      {task.comments && task.comments.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                                          {task.comments.length}
+                                        </span>
+                                      )}
+                                    </Button>
+
+                                    {/* Files Button */}
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => openFilesDialog(task)}
+                                      className="h-8 w-8 p-0 hover:bg-purple-50"
+                                      title={`Files (${task.files?.length || 0})`}
+                                    >
+                                      <Paperclip className="h-4 w-4 text-purple-600" />
+                                      {task.files && task.files.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                                          {task.files.length}
+                                        </span>
+                                      )}
+                                    </Button>
+
+                                    {/* Client Approval Actions */}
+                                    {userRole === 'client' && task.status === 'completed' && !task.client_approval && (
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleClientApproval(task.id, 'approve')}
+                                          className="h-8 w-8 p-0 hover:bg-green-50"
+                                          title="Approve task"
+                                        >
+                                          <ThumbsUp className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleClientApproval(task.id, 'request_revision')}
+                                          className="h-8 w-8 p-0 hover:bg-yellow-50"
+                                          title="Request revision"
+                                        >
+                                          <RotateCcw className="h-4 w-4 text-yellow-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleClientApproval(task.id, 'reject')}
+                                          className="h-8 w-8 p-0 hover:bg-red-50"
+                                          title="Reject task"
+                                        >
+                                          <ThumbsDown className="h-4 w-4 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    )}
+
+                                    {/* Show Approval Status */}
+                                    {task.client_approval && (
+                                      <div className="flex items-center gap-1">
+                                        {task.client_approval.action === 'approve' && (
+                                          <Badge className="bg-green-100 text-green-800 border-green-200">
+                                            <Check className="h-3 w-3 mr-1" />
+                                            Approved
+                                          </Badge>
+                                        )}
+                                        {task.client_approval.action === 'reject' && (
+                                          <Badge className="bg-red-100 text-red-800 border-red-200">
+                                            <XCircle className="h-3 w-3 mr-1" />
+                                            Rejected
+                                          </Badge>
+                                        )}
+                                        {task.client_approval.action === 'request_revision' && (
+                                          <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                                            <RotateCcw className="h-3 w-3 mr-1" />
+                                            Revision
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1498,6 +1808,218 @@ export function ImprovedMilestoneSystem({
               >
                 {editingTask ? 'Update Task' : 'Create Task'}
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Professional Comments Dialog */}
+      <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Comments - {selectedTaskForComments?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Add comments, feedback, questions, or report issues for this task.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Existing Comments */}
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {selectedTaskForComments?.comments?.map((comment) => (
+                <div key={comment.id} className="border rounded-lg p-3 bg-gray-50">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">
+                          {comment.created_by_user?.full_name || 'Unknown User'}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(comment.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {comment.comment_type}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-700">{comment.content}</p>
+                </div>
+              ))}
+              
+              {(!selectedTaskForComments?.comments || selectedTaskForComments.comments.length === 0) && (
+                <div className="text-center py-8 text-gray-500">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>No comments yet. Be the first to add one!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Add New Comment */}
+            <div className="border-t pt-4">
+              <div className="space-y-3">
+                <Select value={commentType} onValueChange={(value: any) => setCommentType(value)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="feedback">Feedback</SelectItem>
+                    <SelectItem value="question">Question</SelectItem>
+                    <SelectItem value="issue">Issue</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Textarea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  rows={3}
+                />
+                
+                <div className="flex justify-end">
+                  <Button
+                    onClick={() => selectedTaskForComments && addComment(selectedTaskForComments.id, newComment, commentType)}
+                    disabled={!newComment.trim()}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Add Comment
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Professional Files Dialog */}
+      <Dialog open={showFilesDialog} onOpenChange={setShowFilesDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              Files - {selectedTaskForFiles?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Upload and manage files for this task. Supported: Documents, Images, PDFs, etc.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Upload New File */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="hidden"
+                  id="file-upload"
+                  accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar"
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose File
+                </label>
+                
+                {selectedFile && (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600">Selected: {selectedFile.name}</p>
+                    <p className="text-xs text-gray-500">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    
+                    <Input
+                      value={fileDescription}
+                      onChange={(e) => setFileDescription(e.target.value)}
+                      placeholder="File description (optional)"
+                      className="mt-2"
+                    />
+                    
+                    <Button
+                      onClick={() => selectedTaskForFiles && selectedFile && uploadFile(selectedTaskForFiles.id, selectedFile, fileDescription)}
+                      disabled={uploadingFile}
+                      className="mt-2 bg-green-600 hover:bg-green-700"
+                    >
+                      {uploadingFile ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Upload className="h-4 w-4 mr-2" />
+                      )}
+                      Upload File
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Existing Files */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-900">Uploaded Files</h4>
+              
+              {selectedTaskForFiles?.files?.map((file) => (
+                <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    {file.file_type.startsWith('image/') ? (
+                      <Image className="h-8 w-8 text-blue-600" />
+                    ) : (
+                      <FileText className="h-8 w-8 text-gray-600" />
+                    )}
+                    <div>
+                      <div className="font-medium text-sm">{file.original_name}</div>
+                      <div className="text-xs text-gray-500">
+                        {(file.file_size / 1024 / 1024).toFixed(2)} MB • 
+                        Uploaded by {file.uploaded_by_user?.full_name} • 
+                        {new Date(file.created_at).toLocaleDateString()}
+                      </div>
+                      {file.description && (
+                        <div className="text-xs text-gray-600 mt-1">{file.description}</div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => window.open(file.file_url, '_blank')}
+                      className="h-8 w-8 p-0"
+                      title="View file"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        const link = document.createElement('a')
+                        link.href = file.file_url
+                        link.download = file.original_name
+                        link.click()
+                      }}
+                      className="h-8 w-8 p-0"
+                      title="Download file"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              
+              {(!selectedTaskForFiles?.files || selectedTaskForFiles.files.length === 0) && (
+                <div className="text-center py-8 text-gray-500">
+                  <Paperclip className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>No files uploaded yet.</p>
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>
