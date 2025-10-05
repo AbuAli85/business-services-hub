@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       // Fallback to manual calculation
       const { data: booking } = await supabase
         .from('bookings')
-        .select('progress_percentage, status')
+        .select('progress_percentage, status, created_at, updated_at, title')
         .eq('id', booking_id)
         .single()
 
@@ -170,30 +170,72 @@ export async function GET(request: NextRequest) {
           id,
           progress_percentage,
           status,
-          tasks(id, status, progress_percentage, estimated_hours, actual_hours, is_overdue)
+          estimated_hours,
+          actual_hours,
+          tasks(id, status, progress_percentage, estimated_hours, actual_hours, is_overdue, due_date)
         `)
         .eq('booking_id', booking_id)
 
-      // Calculate analytics manually
+      // Calculate analytics manually with all required fields
       const totalMilestones = milestones?.length || 0
       const completedMilestones = milestones?.filter(m => m.status === 'completed').length || 0
-      const totalTasks = milestones?.reduce((sum, m) => sum + (m.tasks?.length || 0), 0) || 0
-      const completedTasks = milestones?.reduce((sum, m) => 
-        sum + (m.tasks?.filter(t => t.status === 'completed').length || 0), 0) || 0
+      const inProgressMilestones = milestones?.filter(m => m.status === 'in_progress').length || 0
+      const pendingMilestones = milestones?.filter(m => m.status === 'pending').length || 0
+      
+      const allTasks = milestones?.flatMap(m => m.tasks || []) || []
+      const totalTasks = allTasks.length
+      const completedTasks = allTasks.filter(t => t.status === 'completed').length
+      const inProgressTasks = allTasks.filter(t => t.status === 'in_progress').length
+      const pendingTasks = allTasks.filter(t => t.status === 'pending').length
+      const overdueTasks = allTasks.filter(t => {
+        if (!t.due_date || t.status === 'completed') return false
+        try {
+          const dueDate = new Date(t.due_date)
+          if (isNaN(dueDate.getTime())) return false
+          return dueDate < new Date()
+        } catch {
+          return false
+        }
+      }).length
+      
+      const totalEstimatedHours = milestones?.reduce((sum, m) => 
+        sum + (m.estimated_hours || 0), 0) || 0
+      const totalActualHours = milestones?.reduce((sum, m) => 
+        sum + (m.actual_hours || 0), 0) || 0
+      
+      const avgMilestoneProgress = totalMilestones > 0 ? 
+        Math.round((milestones || []).reduce((sum, m) => sum + (m.progress_percentage || 0), 0) / totalMilestones) : 0
+      const avgTaskProgress = totalTasks > 0 ?
+        Math.round(allTasks.reduce((sum, t) => sum + (t.progress_percentage || 0), 0) / totalTasks) : 0
+
+      const fallbackAnalytics = {
+        booking_id,
+        booking_title: booking?.title || 'Service Booking',
+        booking_progress: booking?.progress_percentage || 0,
+        booking_status: booking?.status || 'pending',
+        total_milestones: totalMilestones,
+        completed_milestones: completedMilestones,
+        in_progress_milestones: inProgressMilestones,
+        pending_milestones: pendingMilestones,
+        total_tasks: totalTasks,
+        completed_tasks: completedTasks,
+        in_progress_tasks: inProgressTasks,
+        pending_tasks: pendingTasks,
+        overdue_tasks: overdueTasks,
+        total_estimated_hours: totalEstimatedHours,
+        total_actual_hours: totalActualHours,
+        avg_milestone_progress: avgMilestoneProgress,
+        avg_task_progress: avgTaskProgress,
+        created_at: booking?.created_at || new Date().toISOString(),
+        updated_at: booking?.updated_at || new Date().toISOString()
+      }
+      
+      console.log('📊 Progress analytics fallback calculation:', fallbackAnalytics)
 
       return NextResponse.json({
         success: true,
-        analytics: {
-          booking_id,
-          booking_progress: booking?.progress_percentage || 0,
-          booking_status: booking?.status || 'pending',
-          total_milestones: totalMilestones,
-          completed_milestones: completedMilestones,
-          total_tasks: totalTasks,
-          completed_tasks: completedTasks,
-          milestone_progress: totalMilestones > 0 ? 
-            Math.round((milestones || []).reduce((sum, m) => sum + (m.progress_percentage || 0), 0) / totalMilestones) : 0
-        },
+        analytics: fallbackAnalytics,
+        fallback: true,
         timestamp: new Date().toISOString()
       }, { status: 200, headers: corsHeaders })
     }
