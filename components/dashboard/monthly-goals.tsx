@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import AnimatedProgressRing from './animated-progress-ring'
+import { Progress } from '@/components/ui/progress'
 import { 
   Target, 
   Trophy, 
@@ -13,6 +13,44 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react'
+
+// Simple circular progress component (replacement for deleted AnimatedProgressRing)
+function CircularProgress({ progress, size = 120 }: { progress: number; size?: number }) {
+  const radius = (size - 8) / 2
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (progress / 100) * circumference
+  
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg width={size} height={size} className="transform -rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth="8"
+          fill="none"
+          className="text-gray-200"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth="8"
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className="text-blue-500 transition-all duration-500"
+          strokeLinecap="round"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-2xl font-bold">{Math.round(progress)}%</span>
+      </div>
+    </div>
+  )
+}
 
 interface MonthlyGoalsProps {
   data: {
@@ -114,7 +152,7 @@ export function MonthlyGoals({ data, className }: MonthlyGoalsProps) {
         <CardContent>
           {/* Overall progress top */}
           <div className="flex items-center gap-6 mb-6">
-            <AnimatedProgressRing progress={(completedGoals / totalGoals) * 100} />
+            <CircularProgress progress={(completedGoals / totalGoals) * 100} />
             <div>
               <div className="text-lg font-bold text-gray-900">Overall Progress</div>
               <p className="text-sm text-gray-600">{completedGoals} of {totalGoals} goals achieved</p>
@@ -128,7 +166,7 @@ export function MonthlyGoals({ data, className }: MonthlyGoalsProps) {
               return (
                 <div key={goal.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-4">
-                    <AnimatedProgressRing progress={Math.min(goal.progress, 100)} size={88} />
+                    <CircularProgress progress={Math.min(goal.progress, 100)} size={88} />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center space-x-2">
