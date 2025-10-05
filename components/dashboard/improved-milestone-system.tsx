@@ -583,6 +583,32 @@ export function ImprovedMilestoneSystem({
       toast.error('Failed to update task')
     }
   }, [editingTask, taskForm, milestones, updateProgress, loadMilestones])
+
+  // Quick task update function for inline actions
+  const quickUpdateTask = useCallback(async (taskData: any, milestoneId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          status: taskData.status,
+          progress_percentage: taskData.progress_percentage,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskData.id)
+      
+      if (error) {
+        throw error
+      }
+      
+      toast.success('Task updated successfully')
+      await loadMilestones()
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    }
+  }, [loadMilestones])
   
   // Delete task
   const deleteTask = useCallback(async (taskId: string, milestoneId: string) => {
@@ -1141,7 +1167,7 @@ export function ImprovedMilestoneSystem({
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          onClick={() => updateTask({
+                                          onClick={() => quickUpdateTask({
                                             ...task,
                                             status: 'completed',
                                             progress_percentage: 100
@@ -1159,7 +1185,7 @@ export function ImprovedMilestoneSystem({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            onClick={() => updateTask({
+                                            onClick={() => quickUpdateTask({
                                               ...task,
                                               progress_percentage: Math.min(100, task.progress_percentage + 25)
                                             }, milestone.id)}
@@ -1171,7 +1197,7 @@ export function ImprovedMilestoneSystem({
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            onClick={() => updateTask({
+                                            onClick={() => quickUpdateTask({
                                               ...task,
                                               progress_percentage: Math.min(100, task.progress_percentage + 50)
                                             }, milestone.id)}
@@ -1192,7 +1218,7 @@ export function ImprovedMilestoneSystem({
                                             'in_progress': 50,
                                             'completed': 100
                                           }
-                                          updateTask({
+                                          quickUpdateTask({
                                             ...task,
                                             status: newStatus as any,
                                             progress_percentage: progressMap[newStatus as keyof typeof progressMap] || task.progress_percentage
