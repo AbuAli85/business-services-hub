@@ -372,6 +372,7 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // Temporarily disable audit logging to avoid UUID errors
     const { data: updatedMilestone, error: updateError } = await supabase
       .from('milestones')
       .update(updateData)
@@ -389,6 +390,16 @@ export async function PATCH(request: NextRequest) {
         updateData,
         milestoneId
       })
+      
+      // Handle UUID type mismatch error specifically
+      if (updateError.message && updateError.message.includes('column "record_id" is of type uuid but expression is of type text')) {
+        console.warn('⚠️ UUID type mismatch in audit trigger - skipping audit logging')
+        return NextResponse.json(
+          { error: 'Database error: UUID type mismatch in audit logging. Please run the SQL fix in Supabase Dashboard to resolve this issue.' },
+          { status: 500, headers: corsHeaders }
+        )
+      }
+      
       // If it's a permission error, return a more specific error
       if (updateError.code === '42501' || updateError.message.includes('permission denied')) {
         console.warn('Permission denied for milestones table during update')
