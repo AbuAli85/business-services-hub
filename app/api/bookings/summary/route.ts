@@ -68,11 +68,27 @@ export async function GET(request: NextRequest) {
     // Phase 5: Use optimized analytics view for better performance
     console.log('📊 Summary API: Using v_booking_status_metrics for fast KPIs...')
     
-    // Try to use the new analytics view first (Phase 5 enhancement)
-    const { data: metricsData, error: metricsError } = await supabase
+    // Try to use the new analytics view first (Phase 5 enhancement) with timeout protection
+    const analyticsQueryPromise = supabase
       .from('v_booking_status_metrics')
       .select('*')
       .single()
+    
+    const analyticsTimeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Analytics query timeout')), 8000) // 8 second timeout
+    )
+    
+    let metricsData: any = null
+    let metricsError: any = null
+    
+    try {
+      const result = await Promise.race([analyticsQueryPromise, analyticsTimeoutPromise]) as any
+      metricsData = result.data
+      metricsError = result.error
+    } catch (timeoutError) {
+      console.warn('Analytics view query timed out, falling back to legacy calculation:', timeoutError)
+      metricsError = timeoutError
+    }
 
     let allBookings: any[] = []
     
@@ -84,7 +100,7 @@ export async function GET(request: NextRequest) {
       const MAX_ROWS = 2000
       const sinceIso = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString()
 
-      // Get ALL bookings for summary statistics (no pagination)
+      // Get ALL bookings for summary statistics (no pagination) with timeout protection
       let query = supabase
         .from('bookings')
         .select('id, status, approval_status, amount_cents, currency, service_id, client_id, provider_id, created_at', { count: 'planned' })
@@ -101,7 +117,24 @@ export async function GET(request: NextRequest) {
       // Cap rows to avoid huge payloads
       query = query.range(0, MAX_ROWS - 1)
 
-      const { data: bookingsData, error: queryError } = await query
+      // Add timeout protection for booking query
+      const bookingQueryPromise = query
+      const bookingTimeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Booking query timeout')), 12000) // 12 second timeout
+      )
+      
+      let bookingsData: any[] = []
+      let queryError: any = null
+      
+      try {
+        const result = await Promise.race([bookingQueryPromise, bookingTimeoutPromise]) as any
+        bookingsData = result.data || []
+        queryError = result.error
+      } catch (timeoutError) {
+        console.warn('Booking query timed out, using empty array:', timeoutError)
+        bookingsData = []
+        queryError = timeoutError
+      }
 
       if (queryError) {
         console.error('Summary API: Query error:', queryError)
@@ -127,17 +160,31 @@ export async function GET(request: NextRequest) {
       // Use the new analytics view data - no need to fetch individual bookings
     }
 
-    // Get ALL invoices for revenue calculation
+    // Get invoices for revenue calculation with timeout protection
     const DAYS_BACK = 180
-    const MAX_ROWS = 2000
+    const MAX_ROWS = 1000 // Reduced from 2000 to prevent timeouts
     const sinceIso = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString()
     
-    const { data: allInvoices } = await supabase
+    // Add timeout protection for invoice query
+    const invoiceQueryPromise = supabase
       .from('invoices')
       .select('id, booking_id, status, amount, created_at')
-      // Try to filter by same window if column exists; harmless if ignored by RLS
       .gte('created_at', sinceIso)
       .limit(MAX_ROWS)
+    
+    // Race the query against a timeout
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Invoice query timeout')), 10000) // 10 second timeout
+    )
+    
+    let allInvoices: any[] = []
+    try {
+      const { data } = await Promise.race([invoiceQueryPromise, timeoutPromise]) as any
+      allInvoices = data || []
+    } catch (timeoutError) {
+      console.warn('Invoice query timed out, using empty array:', timeoutError)
+      allInvoices = []
+    }
 
     // Calculate summary statistics using optimized analytics view or legacy calculation
     let summary: any
