@@ -272,12 +272,6 @@ export default function DashboardLayout({
   const checkUser = async () => {
     console.log('🔍 Starting checkUser...')
     
-    // Add timeout protection for the entire function
-    const checkUserTimeout = setTimeout(() => {
-      console.error('❌ checkUser function timeout - redirecting to sign-in')
-      router.push('/auth/sign-in')
-    }, 8000) // 8 second timeout for the function itself
-    
     try {
       const supabase = await getSupabaseClient()
       console.log('✅ Supabase client initialized')
@@ -297,7 +291,6 @@ export default function DashboardLayout({
       if (sessionError) {
         console.error('❌ Session fetch error:', sessionError)
         logger.error('Could not fetch session:', sessionError)
-        clearTimeout(checkUserTimeout)
         router.push('/auth/sign-in')
         return
       }
@@ -316,7 +309,6 @@ export default function DashboardLayout({
           
           if (refreshError || !refreshedSession) {
             console.error('❌ Session refresh failed:', refreshError)
-            clearTimeout(checkUserTimeout)
             router.push('/auth/sign-in')
             return
           }
@@ -326,7 +318,6 @@ export default function DashboardLayout({
         } catch (refreshError) {
           console.error('❌ Session refresh exception:', refreshError)
           logger.warn('Session refresh failed:', refreshError)
-          clearTimeout(checkUserTimeout)
           router.push('/auth/sign-in')
           return
         }
@@ -402,7 +393,6 @@ export default function DashboardLayout({
             if (profile.verification_status === 'pending') {
               console.log('⏳ Profile pending approval, redirecting to pending approval page')
               logger.warn('Profile pending approval, redirecting to pending approval page')
-              clearTimeout(checkUserTimeout)
               router.push('/auth/pending-approval')
               return
             }
@@ -411,7 +401,6 @@ export default function DashboardLayout({
             if (profile.verification_status === 'rejected') {
               console.log('❌ Profile rejected, redirecting to pending approval page')
               logger.warn('Profile rejected, redirecting to pending approval page')
-              clearTimeout(checkUserTimeout)
               router.push('/auth/pending-approval')
               return
             }
@@ -421,7 +410,6 @@ export default function DashboardLayout({
             if (!profile.profile_completed && profile.verification_status !== 'approved') {
               console.log('📝 Profile not completed, redirecting to onboarding')
               logger.warn('Profile not completed, redirecting to onboarding')
-              clearTimeout(checkUserTimeout)
               router.push('/auth/onboarding')
               return
             }
