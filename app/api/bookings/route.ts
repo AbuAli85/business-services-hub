@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
         service_name: service.title,
         booking_title: booking.service_title,
         scheduled_date: booking.scheduled_date,
-        total_amount: booking.total_amount ?? 0,
+        total_amount: booking.amount ?? 0,
         currency: booking.currency
       })
     } catch (notificationError) {
@@ -387,7 +387,7 @@ export async function GET(request: NextRequest) {
         client_id, client_name, client_email, client_company, client_avatar,
         provider_id, provider_name, provider_email, provider_company, provider_avatar,
         progress, total_milestones, completed_milestones, raw_status, approval_status, display_status,
-        payment_status, invoice_status, invoice_id, total_amount, currency,
+        payment_status, invoice_status, invoice_id, amount, currency,
         created_at, updated_at, due_at, requirements, notes, scheduled_date, location
       `, { count: 'planned' })
       .gte('created_at', sinceIso)
@@ -588,8 +588,8 @@ export async function GET(request: NextRequest) {
           const provider = profileMap.get(booking.provider_id)
           const invoice = invoiceMap.get(booking.id)
           
-          // Convert total_amount (decimal OMR) to amount_cents for UI compatibility
-          const totalAmount = booking.total_amount || 0
+          // Convert amount (decimal OMR) to amount_cents for UI compatibility
+          const totalAmount = booking.amount || 0
           const amountCents = Math.round(totalAmount * 100)
           
           const result = {
@@ -663,7 +663,7 @@ export async function GET(request: NextRequest) {
       // Fallback: return basic data without enrichment
       console.warn('⚠️ Data enrichment timed out, returning basic booking data')
       return rows.map(booking => {
-        const totalAmount = booking.total_amount || 0
+        const totalAmount = booking.amount || 0
         const amountCents = Math.round(totalAmount * 100)
         
         return {
@@ -1128,7 +1128,7 @@ export async function PATCH(request: NextRequest) {
             service_name: booking.service_title || 'Service',
             booking_title: booking.service_title || 'Booking',
             scheduled_date: booking.scheduled_date,
-            total_amount: booking.total_amount ?? 0,
+            total_amount: booking.amount ?? 0,
             currency: booking.currency
           })
 
@@ -1180,7 +1180,7 @@ export async function PATCH(request: NextRequest) {
               service_name: booking.service_title || 'Service',
               booking_title: booking.service_title || 'Booking',
               scheduled_date: booking.scheduled_date,
-              amount: booking.total_amount ?? 0,
+              amount: booking.amount ?? 0,
               currency: booking.currency
             },
             priority: 'high'
