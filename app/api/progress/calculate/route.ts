@@ -172,9 +172,16 @@ export async function GET(request: NextRequest) {
           status,
           estimated_hours,
           actual_hours,
-          tasks(id, status, progress_percentage, estimated_hours, actual_hours, is_overdue, due_date)
+          total_tasks,
+          completed_tasks
         `)
         .eq('booking_id', booking_id)
+
+      // Also fetch ALL tasks separately for accurate counting
+      const { data: allTasksData } = await supabase
+        .from('tasks')
+        .select('id, status, progress_percentage, estimated_hours, actual_hours, is_overdue, due_date, milestone_id')
+        .in('milestone_id', milestones?.map(m => m.id) || [])
 
       // Calculate analytics manually with all required fields
       const totalMilestones = milestones?.length || 0
@@ -182,11 +189,20 @@ export async function GET(request: NextRequest) {
       const inProgressMilestones = milestones?.filter(m => m.status === 'in_progress').length || 0
       const pendingMilestones = milestones?.filter(m => m.status === 'pending').length || 0
       
-      const allTasks = milestones?.flatMap(m => m.tasks || []) || []
+      // Use the separately fetched tasks for accurate counting
+      const allTasks = allTasksData || []
       const totalTasks = allTasks.length
       const completedTasks = allTasks.filter(t => t.status === 'completed').length
       const inProgressTasks = allTasks.filter(t => t.status === 'in_progress').length
       const pendingTasks = allTasks.filter(t => t.status === 'pending').length
+      
+      console.log('📊 Task counts:', {
+        total: totalTasks,
+        completed: completedTasks,
+        inProgress: inProgressTasks,
+        pending: pendingTasks,
+        rawTasks: allTasks.map(t => ({ id: t.id, status: t.status }))
+      })
       const overdueTasks = allTasks.filter(t => {
         if (!t.due_date || t.status === 'completed') return false
         try {
@@ -198,10 +214,11 @@ export async function GET(request: NextRequest) {
         }
       }).length
       
-      const totalEstimatedHours = milestones?.reduce((sum, m) => 
-        sum + (m.estimated_hours || 0), 0) || 0
-      const totalActualHours = milestones?.reduce((sum, m) => 
-        sum + (m.actual_hours || 0), 0) || 0
+      // Calculate hours from tasks for accuracy
+      const totalEstimatedHours = allTasks.reduce((sum, t) => 
+        sum + (t.estimated_hours || 0), 0) || 0
+      const totalActualHours = allTasks.reduce((sum, t) => 
+        sum + (t.actual_hours || 0), 0) || 0
       
       const avgMilestoneProgress = totalMilestones > 0 ? 
         Math.round((milestones || []).reduce((sum, m) => sum + (m.progress_percentage || 0), 0) / totalMilestones) : 0
