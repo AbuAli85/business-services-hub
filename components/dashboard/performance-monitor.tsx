@@ -258,7 +258,7 @@ export function PerformanceMonitor({ bookingId, className }: PerformanceMonitorP
           active_users: 1, // Current user (would need session tracking for actual count)
           realtime_connections: metrics?.realtimeConnections || 0,
           api_response_time: metrics?.apiResponseTime || 0,
-          database_query_time: metrics?.dbQueryTime || 0,
+          database_query_time: metrics?.databaseQueryTime || 0,
           memory_usage: 0, // Requires server-side monitoring
           cpu_usage: 0, // Requires server-side monitoring
           milestones_loaded: metrics?.milestonesLoaded || 0,
