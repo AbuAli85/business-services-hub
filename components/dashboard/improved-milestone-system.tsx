@@ -154,6 +154,15 @@ export function ImprovedMilestoneSystem({
         throw fetchError
       }
 
+      // Log loaded data for debugging
+      console.log('📊 Milestones loaded:', data?.map(m => ({
+        id: m.id,
+        title: m.title,
+        total_tasks: m.total_tasks,
+        tasks_array_length: m.tasks?.length || 0,
+        has_tasks: !!m.tasks && m.tasks.length > 0
+      })))
+
       setMilestones(data || [])
     } catch (err) {
       console.error('Error loading milestones:', err)
@@ -628,12 +637,15 @@ export function ImprovedMilestoneSystem({
   
   // Toggle milestone expansion
   const toggleMilestoneExpansion = useCallback((milestoneId: string) => {
+    console.log('🔄 Toggling milestone expansion:', milestoneId)
     setExpandedMilestones(prev => {
       const newSet = new Set(prev)
       if (newSet.has(milestoneId)) {
         newSet.delete(milestoneId)
+        console.log('✅ Collapsed milestone:', milestoneId)
       } else {
         newSet.add(milestoneId)
+        console.log('✅ Expanded milestone:', milestoneId)
       }
       return newSet
     })
@@ -965,7 +977,7 @@ export function ImprovedMilestoneSystem({
                 </div>
 
                 {/* Tasks List */}
-                {expandedMilestones.has(milestone.id) && milestone.tasks.length > 0 && (
+                {expandedMilestones.has(milestone.id) && (milestone.tasks?.length || 0) > 0 && (
                   <div className="border-t pt-4">
                     <h4 className="font-medium mb-3 flex items-center gap-2">
                       <CheckCircle className="h-4 w-4" />
@@ -1043,9 +1055,16 @@ export function ImprovedMilestoneSystem({
                   </div>
                 )}
                 
-                {!expandedMilestones.has(milestone.id) && milestone.tasks.length > 0 && (
+                {!expandedMilestones.has(milestone.id) && (milestone.tasks?.length || 0) > 0 && (
                   <div className="text-sm text-gray-600 text-center">
                     Click to expand and view {milestone.tasks.length} task{milestone.tasks.length !== 1 ? 's' : ''}
+                  </div>
+                )}
+                
+                {/* Debug: Show if no tasks loaded but total_tasks says there are some */}
+                {milestone.total_tasks > 0 && (!milestone.tasks || milestone.tasks.length === 0) && (
+                  <div className="text-sm text-amber-600 text-center p-2 bg-amber-50 rounded">
+                    ⚠️ {milestone.total_tasks} tasks exist but not loaded. Try refreshing the page.
                   </div>
                 )}
               </div>
