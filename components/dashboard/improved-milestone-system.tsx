@@ -700,6 +700,15 @@ export function ImprovedMilestoneSystem({
     if (!milestone.due_date || milestone.status === 'completed') return false
     return new Date(milestone.due_date) < new Date()
   }
+  
+  // Get progress bar color based on percentage
+  const getProgressColor = (percentage: number) => {
+    if (percentage === 100) return 'bg-green-600'
+    if (percentage >= 67) return 'bg-blue-600'
+    if (percentage >= 34) return 'bg-yellow-500'
+    if (percentage > 0) return 'bg-orange-500'
+    return 'bg-gray-300'
+  }
 
   // Load milestones on mount
   useEffect(() => {
@@ -805,9 +814,14 @@ export function ImprovedMilestoneSystem({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Overall Progress</span>
-              <span className="text-sm text-gray-600">{overallProgress}%</span>
+              <span className="text-sm font-semibold text-gray-900">{overallProgress}%</span>
             </div>
-            <Progress value={overallProgress} className="h-2" />
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div 
+                className={`h-3 rounded-full transition-all duration-500 ${getProgressColor(overallProgress)}`}
+                style={{ width: `${overallProgress}%` }}
+              />
+            </div>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div className="text-center">
                 <div className="font-semibold text-green-600">
@@ -909,11 +923,28 @@ export function ImprovedMilestoneSystem({
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">Progress</span>
-                    <span className="text-sm text-gray-600">
+                    <span className={`text-sm font-bold ${
+                      milestone.progress_percentage === 100 ? 'text-green-600' :
+                      milestone.progress_percentage >= 67 ? 'text-blue-600' :
+                      milestone.progress_percentage >= 34 ? 'text-yellow-600' :
+                      milestone.progress_percentage > 0 ? 'text-orange-600' :
+                      'text-gray-600'
+                    }`}>
                       {milestone.progress_percentage}%
                     </span>
                   </div>
-                  <Progress value={milestone.progress_percentage} className="h-2" />
+                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div 
+                      className={`h-3 rounded-full transition-all duration-500 ${getProgressColor(milestone.progress_percentage)}`}
+                      style={{ width: `${milestone.progress_percentage}%` }}
+                    >
+                      {milestone.progress_percentage === 100 && (
+                        <div className="h-full flex items-center justify-end pr-2">
+                          <CheckCircle className="h-2.5 w-2.5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Milestone Stats */}
