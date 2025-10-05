@@ -65,9 +65,26 @@ export function calculateBookingStats(
   ).length
   const pending = bookings.filter(b => getDerivedStatus(b, new Map()) === 'pending_review').length
   
+  // Calculate revenue from all invoices (draft, issued, paid) to show actual amounts
+  // Filter out 'void' invoices only
   const totalRevenue = invoices
-    .filter(inv => ['issued', 'paid'].includes(inv.status))
-    .reduce((sum, inv) => sum + (inv.amount || 0), 0)
+    .filter(inv => inv.status !== 'void')
+    .reduce((sum, inv) => {
+      const amount = inv.amount || inv.total_amount || 0
+      console.log('📊 Invoice for revenue:', { 
+        id: inv.id, 
+        booking_id: inv.booking_id, 
+        status: inv.status, 
+        amount 
+      })
+      return sum + amount
+    }, 0)
+  
+  console.log('💰 Revenue calculation:', {
+    totalInvoices: invoices.length,
+    nonVoidInvoices: invoices.filter(inv => inv.status !== 'void').length,
+    totalRevenue
+  })
 
   const projectedBillings = bookings
     .filter(b => ['ready_to_launch', 'in_production'].includes(getDerivedStatus(b, new Map())))

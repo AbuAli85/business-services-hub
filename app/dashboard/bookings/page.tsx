@@ -175,6 +175,7 @@ export default function BookingsPage() {
   // Calculate statistics. If there are no bookings, prefer zeroed stats to avoid confusing mismatches.
   const stats = useMemo(() => {
     if (!bookings || bookings.length === 0) {
+      console.log('📊 No bookings data, returning zero stats')
       return {
         total: 0,
         completed: 0,
@@ -188,7 +189,18 @@ export default function BookingsPage() {
         readyToLaunch: 0
       }
     }
-    return calculateBookingStats(bookings, invoices, summaryStats)
+    
+    console.log('📊 Calculating stats with:', {
+      bookingsCount: bookings.length,
+      invoicesCount: invoices.length,
+      hasSummaryStats: !!summaryStats
+    })
+    
+    const calculatedStats = calculateBookingStats(bookings, invoices, summaryStats)
+    
+    console.log('📊 Calculated stats:', calculatedStats)
+    
+    return calculatedStats
   }, [bookings, invoices, summaryStats])
 
   // Pagination
