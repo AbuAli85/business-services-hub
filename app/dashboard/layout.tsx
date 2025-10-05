@@ -68,25 +68,11 @@ export default function DashboardLayout({
   useEffect(() => {
     console.log('🚀 Dashboard layout mounted, starting auth check...')
     
-    // Try the full checkUser first
-    checkUser().catch(error => {
-      console.error('❌ checkUser failed:', error)
-      // Fallback to simple auth check
-      console.log('🔄 Falling back to simple auth check...')
-      simpleAuthCheck()
-    })
+    // Use simpleAuthCheck as primary - it's much faster
+    simpleAuthCheck()
     
+    // Fetch notifications after auth
     fetchNotifications()
-    
-    // Add a timeout to prevent infinite loading
-    const loadingTimeout = setTimeout(() => {
-      if (loading && !user) {
-        console.warn('⚠️ Dashboard loading timeout - trying simple auth check...')
-        simpleAuthCheck()
-      }
-    }, 5000) // 5 second timeout (reduced from 10)
-    
-    return () => clearTimeout(loadingTimeout)
   }, [])
 
   // Add a secondary effect to monitor loading state changes
@@ -189,7 +175,7 @@ export default function DashboardLayout({
     }
   }, [user?.id])
 
-  // Simple auth check as fallback
+  // Fast auth check - optimized for speed
   const simpleAuthCheck = async () => {
     console.log('🔄 Starting simple auth check...')
     try {
@@ -202,30 +188,18 @@ export default function DashboardLayout({
         return
       }
       
-      // Try to get basic profile data quickly using ProfileManager
+      // Get basic info from metadata first (instant)
       let fullName = session.user.user_metadata?.full_name || 'User'
       let userRole = session.user.user_metadata?.role || 'client'
+      let companyName = session.user.user_metadata?.company_name
       
-      try {
-        // Use ProfileManager for quick profile fetch
-        const profile = await profileManager.getUserProfile(session.user.id, false) // Skip cache for fresh data
-        
-        if (profile) {
-          fullName = profile.full_name || fullName
-          userRole = profile.role || userRole
-          console.log('✅ ProfileManager fetch successful:', profile)
-        }
-      } catch (profileError) {
-        console.warn('⚠️ ProfileManager fetch failed, using auth metadata:', profileError)
-      }
-      
-      // Create user object with fetched data
+      // Create user object immediately for fast render
       const simpleUser: UserProfile = {
         id: session.user.id,
         role: userRole as UserProfile['role'],
         full_name: fullName,
         email: session.user.email || '',
-        company_name: undefined,
+        company_name: companyName,
         profile_completed: false,
         verification_status: 'pending',
         created_at: new Date().toISOString(),
@@ -234,7 +208,14 @@ export default function DashboardLayout({
       
       console.log('✅ Simple auth check successful, setting user:', simpleUser)
       
-      // Start user session for simple auth check too
+      // Set user immediately so UI renders fast
+      setUser(simpleUser)
+      setLoading(false)
+      
+      // Fetch additional profile data asynchronously (non-blocking)
+      fetchAdditionalProfileData(session.user.id, simpleUser)
+      
+      // Start user session in background
       try {
         userSessionManager.startSession(session.user.id)
         console.log('✅ Simple auth session started successfully')
@@ -242,13 +223,49 @@ export default function DashboardLayout({
         console.warn('⚠️ Failed to start simple auth session:', sessionError)
       }
       
-      setUser(simpleUser)
-      
     } catch (error) {
       console.error('❌ Simple auth check exception:', error)
       router.push('/auth/sign-in')
-    } finally {
       setLoading(false)
+    }
+  }
+  
+  // Fetch additional profile data in background (non-blocking)
+  const fetchAdditionalProfileData = async (userId: string, currentUser: UserProfile) => {
+    try {
+      // Use ProfileManager for profile fetch
+      const profile = await profileManager.getUserProfile(userId, false)
+      
+      if (profile) {
+        console.log('📋 Additional profile data loaded:', profile)
+        
+        // Update user with enriched data
+        const enrichedUser: UserProfile = {
+          ...currentUser,
+          full_name: profile.full_name || currentUser.full_name,
+          company_name: profile.company_name || currentUser.company_name,
+          profile_completed: profile.profile_completed || false,
+          verification_status: profile.verification_status || 'pending'
+        }
+        
+        setUser(enrichedUser)
+        
+        // Fetch company info and logo if available
+        if (profile.company_id) {
+          const companyInfo = await profileManager.getCompanyInfo(userId)
+          if (companyInfo?.logo_url) {
+            setUserLogoUrl(companyInfo.logo_url)
+          }
+        }
+        
+        // Set profile logo if available
+        if (profile.logo_url) {
+          setUserLogoUrl(profile.logo_url)
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Background profile fetch failed (non-critical):', error)
+      // Don't throw - this is optional enrichment
     }
   }
 
