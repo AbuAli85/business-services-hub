@@ -842,14 +842,14 @@ export default function ProjectFilesPage() {
       ) : (
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-2'}>
           {filteredFiles.map((file) => (
-            <Card key={file.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+            <Card key={file.id} className="hover:shadow-lg hover:scale-[1.02] transition-all duration-200 border-gray-200">
+              <CardContent className="p-0">
                 {viewMode === 'grid' ? (
                   // Professional Grid View
-                  <div className="space-y-3">
+                  <div className="space-y-0">
                     {/* Preview/Icon Area */}
                     <div 
-                      className="relative bg-gray-50 rounded-lg aspect-square flex items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors group"
+                      className="relative bg-gray-50 rounded-t-lg aspect-square flex items-center justify-center cursor-pointer hover:bg-gray-100 transition-colors group"
                       onClick={() => window.open(file.file_url, '_blank')}
                     >
                       {file.file_type.startsWith('image/') ? (
@@ -864,11 +864,18 @@ export default function ProjectFilesPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center">
-                          {getFileIcon(file.file_type)}
-                          <p className="text-xs text-gray-500 mt-2 uppercase tracking-wide">
-                            {file.file_type.split('/')[1] || file.file_type.split('/')[0]}
-                          </p>
+                        <div className="text-center p-4">
+                          <div className="flex flex-col items-center justify-center h-full">
+                            {getFileIcon(file.file_type)}
+                            <p className="text-xs font-semibold text-gray-700 mt-3 uppercase tracking-wide">
+                              {file.file_type.split('/')[1]?.toUpperCase() || 
+                               file.file_name.split('.').pop()?.toUpperCase() || 
+                               'FILE'}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Click to view
+                            </p>
+                          </div>
                         </div>
                       )}
                       
@@ -925,7 +932,7 @@ export default function ProjectFilesPage() {
                     </div>
                     
                     {/* File Info */}
-                    <div className="space-y-2">
+                    <div className="p-4 space-y-3">
                       <div>
                         <p 
                           className="font-semibold text-sm text-gray-900 truncate" 
@@ -941,63 +948,76 @@ export default function ProjectFilesPage() {
                       </div>
                       
                       {/* Metadata Grid */}
-                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-100">
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <BarChart3 className="h-3 w-3" />
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <BarChart3 className="h-3.5 w-3.5 text-gray-500" />
                           <span className="font-medium">{formatFileSize(file.file_size)}</span>
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-500">
-                          <Calendar className="h-3 w-3" />
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                          <Calendar className="h-3.5 w-3.5 text-gray-500" />
                           <span>{new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                         </div>
                       </div>
                       
                       {/* Uploader Info */}
                       <div className="flex items-center gap-2 text-xs text-gray-600 pt-2 border-t border-gray-100">
-                        <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                          <div className="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-medium text-blue-600">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <span className="text-xs font-semibold text-white">
                               {(file.uploaded_by_user?.full_name || 'U')[0].toUpperCase()}
                             </span>
                           </div>
-                          <span className="truncate">{file.uploaded_by_user?.full_name || 'Unknown'}</span>
+                          <span className="truncate font-medium">{file.uploaded_by_user?.full_name || 'Unknown'}</span>
                         </div>
-                        <Badge variant="outline" className="text-xs capitalize">
+                        <Badge variant="secondary" className="text-xs capitalize font-medium">
                           {file.uploaded_by_user?.role || 'user'}
                         </Badge>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  // List View
-                  <div className="flex items-center gap-4">
+                  // Professional List View
+                  <div className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
                     <div className="flex-shrink-0">
                       {getFileIcon(file.file_type)}
                     </div>
                     
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm text-gray-900 truncate">
+                        <p className="font-semibold text-sm text-gray-900 truncate">
                           {file.original_name}
                         </p>
                         <Badge variant="secondary" className="text-xs">
-                          {file.category}
+                          {getCategoryIcon(file.category)}
+                          <span className="ml-1 capitalize">{file.category}</span>
                         </Badge>
                       </div>
                       {file.description && (
-                        <p className="text-xs text-gray-600 truncate">
+                        <p className="text-xs text-gray-600 truncate mt-1">
                           {file.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 text-xs text-gray-500 mt-1">
-                        <span>{formatFileSize(file.file_size)}</span>
-                        <span>{new Date(file.created_at).toLocaleDateString()}</span>
-                        <span>{file.uploaded_by_user?.full_name || 'Unknown'}</span>
+                      <div className="flex items-center gap-4 text-xs text-gray-600 mt-2">
+                        <span className="flex items-center gap-1">
+                          <BarChart3 className="h-3 w-3" />
+                          {formatFileSize(file.file_size)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(file.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {file.uploaded_by_user?.full_name || 'Unknown'}
+                        </span>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {file.uploaded_by_user?.role || 'user'}
+                        </Badge>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => window.open(file.file_url, '_blank')}>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => window.open(file.file_url, '_blank')} title="View file">
                         <Eye className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => {
@@ -1005,10 +1025,16 @@ export default function ProjectFilesPage() {
                         a.href = file.file_url
                         a.download = file.original_name
                         a.click()
-                      }}>
+                      }} title="Download file">
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(file)}>
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        navigator.clipboard.writeText(file.file_url)
+                        toast.success('File URL copied to clipboard')
+                      }} title="Copy link">
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(file)} className="text-red-600 hover:text-red-700 hover:bg-red-50" title="Delete file">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
