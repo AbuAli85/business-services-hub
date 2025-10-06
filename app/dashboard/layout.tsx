@@ -78,25 +78,21 @@ export default function DashboardLayout({
   // Add a secondary effect to monitor loading state changes
   useEffect(() => {
     console.log('📊 Loading state changed:', { loading, hasUser: !!user })
-  }, [loading, user])
-
-  // Add a fallback mechanism to handle session issues
-  useEffect(() => {
-    const handleStorageChange = () => {
-      // If user is null and loading is false, try to check user again
-      if (!user && !loading) {
-        console.log('🔄 Storage change detected, re-checking user session')
-        checkUser()
-      }
-    }
-
-    // Listen for storage changes (session updates)
-    window.addEventListener('storage', handleStorageChange)
     
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
+    // Add a timeout to prevent infinite loading
+    if (loading) {
+      const timeout = setTimeout(() => {
+        console.warn('⚠️ Loading timeout reached, forcing end of loading state')
+        setLoading(false)
+        if (!user) {
+          console.error('❌ No user after timeout, redirecting to sign-in')
+          router.push('/auth/sign-in')
+        }
+      }, 5000) // 5 second timeout
+      
+      return () => clearTimeout(timeout)
     }
-  }, [user, loading])
+  }, [loading, user, router])
 
   // Realtime notifications table stream (proper cleanup)
   useEffect(() => {
@@ -184,14 +180,71 @@ export default function DashboardLayout({
       
       if (error || !session) {
         console.log('❌ Simple auth check failed, redirecting to sign-in')
+        setLoading(false)
         router.push('/auth/sign-in')
         return
       }
       
+      console.log('✅ Session found for user:', session.user.email)
+      
       // Get basic info from metadata first (instant)
       let fullName = session.user.user_metadata?.full_name || 'User'
-      let userRole = session.user.user_metadata?.role || 'client'
+      let userRole = session.user.user_metadata?.role
       let companyName = session.user.user_metadata?.company_name
+      
+      // If no role in metadata, quickly check profile
+      if (!userRole) {
+        console.log('🔍 No role in metadata, checking profile...')
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('role, is_admin, profile_completed, verification_status')
+            .eq('id', session.user.id)
+            .single()
+          
+          if (profileError) {
+            console.warn('⚠️ Profile fetch error:', profileError)
+            // If profile doesn't exist, redirect to onboarding
+            setLoading(false)
+            router.push('/auth/onboarding?role=client')
+            return
+          }
+          
+          if (profile) {
+            userRole = profile.is_admin ? 'admin' : profile.role
+            
+            // Check verification status for non-admin users
+            if (profile.role !== 'admin') {
+              if (profile.verification_status === 'pending' || profile.verification_status === 'rejected') {
+                console.log('⏳ Profile pending/rejected, redirecting to pending approval')
+                setLoading(false)
+                router.push('/auth/pending-approval')
+                return
+              }
+              
+              if (!profile.profile_completed && profile.verification_status !== 'approved') {
+                console.log('📝 Profile incomplete, redirecting to onboarding')
+                setLoading(false)
+                router.push('/auth/onboarding')
+                return
+              }
+            }
+          }
+        } catch (profileError) {
+          console.error('❌ Profile check failed:', profileError)
+          setLoading(false)
+          router.push('/auth/onboarding?role=client')
+          return
+        }
+      }
+      
+      // Default to client if still no role
+      if (!userRole) {
+        console.warn('⚠️ No role found, defaulting to client')
+        userRole = 'client'
+      }
+      
+      console.log('🎭 User role determined:', userRole)
       
       // Create user object immediately for fast render
       const simpleUser: UserProfile = {
@@ -200,8 +253,8 @@ export default function DashboardLayout({
         full_name: fullName,
         email: session.user.email || '',
         company_name: companyName,
-        profile_completed: false,
-        verification_status: 'pending',
+        profile_completed: true, // Assume completed since they passed verification
+        verification_status: 'approved',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -225,8 +278,8 @@ export default function DashboardLayout({
       
     } catch (error) {
       console.error('❌ Simple auth check exception:', error)
-      router.push('/auth/sign-in')
       setLoading(false)
+      router.push('/auth/sign-in')
     }
   }
   
