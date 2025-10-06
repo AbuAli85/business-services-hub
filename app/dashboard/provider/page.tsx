@@ -41,10 +41,7 @@ export default function ProviderDashboard() {
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarnings[]>([])
 
   useEffect(() => {
-    // Clear redirect flag when provider dashboard loads
-    console.log('🏠 Provider dashboard mounted, clearing redirect flag')
-    sessionStorage.removeItem('dashboard_redirected')
-    
+    console.log('🏠 Provider dashboard mounted, loading data')
     loadUserAndData()
   }, [])
 

@@ -47,33 +47,8 @@ export default function DashboardPage() {
     checkAuth()
   }, [])
 
-  // Once we know the user's role, send them to their role-specific dashboard
-  useEffect(() => {
-    if (!user) return
-    if (!userRole) return
-    
-    // Prevent redirect loop - only redirect once
-    const hasRedirected = sessionStorage.getItem('dashboard_redirected')
-    if (hasRedirected === 'true') {
-      console.log('⚠️ Already redirected, skipping to prevent loop')
-      return
-    }
-    
-    // Redirect providers and clients to their dedicated dashboards
-    if (userRole === 'provider') {
-      console.log('🔄 Redirecting provider to /dashboard/provider')
-      sessionStorage.setItem('dashboard_redirected', 'true')
-      router.replace('/dashboard/provider')
-      return
-    }
-    if (userRole === 'client') {
-      console.log('🔄 Redirecting client to /dashboard/client')
-      sessionStorage.setItem('dashboard_redirected', 'true')
-      router.replace('/dashboard/client')
-      return
-    }
-    // Admins remain on this page (admin overview)
-  }, [user, userRole, router])
+  // DISABLED: Redirect logic moved to checkAuth() to prevent useEffect loops
+  // The redirect now happens immediately when role is detected
 
   // Set up real-time refresh every 30 seconds
   useEffect(() => {
@@ -163,6 +138,21 @@ export default function DashboardPage() {
         
         console.log('🎭 Final role:', role)
         setUserRole(role)
+        
+        // Redirect immediately based on role (prevents useEffect loops)
+        if (role === 'provider') {
+          console.log('🔄 Redirecting provider to /dashboard/provider')
+          router.replace('/dashboard/provider')
+          return null // Return null to indicate redirect happened
+        }
+        if (role === 'client') {
+          console.log('🔄 Redirecting client to /dashboard/client')
+          router.replace('/dashboard/client')
+          return null // Return null to indicate redirect happened
+        }
+        
+        // Admin stays on this page
+        console.log('👑 Admin user, staying on main dashboard')
         return role
       }
       
@@ -314,6 +304,19 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
+  // If user is provider or client, don't render this page (they should be redirected)
+  if (userRole === 'provider' || userRole === 'client') {
+    console.log(`⏭️ ${userRole} detected, should be on dedicated dashboard page`)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Redirecting to {userRole} dashboard...</p>
+        </div>
       </div>
     )
   }
