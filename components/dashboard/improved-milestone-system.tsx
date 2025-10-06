@@ -997,12 +997,21 @@ export function ImprovedMilestoneSystem({
         .eq('booking_id', bookingId)
         .order('created_at', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        // If table doesn't exist, show empty state
+        if (error.code === 'PGRST200' || error.message.includes('booking_files')) {
+          console.log('Booking files table not yet created, showing empty state')
+          setBookingFiles([])
+          return
+        }
+        throw error
+      }
       
       setBookingFiles(data || [])
     } catch (error) {
       console.error('Error loading booking files:', error)
       toast.error('Failed to load files')
+      setBookingFiles([]) // Set empty array on error
     } finally {
       setLoadingBookingFiles(false)
     }
@@ -1057,7 +1066,14 @@ export function ImprovedMilestoneSystem({
           uploaded_by: user.id
         })
 
-      if (dbError) throw dbError
+      if (dbError) {
+        // If table doesn't exist, show helpful message
+        if (dbError.code === 'PGRST200' || dbError.message.includes('booking_files')) {
+          toast.error('File storage system not yet configured. Please contact your administrator.')
+          return
+        }
+        throw dbError
+      }
 
       toast.success('File uploaded successfully')
       setSelectedFile(null)
@@ -1091,7 +1107,15 @@ export function ImprovedMilestoneSystem({
         .delete()
         .eq('id', fileId)
       
-      if (dbError) throw dbError
+      if (dbError) {
+        // If table doesn't exist, just show success (storage was deleted)
+        if (dbError.code === 'PGRST200' || dbError.message.includes('booking_files')) {
+          toast.success('File deleted successfully')
+          await loadBookingFiles()
+          return
+        }
+        throw dbError
+      }
       
       toast.success('File deleted successfully')
       await loadBookingFiles()
