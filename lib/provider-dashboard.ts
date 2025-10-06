@@ -307,22 +307,61 @@ export class ProviderDashboardService {
 
   static async getAllDashboardData(providerId: string) {
     try {
-      const [stats, recentBookings, topServices, monthlyEarnings] = await Promise.all([
-        this.getDashboardStats(providerId),
-        this.getRecentBookings(providerId, 10),
-        this.getTopServices(providerId, 5),
-        this.getMonthlyEarnings(providerId, 12)
+      console.log('📊 Provider dashboard service: Loading all data for', providerId)
+      
+      // Add individual timeouts to each query to prevent one slow query from blocking everything
+      const timeoutPromise = (promise: Promise<any>, name: string, timeoutMs: number) => {
+        return Promise.race([
+          promise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error(`${name} timeout after ${timeoutMs}ms`)), timeoutMs)
+          )
+        ])
+      }
+      
+      const [stats, recentBookings, topServices, monthlyEarnings] = await Promise.allSettled([
+        timeoutPromise(this.getDashboardStats(providerId), 'Stats', 5000),
+        timeoutPromise(this.getRecentBookings(providerId, 10), 'Recent Bookings', 5000),
+        timeoutPromise(this.getTopServices(providerId, 5), 'Top Services', 5000),
+        timeoutPromise(this.getMonthlyEarnings(providerId, 12), 'Monthly Earnings', 5000)
       ])
 
+      // Extract values from settled promises, using defaults if failed
+      const defaultStats: ProviderDashboardStats = {
+        total_earnings: 0,
+        monthly_earnings: 0,
+        active_bookings: 0,
+        active_services: 0,
+        avg_rating: 0,
+        response_rate: 0,
+        completion_rate: 0,
+        monthly_growth: 0
+      }
+
       return {
-        stats,
-        recentBookings,
-        topServices,
-        monthlyEarnings
+        stats: stats.status === 'fulfilled' ? stats.value : defaultStats,
+        recentBookings: recentBookings.status === 'fulfilled' ? recentBookings.value : [],
+        topServices: topServices.status === 'fulfilled' ? topServices.value : [],
+        monthlyEarnings: monthlyEarnings.status === 'fulfilled' ? monthlyEarnings.value : []
       }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
-      throw error
+      console.error('❌ Error fetching dashboard data:', error)
+      // Return empty data instead of throwing
+      return {
+        stats: {
+          total_earnings: 0,
+          monthly_earnings: 0,
+          active_bookings: 0,
+          active_services: 0,
+          avg_rating: 0,
+          response_rate: 0,
+          completion_rate: 0,
+          monthly_growth: 0
+        },
+        recentBookings: [],
+        topServices: [],
+        monthlyEarnings: []
+      }
     }
   }
 }

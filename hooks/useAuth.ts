@@ -77,56 +77,88 @@ export function useAuth() {
       console.log('🔐 Initializing user session...')
       const supabase = await getSupabaseClient()
       
-      // First try to get session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('❌ Session error:', sessionError)
-        setState({
-          user: null,
-          userRole: null,
-          loading: false,
-          error: sessionError.message
+      // Add a global timeout for the entire initialization
+      const initTimeout = setTimeout(() => {
+        console.error('❌ TIMEOUT: User initialization taking too long, forcing completion')
+        setState(prev => {
+          if (prev.loading) {
+            return {
+              ...prev,
+              loading: false,
+              error: 'Session initialization timeout'
+            }
+          }
+          return prev
         })
-        return
-      }
+      }, 4000) // 4 second global timeout
+      
+      try {
+        // First try to get session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError)
+          clearTimeout(initTimeout)
+          setState({
+            user: null,
+            userRole: null,
+            loading: false,
+            error: sessionError.message
+          })
+          return
+        }
 
-      if (!session?.user) {
-        console.log('⚠️ No active session found')
+        if (!session?.user) {
+          console.log('⚠️ No active session found')
+          clearTimeout(initTimeout)
+          setState({
+            user: null,
+            userRole: null,
+            loading: false,
+            error: null
+          })
+          return
+        }
+
+        const currentUser = session.user
+        console.log('👤 User found:', currentUser.email)
+        
+        // Determine user role from metadata first (instant)
+        let detectedRole = currentUser.user_metadata?.role
+        console.log('📋 Role from metadata:', detectedRole)
+        
+        // If no role in metadata, try profile (with timeout)
+        if (!detectedRole) {
+          console.log('🔍 Attempting to fetch role from profile...')
+          const rolePromise = fetchUserRole(currentUser.id, supabase)
+          const roleTimeout = new Promise(resolve => setTimeout(() => resolve(null), 2000))
+          
+          detectedRole = await Promise.race([rolePromise, roleTimeout]) as string | null
+          
+          if (!detectedRole) {
+            console.warn('⚠️ Profile role fetch failed/timed out')
+          }
+        }
+        
+        // Default to client if no role found
+        if (!detectedRole) {
+          console.warn('⚠️ No role found anywhere, defaulting to client')
+          detectedRole = 'client'
+        }
+        
+        console.log('✅ Final role:', detectedRole)
+        
+        clearTimeout(initTimeout)
         setState({
-          user: null,
-          userRole: null,
+          user: currentUser,
+          userRole: detectedRole as 'client' | 'provider' | 'admin',
           loading: false,
           error: null
         })
-        return
+      } catch (innerError) {
+        clearTimeout(initTimeout)
+        throw innerError
       }
-
-      const currentUser = session.user
-      console.log('👤 User found:', currentUser.email)
-      
-      // Determine user role from metadata first, then profile
-      let detectedRole = currentUser.user_metadata?.role
-      console.log('📋 Role from metadata:', detectedRole)
-      
-      if (!detectedRole) {
-        detectedRole = await fetchUserRole(currentUser.id, supabase)
-      }
-      
-      // Default to client if no role found
-      if (!detectedRole) {
-        console.warn('⚠️ No role found, defaulting to client')
-        detectedRole = 'client'
-      }
-      
-      console.log('✅ Final role:', detectedRole)
-      
-      setState({
-        user: currentUser,
-        userRole: detectedRole as 'client' | 'provider' | 'admin',
-        loading: false,
-        error: null
-      })
       
     } catch (error) {
       console.error('❌ User initialization error:', error)

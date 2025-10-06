@@ -98,37 +98,67 @@ export default function DashboardPage() {
 
   async function checkAuth() {
     try {
+      console.log('🔐 Main dashboard: Checking auth...')
       const supabase = await getSupabaseClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
       
-      if (error || !user) {
-        router.push('/auth/sign-in')
-        return
-      }
+      // Add timeout to entire auth check
+      const authTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+      )
+      
+      const authCheck = async () => {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error || !user) {
+          console.log('❌ No user found, redirecting to sign-in')
+          router.push('/auth/sign-in')
+          return null
+        }
 
-      setUser(user)
-      
-      // Prefer role from profiles table when available; fallback to metadata (with timeout)
-      try {
-        const profilePromise = supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
+        console.log('✅ User found:', user.email)
+        setUser(user)
         
-        const profileTimeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Profile check timeout')), 3000)
-        )
+        // Prefer role from metadata first (instant), then try profiles table
+        let role = user.user_metadata?.role as string
+        console.log('📋 Role from metadata:', role)
         
-        const profileResult = await Promise.race([profilePromise, profileTimeout]) as { data: any }
-        const role = (profileResult.data?.role as string) || (user.user_metadata?.role as string) || 'client'
+        if (!role) {
+          console.log('🔍 No role in metadata, checking profiles table...')
+          try {
+            const profilePromise = supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', user.id)
+              .single()
+            
+            const profileTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Profile check timeout')), 2000)
+            )
+            
+            const profileResult = await Promise.race([profilePromise, profileTimeout]) as { data: any }
+            role = profileResult.data?.role
+            console.log('✅ Role from profile:', role)
+          } catch (err) {
+            console.warn('⚠️ Profile role fetch failed, using default:', err)
+          }
+        }
+        
+        // Default to client
+        if (!role) {
+          console.warn('⚠️ No role found, defaulting to client')
+          role = 'client'
+        }
+        
+        console.log('🎭 Final role:', role)
         setUserRole(role)
-      } catch {
-        const role = (user.user_metadata?.role as string) || 'client'
-        setUserRole(role)
+        return role
       }
+      
+      await Promise.race([authCheck(), authTimeout])
+      
     } catch (error) {
-      console.error('Auth check failed:', error)
+      console.error('❌ Auth check failed:', error)
+      // On timeout or error, try to use cached auth or redirect
       router.push('/auth/sign-in')
     }
   }
