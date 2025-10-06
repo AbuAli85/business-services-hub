@@ -196,18 +196,34 @@ export default function DashboardLayout({
       if (!userRole) {
         console.log('🔍 No role in metadata, checking profile...')
         try {
-          const { data: profile, error: profileError } = await supabase
+          // Add timeout to prevent hanging on RLS errors
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+          )
+          
+          const fetchPromise = supabase
             .from('profiles')
             .select('role, is_admin, profile_completed, verification_status')
             .eq('id', session.user.id)
             .single()
           
+          const result = await Promise.race([fetchPromise, timeoutPromise]) as any
+          const { data: profile, error: profileError } = result
+          
           if (profileError) {
             console.warn('⚠️ Profile fetch error:', profileError)
-            // If profile doesn't exist, redirect to onboarding
-            setLoading(false)
-            router.push('/auth/onboarding?role=client')
-            return
+            
+            // Check if it's a 500 error (RLS issue)
+            if (profileError.message?.includes('500') || profileError.code === 'PGRST301') {
+              console.error('❌ RLS Policy Error - database needs fixing. Defaulting to client role.')
+              // Default to client and let them in anyway
+              userRole = 'client'
+            } else {
+              // If profile doesn't exist, redirect to onboarding
+              setLoading(false)
+              router.push('/auth/onboarding?role=client')
+              return
+            }
           }
           
           if (profile) {
@@ -230,11 +246,19 @@ export default function DashboardLayout({
               }
             }
           }
-        } catch (profileError) {
+        } catch (profileError: any) {
           console.error('❌ Profile check failed:', profileError)
-          setLoading(false)
-          router.push('/auth/onboarding?role=client')
-          return
+          
+          // If it's a timeout or 500 error, default to client and continue
+          if (profileError?.message?.includes('timeout') || profileError?.message?.includes('500')) {
+            console.warn('⚠️ Profile check timed out or failed, defaulting to client role')
+            userRole = 'client'
+          } else {
+            // For other errors, redirect to onboarding
+            setLoading(false)
+            router.push('/auth/onboarding?role=client')
+            return
+          }
         }
       }
       

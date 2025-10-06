@@ -29,14 +29,29 @@ export function useAuth() {
   const fetchUserRole = useCallback(async (userId: string, supabase: any) => {
     try {
       console.log('🔍 Fetching role for user:', userId)
-      const { data: profile, error: profileError } = await supabase
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+      )
+      
+      const fetchPromise = supabase
         .from('profiles')
         .select('role, is_admin')
         .eq('id', userId)
         .single()
       
+      const { data: profile, error: profileError } = await Promise.race([
+        fetchPromise,
+        timeoutPromise
+      ]) as any
+      
       if (profileError) {
         console.warn('⚠️ Profile fetch error:', profileError)
+        // If it's a 500 error, it's likely an RLS policy issue
+        if (profileError.code === 'PGRST301' || profileError.message?.includes('500')) {
+          console.error('❌ RLS Policy Error detected - please run the fix-rls script')
+        }
         return null
       }
       
