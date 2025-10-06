@@ -51,12 +51,24 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return
     if (!userRole) return
+    
+    // Prevent redirect loop - only redirect once
+    const hasRedirected = sessionStorage.getItem('dashboard_redirected')
+    if (hasRedirected === 'true') {
+      console.log('⚠️ Already redirected, skipping to prevent loop')
+      return
+    }
+    
     // Redirect providers and clients to their dedicated dashboards
     if (userRole === 'provider') {
+      console.log('🔄 Redirecting provider to /dashboard/provider')
+      sessionStorage.setItem('dashboard_redirected', 'true')
       router.replace('/dashboard/provider')
       return
     }
     if (userRole === 'client') {
+      console.log('🔄 Redirecting client to /dashboard/client')
+      sessionStorage.setItem('dashboard_redirected', 'true')
       router.replace('/dashboard/client')
       return
     }
