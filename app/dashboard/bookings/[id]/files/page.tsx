@@ -384,12 +384,13 @@ export default function ProjectFilesPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="sm"
-            onClick={() => router.back()}
+            onClick={() => router.push(`/dashboard/bookings/${bookingId}`)}
+            className="hover:bg-gray-100"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            Back to Booking
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Project Files</h1>
@@ -610,19 +611,46 @@ export default function ProjectFilesPage() {
 
       {/* Files Display */}
       {filteredFiles.length === 0 ? (
-        <Card>
+        <Card className="border-2 border-dashed border-gray-300">
           <CardContent className="p-12 text-center">
-            <FolderOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No files found</h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm || selectedCategory !== 'all' 
-                ? 'No files match your current filters.' 
-                : 'Upload your first file to get started.'}
-            </p>
-            <Button onClick={() => setShowUploadDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Upload File
-            </Button>
+            <div className="max-w-md mx-auto">
+              <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {searchTerm || selectedCategory !== 'all' ? 'No files match your filters' : 'No files uploaded yet'}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {searchTerm || selectedCategory !== 'all' 
+                  ? 'Try adjusting your search or filter criteria to find what you\'re looking for.' 
+                  : 'Start uploading project files, documents, images, contracts, and deliverables. All files are securely stored and organized by category.'}
+              </p>
+              
+              {!(searchTerm || selectedCategory !== 'all') && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-900">
+                      <p className="font-medium mb-2">You can upload:</p>
+                      <ul className="space-y-1 text-blue-800">
+                        <li>• Project documents and specifications</li>
+                        <li>• Design files and images</li>
+                        <li>• Contracts and agreements</li>
+                        <li>• Final deliverables and outputs</li>
+                        <li>• Max file size: 50MB</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <Button 
+                onClick={() => setShowUploadDialog(true)}
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Upload Your First File
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
