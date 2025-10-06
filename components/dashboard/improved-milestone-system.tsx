@@ -256,49 +256,82 @@ export function ImprovedMilestoneSystem({
       // Fetch comments and files for all tasks
       const milestonesWithDetails = await Promise.all((data || []).map(async (milestone) => {
         const tasksWithDetails = await Promise.all((milestone.tasks || []).map(async (task) => {
-          // Fetch comments for this task
-          const { data: comments } = await supabase
-            .from('task_comments')
-            .select(`
-              *,
-              created_by_user:created_by (
-                id,
-                full_name,
-                avatar_url,
-                role
-              )
-            `)
-            .eq('task_id', task.id)
-            .order('created_at', { ascending: true })
+          // Fetch comments for this task (with error handling)
+          let comments: any[] = []
+          try {
+            const { data: commentsData, error: commentsError } = await supabase
+              .from('task_comments')
+              .select(`
+                *,
+                created_by_user:created_by (
+                  id,
+                  full_name,
+                  avatar_url,
+                  role
+                )
+              `)
+              .eq('task_id', task.id)
+              .order('created_at', { ascending: true })
+            
+            if (!commentsError) {
+              comments = commentsData || []
+            } else {
+              console.warn('Could not load comments for task:', task.id, commentsError)
+            }
+          } catch (err) {
+            console.warn('Error fetching comments:', err)
+          }
 
-          // Fetch files for this task
-          const { data: files } = await supabase
-            .from('task_files')
-            .select(`
-              *,
-              uploaded_by_user:uploaded_by (
-                id,
-                full_name,
-                avatar_url,
-                role
-              )
-            `)
-            .eq('task_id', task.id)
-            .order('created_at', { ascending: false })
+          // Fetch files for this task (with error handling)
+          let files: any[] = []
+          try {
+            const { data: filesData, error: filesError } = await supabase
+              .from('task_files')
+              .select(`
+                *,
+                uploaded_by_user:uploaded_by (
+                  id,
+                  full_name,
+                  avatar_url,
+                  role
+                )
+              `)
+              .eq('task_id', task.id)
+              .order('created_at', { ascending: false })
+            
+            if (!filesError) {
+              files = filesData || []
+            } else {
+              console.warn('Could not load files for task:', task.id, filesError)
+            }
+          } catch (err) {
+            console.warn('Error fetching files:', err)
+          }
 
-          // Fetch client approval for this task
-          const { data: approvals } = await supabase
-            .from('task_approvals')
-            .select('*')
-            .eq('task_id', task.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
+          // Fetch client approval for this task (with error handling)
+          let clientApproval: any = null
+          try {
+            const { data: approvalsData, error: approvalsError } = await supabase
+              .from('task_approvals')
+              .select('*')
+              .eq('task_id', task.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+            
+            if (!approvalsError) {
+              clientApproval = approvalsData?.[0] || null
+            } else {
+              console.warn('Could not load approvals for task:', task.id, approvalsError)
+            }
+          } catch (err) {
+            console.warn('Error fetching approvals:', err)
+          }
 
           return {
             ...task,
-            comments: comments || [],
-            files: files || [],
-            client_approval: approvals?.[0] || null
+            comments: comments,
+            files: files,
+            client_approval: clientApproval
           }
         }))
 
