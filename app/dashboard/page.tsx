@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, useRef } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
@@ -32,9 +32,12 @@ import UnifiedSearch, { useDebouncedValue } from '@/components/ui/unified-search
 
 export default function DashboardPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading, error, refresh } = useDashboardData()
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string>('client')
+  const hasCheckedAuth = useRef(false)
+  const isRedirecting = useRef(false)
   // Activity filters
   const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
   const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
@@ -44,6 +47,20 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    // Prevent multiple checkAuth calls
+    if (hasCheckedAuth.current) {
+      console.log('⏭️ Auth already checked, skipping')
+      return
+    }
+    
+    // Don't run if we're redirecting
+    if (isRedirecting.current) {
+      console.log('⏭️ Currently redirecting, skipping auth check')
+      return
+    }
+    
+    console.log('✅ First mount on /dashboard, running auth check')
+    hasCheckedAuth.current = true
     checkAuth()
   }, [])
 
@@ -142,11 +159,13 @@ export default function DashboardPage() {
         // Redirect immediately based on role (prevents useEffect loops)
         if (role === 'provider') {
           console.log('🔄 Redirecting provider to /dashboard/provider')
+          isRedirecting.current = true
           router.replace('/dashboard/provider')
           return null // Return null to indicate redirect happened
         }
         if (role === 'client') {
           console.log('🔄 Redirecting client to /dashboard/client')
+          isRedirecting.current = true
           router.replace('/dashboard/client')
           return null // Return null to indicate redirect happened
         }
