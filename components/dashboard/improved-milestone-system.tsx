@@ -176,7 +176,6 @@ export function ImprovedMilestoneSystem({
   // Professional features state
   const [showCommentsDialog, setShowCommentsDialog] = useState(false)
   const [showFilesDialog, setShowFilesDialog] = useState(false)
-  const [showBookingFilesDialog, setShowBookingFilesDialog] = useState(false)
   const [selectedTaskForComments, setSelectedTaskForComments] = useState<Task | null>(null)
   const [selectedTaskForFiles, setSelectedTaskForFiles] = useState<Task | null>(null)
   const [newComment, setNewComment] = useState('')
@@ -1125,11 +1124,6 @@ export function ImprovedMilestoneSystem({
     }
   }, [bookingId, loadBookingFiles])
 
-  // Open booking files dialog
-  const openBookingFilesDialog = useCallback(() => {
-    setShowBookingFilesDialog(true)
-    loadBookingFiles()
-  }, [loadBookingFiles])
 
   // Load milestones on mount
   useEffect(() => {
@@ -1212,7 +1206,7 @@ export function ImprovedMilestoneSystem({
             <div className="flex items-center gap-2">
               {/* Booking Files Button */}
               <Button
-                onClick={openBookingFilesDialog}
+                onClick={() => window.open(`/dashboard/bookings/${bookingId}/files`, '_blank')}
                 variant="outline"
                 className="border-purple-200 text-purple-700 hover:bg-purple-50"
               >
@@ -2220,236 +2214,6 @@ export function ImprovedMilestoneSystem({
         </DialogContent>
       </Dialog>
 
-      {/* Professional Booking Files Dialog */}
-      <Dialog open={showBookingFilesDialog} onOpenChange={setShowBookingFilesDialog}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Paperclip className="h-5 w-5" />
-              Project Files & Documents
-            </DialogTitle>
-            <DialogDescription>
-              Upload and manage all project-related files including documents, contracts, deliverables, and images.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-6">
-            {/* Upload Section */}
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-              <div className="text-center">
-                <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Upload New File</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  Upload documents, images, contracts, deliverables, or any project-related files
-                </p>
-                
-                <div className="space-y-4 max-w-md mx-auto">
-                  {/* File Category Selection */}
-                  <Select value={fileCategory} onValueChange={(value: any) => setFileCategory(value)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select file category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="documents">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Documents
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="images">
-                        <div className="flex items-center gap-2">
-                          {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                          <Image className="h-4 w-4" />
-                          Images
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="contracts">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Contracts
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="deliverables">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          Deliverables
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="other">
-                        <div className="flex items-center gap-2">
-                          <Paperclip className="h-4 w-4" />
-                          Other
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* File Upload */}
-                  <input
-                    type="file"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="hidden"
-                    id="booking-file-upload"
-                    accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.xlsx,.xls,.ppt,.pptx"
-                  />
-                  <label
-                    htmlFor="booking-file-upload"
-                    className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 w-full justify-center"
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Choose File
-                  </label>
-                  
-                  {selectedFile && (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                      <p className="text-sm font-medium text-gray-900">Selected: {selectedFile.name}</p>
-                      <p className="text-xs text-gray-500">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                      <p className="text-xs text-gray-500">Type: {selectedFile.type}</p>
-                      
-                      <Input
-                        value={fileDescription}
-                        onChange={(e) => setFileDescription(e.target.value)}
-                        placeholder="File description (optional)"
-                        className="mt-2"
-                      />
-                      
-                      <Button
-                        onClick={() => selectedFile && uploadBookingFile(selectedFile, fileCategory, fileDescription)}
-                        disabled={uploadingFile}
-                        className="mt-2 bg-green-600 hover:bg-green-700 w-full"
-                      >
-                        {uploadingFile ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Upload className="h-4 w-4 mr-2" />
-                        )}
-                        Upload File
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Files by Category */}
-            <div className="space-y-6">
-              {['documents', 'images', 'contracts', 'deliverables', 'other'].map((category) => {
-                const categoryFiles = bookingFiles.filter(f => f.category === category)
-                if (categoryFiles.length === 0 && !loadingBookingFiles) return null
-                
-                return (
-                  <div key={category} className="border rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      {category === 'documents' && <FileText className="h-5 w-5 text-blue-600" />}
-                      {category === 'images' && (
-                        // eslint-disable-next-line jsx-a11y/alt-text
-                        <Image className="h-5 w-5 text-green-600" />
-                      )}
-                      {category === 'contracts' && <FileText className="h-5 w-5 text-purple-600" />}
-                      {category === 'deliverables' && <CheckCircle className="h-5 w-5 text-orange-600" />}
-                      {category === 'other' && <Paperclip className="h-5 w-5 text-gray-600" />}
-                      <h4 className="font-medium text-gray-900 capitalize">
-                        {category} ({categoryFiles.length})
-                      </h4>
-                    </div>
-                    
-                    {loadingBookingFiles ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                        <span className="ml-2 text-gray-500">Loading files...</span>
-                      </div>
-                    ) : categoryFiles.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No {category} uploaded yet.</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {categoryFiles.map((file) => (
-                          <div key={file.id} className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {file.file_type.startsWith('image/') ? (
-                                  // eslint-disable-next-line jsx-a11y/alt-text
-                                  <Image className="h-8 w-8 text-blue-600 flex-shrink-0" />
-                                ) : (
-                                  <FileText className="h-8 w-8 text-gray-600 flex-shrink-0" />
-                                )}
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-medium text-sm text-gray-900 truncate">
-                                    {file.original_name}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {(file.file_size / 1024 / 1024).toFixed(2)} MB
-                                  </p>
-                                </div>
-                              </div>
-                              
-                              {userRole !== 'client' && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => deleteBookingFile(file.id, file.file_name)}
-                                  className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
-                                  title="Delete file"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              )}
-                            </div>
-                            
-                            {file.description && (
-                              <p className="text-xs text-gray-600 mb-2 line-clamp-2">{file.description}</p>
-                            )}
-                            
-                            <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                              <span>By {file.uploaded_by_user?.full_name}</span>
-                              <span>{new Date(file.created_at).toLocaleDateString()}</span>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(file.file_url, '_blank')}
-                                className="flex-1 h-8 text-xs"
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                View
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  const link = document.createElement('a')
-                                  link.href = file.file_url
-                                  link.download = file.original_name
-                                  link.click()
-                                }}
-                                className="flex-1 h-8 text-xs"
-                              >
-                                <Download className="h-3 w-3 mr-1" />
-                                Download
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-              
-              {bookingFiles.length === 0 && !loadingBookingFiles && (
-                <div className="text-center py-12 text-gray-500">
-                  <Paperclip className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No files uploaded yet</h3>
-                  <p className="text-sm">Upload your first project file to get started.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
