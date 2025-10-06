@@ -119,10 +119,12 @@ export default function ProjectFilesPage() {
 
   // Upload dialog state
   const [showUploadDialog, setShowUploadDialog] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [uploadCategory, setUploadCategory] = useState('documents')
   const [uploadDescription, setUploadDescription] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set())
 
   // Drag and drop handlers
   const handleDragEnter = (e: React.DragEvent) => {
@@ -147,11 +149,24 @@ export default function ProjectFilesPage() {
     e.stopPropagation()
     setIsDragging(false)
 
-    const droppedFile = e.dataTransfer.files?.[0]
-    if (droppedFile) {
-      setSelectedFile(droppedFile)
+    const droppedFiles = Array.from(e.dataTransfer.files || [])
+    if (droppedFiles.length > 0) {
+      setSelectedFiles(droppedFiles)
       setShowUploadDialog(true)
     }
+  }
+
+  // Handle file selection (supports multiple)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length > 0) {
+      setSelectedFiles(files)
+    }
+  }
+
+  // Remove a file from selection
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
   // Load files
@@ -261,23 +276,19 @@ export default function ProjectFilesPage() {
     setFilteredFiles(filtered)
   }, [files, searchTerm, selectedCategory, sortBy, sortOrder])
 
-  // Upload file with progress
+  // Upload multiple files with progress
   const handleUpload = async () => {
-    if (!selectedFile) return
+    if (selectedFiles.length === 0) return
 
     try {
       setUploading(true)
+      setUploadProgress(0)
+      
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
 
-      // Check file size (50MB limit)
-      if (selectedFile.size > 50 * 1024 * 1024) {
-        toast.error('File size must be less than 50MB')
-        return
-      }
-
-      // Validate file type
+      // Validate all files
       const allowedTypes = [
         'application/pdf',
         'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
@@ -286,77 +297,108 @@ export default function ProjectFilesPage() {
         'application/zip', 'application/x-zip-compressed',
         'text/plain', 'text/csv'
       ]
-      
-      if (!allowedTypes.includes(selectedFile.type)) {
-        toast.error('File type not allowed. Please upload PDF, images, documents, or spreadsheets.')
-        return
-      }
 
-      // Generate descriptive file name preserving original name
-      const timestamp = Date.now()
-      const randomId = Math.random().toString(36).substring(2, 8)
-      const sanitizedName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-      const fileName = `${timestamp}_${randomId}_${sanitizedName}`
-      const filePath = `booking-files/${bookingId}/${uploadCategory}/${fileName}`
-
-      toast.loading('Uploading file...', { id: 'upload-progress' })
-
-      // Upload to Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('booking-files')
-        .upload(filePath, selectedFile, {
-          cacheControl: '3600',
-          upsert: false
-        })
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        throw new Error('Failed to upload file to storage')
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('booking-files')
-        .getPublicUrl(filePath)
-
-      // Save file record with metadata
-      const { error: dbError } = await supabase
-        .from('booking_files')
-        .insert({
-          booking_id: bookingId,
-          file_name: fileName,
-          original_name: selectedFile.name,
-          file_size: selectedFile.size,
-          file_type: selectedFile.type,
-          file_url: publicUrl,
-          category: uploadCategory,
-          description: uploadDescription.trim() || null,
-          uploaded_by: user.id,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-
-      if (dbError) {
-        console.error('DB error:', dbError)
-        if (dbError.code === 'PGRST200' || dbError.message.includes('booking_files')) {
-          toast.error('File storage system not yet configured. Please contact your administrator.', { id: 'upload-progress' })
+      for (const file of selectedFiles) {
+        if (file.size > 50 * 1024 * 1024) {
+          toast.error(`"${file.name}" exceeds 50MB limit`)
           return
         }
-        throw new Error('Failed to save file record')
+        if (!allowedTypes.includes(file.type)) {
+          toast.error(`"${file.name}" file type not allowed`)
+          return
+        }
       }
 
-      toast.success(`File "${selectedFile.name}" uploaded successfully!`, { id: 'upload-progress' })
+      toast.loading(`Uploading ${selectedFiles.length} file(s)...`, { id: 'upload-progress' })
+
+      // Upload files one by one with progress
+      let uploaded = 0
+      const totalFiles = selectedFiles.length
+
+      for (const file of selectedFiles) {
+        try {
+          // Generate descriptive file name
+          const timestamp = Date.now()
+          const randomId = Math.random().toString(36).substring(2, 8)
+          const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+          const fileName = `${timestamp}_${randomId}_${sanitizedName}`
+          const filePath = `booking-files/${bookingId}/${uploadCategory}/${fileName}`
+
+          // Upload to storage
+          const { error: uploadError } = await supabase.storage
+            .from('booking-files')
+            .upload(filePath, file, {
+              cacheControl: '3600',
+              upsert: false
+            })
+
+          if (uploadError) {
+            console.error(`Upload error for ${file.name}:`, uploadError)
+            toast.error(`Failed to upload "${file.name}"`, { id: 'upload-progress' })
+            continue
+          }
+
+          // Get public URL
+          const { data: { publicUrl } } = supabase.storage
+            .from('booking-files')
+            .getPublicUrl(filePath)
+
+          // Save file record
+          const { error: dbError } = await supabase
+            .from('booking_files')
+            .insert({
+              booking_id: bookingId,
+              file_name: fileName,
+              original_name: file.name,
+              file_size: file.size,
+              file_type: file.type,
+              file_url: publicUrl,
+              category: uploadCategory,
+              description: uploadDescription.trim() || null,
+              uploaded_by: user.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+
+          if (dbError) {
+            console.error(`DB error for ${file.name}:`, dbError)
+            if (dbError.code !== 'PGRST200') {
+              toast.error(`Failed to save "${file.name}" record`, { id: 'upload-progress' })
+            }
+            continue
+          }
+
+          uploaded++
+          setUploadProgress(Math.round((uploaded / totalFiles) * 100))
+          
+        } catch (fileError) {
+          console.error(`Error uploading ${file.name}:`, fileError)
+        }
+      }
+
+      // Show result
+      if (uploaded === totalFiles) {
+        toast.success(`Successfully uploaded ${uploaded} file(s)!`, { id: 'upload-progress' })
+      } else if (uploaded > 0) {
+        toast.warning(`Uploaded ${uploaded} of ${totalFiles} files`, { id: 'upload-progress' })
+      } else {
+        toast.error('Failed to upload files', { id: 'upload-progress' })
+      }
+
       setShowUploadDialog(false)
-      setSelectedFile(null)
+      setSelectedFiles([])
       setUploadDescription('')
       setUploadCategory('documents')
+      setUploadProgress(0)
       await loadFiles()
+      
     } catch (error) {
-      console.error('Error uploading file:', error)
-      const message = error instanceof Error ? error.message : 'Failed to upload file'
+      console.error('Error uploading files:', error)
+      const message = error instanceof Error ? error.message : 'Failed to upload files'
       toast.error(message, { id: 'upload-progress' })
     } finally {
       setUploading(false)
+      setUploadProgress(0)
     }
   }
 
@@ -482,36 +524,59 @@ export default function ProjectFilesPage() {
                 className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all ${
                   isDragging 
                     ? 'border-blue-500 bg-blue-50' 
-                    : selectedFile 
+                    : selectedFiles.length > 0
                       ? 'border-green-500 bg-green-50' 
                       : 'border-gray-300 hover:border-gray-400'
                 }`}
               >
-                {selectedFile ? (
+                {selectedFiles.length > 0 ? (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-center gap-3">
-                      {getFileIcon(selectedFile.type)}
-                      <div className="text-left flex-1">
-                        <p className="font-semibold text-gray-900">{selectedFile.name}</p>
-                        <p className="text-sm text-gray-600">{formatFileSize(selectedFile.size)}</p>
-                      </div>
+                    <div className="max-h-60 overflow-y-auto space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
+                          {getFileIcon(file.type)}
+                          <div className="text-left flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">{file.name}</p>
+                            <p className="text-xs text-gray-600">{formatFileSize(file.size)}</p>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between text-sm pt-2 border-t">
+                      <p className="text-green-700 font-medium">
+                        ✓ {selectedFiles.length} file(s) ready to upload
+                      </p>
                       <Button 
-                        variant="ghost" 
+                        variant="outline" 
                         size="sm"
-                        onClick={() => setSelectedFile(null)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setSelectedFiles([])}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        Clear All
                       </Button>
                     </div>
-                    <p className="text-xs text-green-700 font-medium">✓ File ready to upload</p>
+                    
+                    {/* Upload Progress */}
+                    {uploading && uploadProgress > 0 && (
+                      <div className="space-y-2">
+                        <Progress value={uploadProgress} className="h-2" />
+                        <p className="text-xs text-gray-600">Uploading... {uploadProgress}%</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <Upload className={`h-12 w-12 mx-auto ${isDragging ? 'text-blue-600' : 'text-gray-400'}`} />
+                    <Upload className={`h-12 w-12 mx-auto ${isDragging ? 'text-blue-600 animate-bounce' : 'text-gray-400'}`} />
                     <div>
                       <p className="text-base font-medium text-gray-900 mb-1">
-                        {isDragging ? 'Drop file here' : 'Drag & drop your file here'}
+                        {isDragging ? 'Drop files here' : 'Drag & drop files here'}
                       </p>
                       <p className="text-sm text-gray-600">or</p>
                     </div>
@@ -524,13 +589,14 @@ export default function ProjectFilesPage() {
                       </Button>
                       <Input
                         type="file"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        multiple
+                        onChange={handleFileSelect}
                         className="hidden"
                         accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.zip,.txt,.csv"
                       />
                     </label>
                     <p className="text-xs text-gray-500 mt-2">
-                      Supported: PDF, Images, Documents, Spreadsheets, ZIP (Max 50MB)
+                      Supported: PDF, Images, Documents, Spreadsheets, ZIP • Max 50MB per file • Multiple files allowed
                     </p>
                   </div>
                 )}
@@ -597,35 +663,37 @@ export default function ProjectFilesPage() {
               {/* Actions */}
               <div className="flex justify-between items-center pt-2 border-t">
                 <div className="text-xs text-gray-600">
-                  {selectedFile && (
+                  {selectedFiles.length > 0 && (
                     <span>
-                      <span className="font-medium">{formatFileSize(selectedFile.size)}</span> will be uploaded to{' '}
-                      <span className="font-medium capitalize">{uploadCategory}</span>
+                      <span className="font-semibold">{selectedFiles.length} file(s)</span> •{' '}
+                      <span className="font-medium">{formatFileSize(selectedFiles.reduce((sum, f) => sum + f.size, 0))}</span> → {' '}
+                      <span className="font-medium capitalize text-blue-600">{uploadCategory}</span>
                     </span>
                   )}
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => {
                     setShowUploadDialog(false)
-                    setSelectedFile(null)
+                    setSelectedFiles([])
                     setUploadDescription('')
-                  }}>
+                    setUploadCategory('documents')
+                  }} disabled={uploading}>
                     Cancel
                   </Button>
                   <Button 
                     onClick={handleUpload} 
-                    disabled={!selectedFile || uploading}
+                    disabled={selectedFiles.length === 0 || uploading}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     {uploading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Uploading...
+                        Uploading {uploadProgress}%
                       </>
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Upload File
+                        Upload {selectedFiles.length > 0 ? `${selectedFiles.length} File(s)` : 'Files'}
                       </>
                     )}
                   </Button>
