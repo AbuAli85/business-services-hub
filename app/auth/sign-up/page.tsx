@@ -554,20 +554,22 @@ export default function SignUpPage() {
                   </div>
 
                   {/* Captcha - Only show if configured */}
-                  {process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">Security verification</span>
-                      </div>
-                      <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
-                      {errors.captcha && (
-                        <p className="text-sm text-red-500 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          {errors.captcha}
-                        </p>
-                      )}
-                    </div>
+                  <HCaptcha 
+                    key={captchaKey} 
+                    onVerify={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => {
+                      setCaptchaToken('')
+                      setErrors(prev => ({ ...prev, captcha: 'Verification failed. Please try again.' }))
+                    }}
+                    theme="light"
+                    showLabel={true}
+                  />
+                  {errors.captcha && (
+                    <p className="text-sm text-red-500 flex items-center gap-1 -mt-2">
+                      <AlertTriangle className="h-3 w-3" />
+                      {errors.captcha}
+                    </p>
                   )}
 
                   {/* Submit Button */}

@@ -319,12 +319,19 @@ export function validateSignupForm(formData: SignupFormData, captchaToken: strin
     errors.companyName = companyNameValidation.error!
   }
 
-  // Captcha validation (optional if not configured)
-  if (process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY) {
+  // Captcha validation (only required if site key is configured)
+  const hasCaptchaKey = typeof window !== 'undefined' 
+    ? !!process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY 
+    : false
+    
+  if (hasCaptchaKey && captchaToken) {
     const captchaValidation = validateCaptcha(captchaToken)
     if (!captchaValidation.isValid) {
       errors.captcha = captchaValidation.error!
     }
+  } else if (hasCaptchaKey && !captchaToken) {
+    // Only show error if captcha is configured but not completed
+    errors.captcha = 'Please complete the security verification'
   }
 
   // Additional warnings

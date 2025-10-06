@@ -267,11 +267,6 @@ function SignInForm() {
                 className="transition-all duration-200 focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
-            {/* hCaptcha */}
-            <div className="mt-2">
-              <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
-            </div>
             
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -308,6 +303,15 @@ function SignInForm() {
                 </Button>
               </div>
             </div>
+
+            {/* hCaptcha - Only show if configured */}
+            <HCaptcha 
+              key={captchaKey} 
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+              theme="light"
+              showLabel={true}
+            />
             
             <Button
               type="button"
