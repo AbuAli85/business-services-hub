@@ -184,20 +184,20 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
           
           // Enrich invoice data with additional calculations
           const enrichedInvoices = invoicesData.map((invoice: any) => {
-        // Calculate due date and overdue status
-        const dueDate = invoice.due_date || (() => {
-          const createdDate = new Date(invoice.created_at)
-          createdDate.setDate(createdDate.getDate() + 30) // 30 days default
-          return createdDate.toISOString()
-        })()
+            // Calculate due date and overdue status
+            const dueDate = invoice.due_date || (() => {
+              const createdDate = new Date(invoice.created_at)
+              createdDate.setDate(createdDate.getDate() + 30) // 30 days default
+              return createdDate.toISOString()
+            })()
 
-        const isOverdue = invoice.status === 'issued' && new Date(dueDate) < new Date()
+            const isOverdue = invoice.status === 'issued' && new Date(dueDate) < new Date()
 
-        return {
-          ...invoice,
-          serviceTitle: invoice.service_title || 'Service',
-          clientName: invoice.client_name || 'Unknown Client',
-          providerName: invoice.provider_name || 'Unknown Provider',
+            return {
+              ...invoice,
+              serviceTitle: invoice.service_title || 'Service',
+              clientName: invoice.client_name || 'Unknown Client',
+              providerName: invoice.provider_name || 'Unknown Provider',
           clientEmail: invoice.client_email,
           providerEmail: invoice.provider_email,
           clientPhone: invoice.client_phone,

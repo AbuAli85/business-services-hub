@@ -41,7 +41,7 @@ export function PerformanceMonitor() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const realtimeStats = useRealtimeStats()
 
-  // Fetch performance metrics from real monitoring API
+  // Fetch performance metrics from real monitoring API (ONLY ON MOUNT)
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
@@ -62,9 +62,7 @@ export function PerformanceMonitor() {
     }
 
     fetchMetrics()
-    const interval = setInterval(fetchMetrics, 30000) // Update every 30 seconds
-
-    return () => clearInterval(interval)
+    // REMOVED: Auto-refresh interval - only load once on mount
   }, [realtimeStats])
 
   const handleRefresh = async () => {

@@ -531,38 +531,17 @@ export default function EnhancedMessagesThread({
   }
 
   const setupPolling = () => {
-    // Only log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 Setting up message polling as fallback')
+    // DISABLED: Auto-polling removed to prevent continuous loading
+    // Messages will only load on user interaction or realtime updates
+    console.log('📡 Message polling disabled - using realtime only')
+    
+    // Only show toast if realtime is not working
+    if (!realtimeWorking) {
+      toast('Using realtime updates only', { 
+        duration: 3000,
+        icon: '📡'
+      })
     }
-    clearPolling() // Clear any existing polling
-    
-    const interval = setInterval(async () => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📡 Polling for new messages...')
-      }
-      try {
-        await loadMessages()
-        
-        // Try to reconnect to real-time every 30 seconds while polling
-        if (!realtimeWorking && Math.random() < 0.1) { // 10% chance every poll
-          if (process.env.NODE_ENV === 'development') {
-            console.log('🔄 Attempting real-time reconnection...')
-          }
-          setupRealtime()
-        }
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.error('❌ Polling error:', error)
-        }
-      }
-    }, 5000) // Poll every 5 seconds (less aggressive)
-    
-    setPollingInterval(interval)
-    toast('Using message polling (refresh every 5s)', { 
-      duration: 3000,
-      icon: '🔄'
-    })
   }
 
   const clearPolling = () => {

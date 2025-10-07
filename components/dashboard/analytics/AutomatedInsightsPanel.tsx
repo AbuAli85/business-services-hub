@@ -90,6 +90,11 @@ const AutomatedInsightsPanel: React.FC = () => {
     }
   };
 
+  // Load insights only once on mount - no auto-refresh
+  useEffect(() => {
+    fetchRecentInsights();
+  }, []);
+
   const generateInsights = async () => {
     setGenerating(true);
     try {

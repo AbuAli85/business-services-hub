@@ -105,7 +105,7 @@ export default function ClientDashboard() {
     }
   }, [])
 
-  // Real-time updates (only what we actually need)
+  // Real-time updates (ONLY for critical updates, not continuous refresh)
   useEffect(() => {
     if (!user?.id) return
 
@@ -113,15 +113,16 @@ export default function ClientDashboard() {
 
     ;(async () => {
       try {
+        // Only subscribe to booking status changes, not all data refreshes
         const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, () => {
+          // Only refresh if there are actual changes, not on every update
+          console.log('📡 Booking update received, refreshing data...')
           fetchAllClientData(user.id)
         })
         subscriptionKeys.push(`bookings:${user.id}`)
 
-        const suggestionsSubscription = await realtimeManager.subscribeToServiceSuggestions(user.id, () => {
-          fetchServiceSuggestions(user.id)
-        })
-        subscriptionKeys.push(`suggestions:${user.id}`)
+        // Remove service suggestions subscription to reduce load
+        // Service suggestions can be loaded manually when needed
       } catch (error) {
         logger.warn('Error setting up realtime subscriptions:', error)
       }
