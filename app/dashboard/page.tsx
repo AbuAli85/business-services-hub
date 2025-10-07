@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasCheckedAuth = useRef(false)
+  const hasTriggeredRedirect = useRef(false)
   
   // Only load dashboard data after we have user info
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole, user?.id)
@@ -74,6 +75,12 @@ export default function DashboardPage() {
       return
     }
 
+    // Prevent multiple auth checks - check this BEFORE session storage
+    if (hasCheckedAuth.current) {
+      console.log('⏭️ Already checked auth, skipping')
+      return
+    }
+
     // IMMEDIATE REDIRECT: Check if coming from provider/client dashboard
     // If so, redirect immediately without waiting for auth check
     const wasOnProviderDashboard = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
@@ -82,6 +89,7 @@ export default function DashboardPage() {
     if (wasOnProviderDashboard) {
       console.log('⚡ INSTANT redirect: Coming from provider dashboard, redirecting back NOW')
       sessionStorage.removeItem('dashboard-provider-loaded')
+      hasCheckedAuth.current = true // Mark as checked to prevent re-run
       setIsRedirecting(true)
       // Use replace for instant redirect without browser history
       window.location.replace('/dashboard/provider')
@@ -91,21 +99,16 @@ export default function DashboardPage() {
     if (wasOnClientDashboard) {
       console.log('⚡ INSTANT redirect: Coming from client dashboard, redirecting back NOW')
       sessionStorage.removeItem('dashboard-client-loaded')
+      hasCheckedAuth.current = true // Mark as checked to prevent re-run
       setIsRedirecting(true)
       window.location.replace('/dashboard/client')
-      return
-    }
-
-    // Prevent multiple auth checks
-    if (hasCheckedAuth.current) {
-      console.log('⏭️ Already checked auth, skipping')
       return
     }
     
     console.log('✅ First mount on /dashboard, running auth check')
     hasCheckedAuth.current = true
     checkAuth()
-  }, [pathname, isRedirecting])
+  }, [pathname])
 
   // Register with centralized auto-refresh system
   useRefreshCallback(() => {
@@ -197,17 +200,19 @@ export default function DashboardPage() {
         setUserRole(role)
         
         // Redirect based on role - IMMEDIATELY without delay
-        if (role === 'provider') {
+        if (role === 'provider' && !hasTriggeredRedirect.current) {
           console.log('⚡ INSTANT redirect: Provider to /dashboard/provider')
           clearTimeout(authTimeout)
+          hasTriggeredRedirect.current = true
           setIsRedirecting(true)
           // Use replace instead of href for faster redirect
           window.location.replace('/dashboard/provider')
           return
         }
-        if (role === 'client') {
+        if (role === 'client' && !hasTriggeredRedirect.current) {
           console.log('⚡ INSTANT redirect: Client to /dashboard/client')
           clearTimeout(authTimeout)
+          hasTriggeredRedirect.current = true
           setIsRedirecting(true)
           window.location.replace('/dashboard/client')
           return
@@ -455,10 +460,11 @@ export default function DashboardPage() {
   if (userRole === 'provider' || userRole === 'client') {
     console.log(`⏭️ ${userRole} detected, should be on dedicated dashboard page`)
     
-    // Force INSTANT redirect if not already redirecting
-    if (!isRedirecting) {
+    // Force INSTANT redirect if not already redirecting - use ref to prevent loops
+    if (!isRedirecting && !hasTriggeredRedirect.current) {
       console.log(`⚡ INSTANT force redirect: ${userRole} to dedicated dashboard NOW`)
       const targetUrl = userRole === 'provider' ? '/dashboard/provider' : '/dashboard/client'
+      hasTriggeredRedirect.current = true // Mark as triggered
       setIsRedirecting(true)
       // Use replace for instant redirect
       window.location.replace(targetUrl)
