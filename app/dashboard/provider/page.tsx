@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 // Layout-level sidebar and header are provided by app/dashboard/layout.tsx
 import { EnhancedKPIGrid, EnhancedPerformanceMetrics } from '@/components/dashboard/enhanced-kpi-cards'
@@ -35,7 +35,6 @@ export default function ProviderDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
-  const hasCheckedAuth = useRef(false)
   
   // Dashboard data
   const [stats, setStats] = useState<ProviderDashboardStats | null>(null)
@@ -45,13 +44,14 @@ export default function ProviderDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    if (hasCheckedAuth.current) {
+    // Check sessionStorage to prevent re-runs across component instances
+    if (typeof window !== 'undefined' && sessionStorage.getItem('provider-dashboard-auth-checked') === 'true') {
       console.log('⏭️ Auth already checked, skipping')
-      return  // Only run once
+      setLoading(false)
+      return
     }
     
     console.log('🏠 Provider dashboard mounted')
-    hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
 
@@ -106,9 +106,13 @@ export default function ProviderDashboard() {
           return
         }
 
-        // Provider user - set user and load data
-        console.log('👤 Provider user confirmed, loading data...')
-        if (isMounted) setUserId(user.id)
+      // Provider user - set user and load data
+      console.log('👤 Provider user confirmed, loading data...')
+      if (isMounted) {
+        setUserId(user.id)
+        // Mark auth as checked for this session
+        sessionStorage.setItem('provider-dashboard-auth-checked', 'true')
+      }
 
         // Load data with timeout safety (8s for data)
         const dataTimeout = new Promise((_, reject) =>
@@ -149,7 +153,6 @@ export default function ProviderDashboard() {
       console.log('🧹 Provider dashboard cleanup')
       isMounted = false
       controller.abort()
-      // Don't reset hasCheckedAuth - let it persist to prevent re-runs
     }
   }, [])
 

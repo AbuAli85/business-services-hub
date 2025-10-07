@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 // Uses shared dashboard layout (sidebar/header) from app/dashboard/layout.tsx
 import { EnhancedClientKPIGrid, EnhancedClientPerformanceMetrics } from '@/components/dashboard/enhanced-client-kpi-cards'
@@ -83,7 +83,6 @@ export default function ClientDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
-  const hasCheckedAuth = useRef(false)
   
   // Dashboard data
   const [stats, setStats] = useState<ClientStats | null>(null)
@@ -93,13 +92,14 @@ export default function ClientDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    if (hasCheckedAuth.current) {
+    // Check sessionStorage to prevent re-runs across component instances
+    if (typeof window !== 'undefined' && sessionStorage.getItem('client-dashboard-auth-checked') === 'true') {
       console.log('⏭️ Auth already checked, skipping')
-      return  // Only run once
+      setLoading(false)
+      return
     }
     
     console.log('🏠 Client dashboard mounted')
-    hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
 
@@ -154,9 +154,13 @@ export default function ClientDashboard() {
           return
         }
 
-        // Client user - set user and load data
-        console.log('👤 Client user confirmed, loading data...')
-        if (isMounted) setUser(user)
+      // Client user - set user and load data
+      console.log('👤 Client user confirmed, loading data...')
+      if (isMounted) {
+        setUser(user)
+        // Mark auth as checked for this session
+        sessionStorage.setItem('client-dashboard-auth-checked', 'true')
+      }
 
         // Load data with timeout safety (8s for data)
         const dataTimeout = new Promise((_, reject) =>
@@ -192,7 +196,6 @@ export default function ClientDashboard() {
       console.log('🧹 Client dashboard cleanup')
       isMounted = false
       controller.abort()
-      // Don't reset hasCheckedAuth - let it persist to prevent re-runs
     }
   }, [])
 

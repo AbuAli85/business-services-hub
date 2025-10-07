@@ -41,7 +41,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [redirecting, setRedirecting] = useState(false)
-  const hasCheckedAuth = useRef(false)
   const lastUrlParams = useRef<string>('')
   
   // Only load dashboard data for admin role
@@ -57,13 +56,15 @@ export default function DashboardPage() {
   // Run auth check once on mount with mounted guard
   useEffect(() => {
     if (pathname !== '/dashboard') return
-    if (hasCheckedAuth.current) {
+    
+    // Check sessionStorage to prevent re-runs across component instances
+    if (typeof window !== 'undefined' && sessionStorage.getItem('main-dashboard-auth-checked') === 'true') {
       console.log('⏭️ Auth already checked, skipping')
-      return  // Only run once
+      setLoading(false)
+      return
     }
     
     console.log('🏠 Main dashboard mounted')
-    hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
 
@@ -109,19 +110,23 @@ export default function DashboardPage() {
         console.log('✅ User authenticated:', user.email, '| Role:', role)
         setUserRole(role)
 
-        // Handle redirect logic cleanly
-        if (['provider', 'client'].includes(role)) {
-          console.log(`🔄 Redirecting ${role} to their dashboard`)
-          if (isMounted) {
-            setRedirecting(true)
-            router.replace(`/dashboard/${role}`)
-          }
-          return
+      // Handle redirect logic cleanly
+      if (['provider', 'client'].includes(role)) {
+        console.log(`🔄 Redirecting ${role} to their dashboard`)
+        if (isMounted) {
+          setRedirecting(true)
+          router.replace(`/dashboard/${role}`)
         }
+        return
+      }
 
-        // Admin stays on this page
-        console.log('👑 Admin user - staying on main dashboard')
-        if (isMounted) setLoading(false)
+      // Admin stays on this page
+      console.log('👑 Admin user - staying on main dashboard')
+      if (isMounted) {
+        // Mark auth as checked for this session
+        sessionStorage.setItem('main-dashboard-auth-checked', 'true')
+        setLoading(false)
+      }
       } catch (err) {
         if (!isMounted) return
         console.error('❌ Auth check failed:', err)
@@ -139,7 +144,6 @@ export default function DashboardPage() {
       console.log('🧹 Main dashboard cleanup')
       isMounted = false
       controller.abort()
-      // Don't reset hasCheckedAuth - let it persist to prevent re-runs during redirect
     }
   }, [pathname])
 
