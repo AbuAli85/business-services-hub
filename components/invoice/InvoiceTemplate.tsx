@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import type { Invoice } from '@/types/invoice'
 import { formatCurrency, formatDate } from '@/lib/invoice-service'
 
@@ -23,34 +24,34 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           {/* Main centered watermark */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 opacity-5 print:opacity-3">
-            <img
+            <Image
               src={invoice.company.logo_url}
               alt="Company Logo Watermark"
-              className="w-full h-full object-contain filter grayscale"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
+              fill
+              className="object-contain filter grayscale"
+              sizes="384px"
+              priority={false}
             />
           </div>
           {/* Additional subtle watermarks */}
           <div className="absolute top-1/4 right-1/4 w-32 h-32 opacity-3 print:opacity-2">
-            <img
+            <Image
               src={invoice.company.logo_url}
               alt="Company Logo Watermark"
-              className="w-full h-full object-contain filter grayscale"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
+              fill
+              className="object-contain filter grayscale"
+              sizes="128px"
+              priority={false}
             />
           </div>
           <div className="absolute bottom-1/4 left-1/4 w-24 h-24 opacity-3 print:opacity-2">
-            <img
+            <Image
               src={invoice.company.logo_url}
               alt="Company Logo Watermark"
-              className="w-full h-full object-contain filter grayscale"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
+              fill
+              className="object-contain filter grayscale"
+              sizes="96px"
+              priority={false}
             />
           </div>
         </div>
@@ -63,14 +64,15 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
           {/* Company Logo Area */}
           <div className="mb-8">
             {invoice.company.logo_url && !invoice.company.logo_url.includes('/logo.png') ? (
-              <img
-                src={invoice.company.logo_url}
-                alt="Company Logo"
-                className="w-16 h-16 object-contain bg-white rounded-lg p-2"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
+              <div className="relative w-16 h-16 bg-white rounded-lg p-2">
+                <Image
+                  src={invoice.company.logo_url}
+                  alt="Company Logo"
+                  fill
+                  className="object-contain p-2"
+                  sizes="64px"
+                />
+              </div>
             ) : (
               <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center">
                 <span className="text-blue-900 font-bold text-sm">LOGO</span>

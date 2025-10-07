@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -378,11 +379,13 @@ export function EnhancedServiceTable({
                     )}
                     <td className="py-4 px-4 align-top">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                          <img
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                          <Image
                             src={getServiceCardImageUrl(service.category, service.title, service.cover_image_url, 48, 48)}
                             alt={`${service.title} - ${service.category} service`}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            sizes="48px"
                           />
                         </div>
                         <div className="flex-1 min-w-0">

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Image from 'next/image'
 import type { Invoice, InvoiceProps } from '@/types/invoice'
 import { fetchInvoiceData, formatCurrency, formatDate } from '@/lib/invoice-service'
 import { Button } from '@/components/ui/button'
@@ -150,14 +151,15 @@ export default function Invoice({
             {invoice.company.logo_url && !invoice.company.logo_url.includes('/logo.png') && (
               <div className="mb-8">
                 <div className="relative">
-                  <img
-                    src={invoice.company.logo_url}
-                    alt="Company Logo"
-                    className="w-24 h-24 object-contain bg-white/15 rounded-2xl p-3 backdrop-blur-sm border border-white/20 shadow-2xl"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
+                  <div className="relative w-24 h-24 bg-white/15 rounded-2xl p-3 backdrop-blur-sm border border-white/20 shadow-2xl">
+                    <Image
+                      src={invoice.company.logo_url}
+                      alt="Company Logo"
+                      fill
+                      className="object-contain p-3"
+                      sizes="96px"
+                    />
+                  </div>
                   <div className="absolute -inset-1 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-2xl blur-sm -z-10"></div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import NextImage from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -369,12 +370,14 @@ export function ProjectProofSystem({
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {selectedProof.completionEvidence.map((item) => (
                       <Card key={item.id} className="overflow-hidden">
-                        <div className="aspect-video bg-gray-100 flex items-center justify-center">
+                        <div className="relative aspect-video bg-gray-100 flex items-center justify-center">
                           {item.thumbnail ? (
-                            <img 
+                            <NextImage 
                               src={item.thumbnail} 
                               alt={item.title}
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             />
                           ) : (
                             <div className="text-center text-gray-500">

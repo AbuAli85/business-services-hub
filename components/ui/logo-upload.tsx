@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
@@ -161,16 +162,18 @@ export function LogoUpload({
             <div className="relative w-40 h-40 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50 shadow-sm">
               {previewUrl ? (
                 <div className="relative w-full h-full">
-                  <img
+                  <Image
                     src={previewUrl}
                     alt="Company logo"
-                    className="w-full h-full object-contain rounded-lg"
+                    fill
+                    className="object-contain rounded-lg"
+                    sizes="160px"
                   />
                   <Button
                     type="button"
                     variant="destructive"
                     size="sm"
-                    className="absolute -top-2 -right-2 h-7 w-7 rounded-full p-0 shadow-lg"
+                    className="absolute -top-2 -right-2 h-7 w-7 rounded-full p-0 shadow-lg z-10"
                     onClick={removeLogo}
                     disabled={uploading}
                   >

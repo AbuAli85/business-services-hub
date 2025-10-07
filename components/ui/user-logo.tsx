@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { getSupabaseClient } from '@/lib/supabase'
 import { PlatformLogo } from './platform-logo'
 
@@ -106,12 +107,16 @@ export function UserLogo({ email, className = '', showFallback = true }: UserLog
 
   if (logoUrl) {
     return (
-      <img
-        src={logoUrl}
-        alt="Company Logo"
-        className={`object-contain ${className}`}
-        onError={() => setLogoUrl(null)}
-      />
+      <div className={`relative ${className}`}>
+        <Image
+          src={logoUrl}
+          alt="Company Logo"
+          fill
+          className="object-contain"
+          onError={() => setLogoUrl(null)}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        />
+      </div>
     )
   }
 
