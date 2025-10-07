@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { getSupabaseClient } from '@/lib/supabase-client'
@@ -612,11 +613,13 @@ export default function DashboardLayout({
           <div className="flex items-center justify-between p-6 border-b">
             <div className="flex items-center space-x-4">
               {userLogoUrl ? (
-                <div className="flex-shrink-0">
-                  <img
+                <div className="flex-shrink-0 relative w-12 h-12">
+                  <Image
                     src={userLogoUrl}
                     alt="Company Logo"
-                    className="w-12 h-12 object-contain rounded-lg border border-gray-200 p-1 bg-white shadow-sm"
+                    fill
+                    className="object-contain rounded-lg border border-gray-200 p-1 bg-white shadow-sm"
+                    sizes="48px"
                   />
                 </div>
               ) : (
@@ -687,25 +690,34 @@ export default function DashboardLayout({
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             {/* Main centered watermark */}
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 opacity-3">
-              <img
+              <Image
                 src={userLogoUrl}
                 alt="Company Logo"
-                className="w-full h-full object-contain filter grayscale"
+                fill
+                className="object-contain filter grayscale"
+                sizes="384px"
+                priority={false}
               />
             </div>
             {/* Corner watermarks */}
             <div className="absolute top-8 right-8 w-24 h-24 opacity-2">
-              <img
+              <Image
                 src={userLogoUrl}
                 alt="Company Logo"
-                className="w-full h-full object-contain filter grayscale"
+                fill
+                className="object-contain filter grayscale"
+                sizes="96px"
+                priority={false}
               />
             </div>
             <div className="absolute bottom-8 left-8 w-20 h-20 opacity-2">
-              <img
+              <Image
                 src={userLogoUrl}
                 alt="Company Logo"
-                className="w-full h-full object-contain filter grayscale"
+                fill
+                className="object-contain filter grayscale"
+                sizes="80px"
+                priority={false}
               />
             </div>
           </div>
