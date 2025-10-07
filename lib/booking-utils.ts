@@ -2,6 +2,9 @@ import { Booking, Invoice } from '@/hooks/useBookings'
 
 // Helper: derive booking status consistently using invoice lookup
 export function getDerivedStatus(booking: Booking, invoiceByBooking: Map<string, Invoice>): string {
+  // ✅ CRITICAL FIX: Handle 100% progress FIRST, regardless of booking status
+  if (booking.progress_percentage === 100) return 'delivered'
+  
   if (booking.status === 'completed') return 'delivered'
   if (booking.status === 'in_progress') return 'in_production'
 

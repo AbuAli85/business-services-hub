@@ -553,6 +553,30 @@ export default function SignUpPage() {
                     )}
                   </div>
 
+                  {/* Professional Captcha Section - Only show if configured */}
+                  {process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY && (
+                    <div className="space-y-3">
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-blue-800">
+                            <Shield className="h-4 w-4" />
+                            <span className="text-sm font-medium">Security Verification</span>
+                          </div>
+                          <p className="text-sm text-blue-700">
+                            Complete the security verification to protect your account
+                          </p>
+                          <div className="flex justify-center">
+                            <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
+                          </div>
+                          {errors.captcha && (
+                            <p className="text-sm text-red-500 flex items-center gap-1 justify-center">
+                              <AlertTriangle className="h-3 w-3" />
+                              {errors.captcha}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   {/* Captcha - Only show if configured */}
                   <HCaptcha 
                     key={captchaKey} 

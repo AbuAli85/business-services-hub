@@ -684,7 +684,9 @@ export function CompactBookingStatus({
         const completed = data.filter(m => m.status === 'completed').length
 
         let derived: StatusKey
-        if (data.length > 0 && completed === data.length) derived = 'delivered'
+        // ✅ CRITICAL FIX: Handle 100% progress FIRST, regardless of booking status
+        if (booking.progress_percentage === 100) derived = 'delivered'
+        else if (data.length > 0 && completed === data.length) derived = 'delivered'
         else if (booking.status === 'completed') derived = 'delivered'
         else if (booking.status === 'in_progress') derived = 'in_production'
         else if (booking.status === 'approved' || booking.approval_status === 'approved' || booking.ui_approval_status === 'approved') derived = 'approved'
