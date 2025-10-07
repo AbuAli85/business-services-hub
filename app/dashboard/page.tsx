@@ -53,10 +53,85 @@ export default function DashboardPage() {
   const activityQ = useDebouncedValue(activityQuery, 250)
   const searchParams = useSearchParams()
 
-  // Run auth check once on mount
+  // Run auth check once on mount with mounted guard
   useEffect(() => {
     if (pathname !== '/dashboard') return
-    checkAuth()
+    
+    let isMounted = true
+    const controller = new AbortController()
+
+    const init = async () => {
+      try {
+        console.log('🔐 Checking authentication...')
+        const supabase = await getSupabaseClient()
+        
+        // Add timeout safety (5s for auth)
+        const authTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth timeout')), 5000)
+        )
+        
+        const { data: { session } } = (await Promise.race([
+          supabase.auth.getSession(),
+          authTimeout
+        ])) as any
+
+        if (!isMounted) return
+
+        if (!session?.user) {
+          console.log('❌ No session found, redirecting to sign-in')
+          if (isMounted) router.replace('/auth/sign-in')
+          return
+        }
+
+        const user = session.user
+        if (isMounted) setUser(user)
+
+        // Determine role
+        let role = user.user_metadata?.role
+        if (!role) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+          role = profile?.role || 'client'
+        }
+
+        if (!isMounted) return
+        
+        console.log('✅ User authenticated:', user.email, '| Role:', role)
+        setUserRole(role)
+
+        // Handle redirect logic cleanly
+        if (['provider', 'client'].includes(role)) {
+          console.log(`🔄 Redirecting ${role} to their dashboard`)
+          if (isMounted) {
+            setRedirecting(true)
+            router.replace(`/dashboard/${role}`)
+          }
+          return
+        }
+
+        // Admin stays on this page
+        console.log('👑 Admin user - staying on main dashboard')
+        if (isMounted) setLoading(false)
+      } catch (err) {
+        if (!isMounted) return
+        console.error('❌ Auth check failed:', err)
+        setError('Failed to load user data')
+        setLoading(false)
+      } finally {
+        if (isMounted) setLoading(false)
+        controller.abort()
+      }
+    }
+
+    init()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [pathname])
 
   // Register with centralized auto-refresh system
@@ -101,52 +176,6 @@ export default function DashboardPage() {
     }
   }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname, redirecting])
 
-  async function checkAuth() {
-    try {
-      console.log('🔐 Checking authentication...')
-      const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session?.user) {
-        console.log('❌ No session found, redirecting to sign-in')
-        router.replace('/auth/sign-in')
-        return
-      }
-
-      const user = session.user
-      setUser(user)
-
-      // Determine role
-      let role = user.user_metadata?.role
-      if (!role) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-        role = profile?.role || 'client'
-      }
-      
-      console.log('✅ User authenticated:', user.email, '| Role:', role)
-      setUserRole(role)
-
-      // Handle redirect logic cleanly
-      if (['provider', 'client'].includes(role)) {
-        console.log(`🔄 Redirecting ${role} to their dashboard`)
-        setRedirecting(true)
-        router.replace(`/dashboard/${role}`)
-        return
-      }
-
-      // Admin stays on this page
-      console.log('👑 Admin user - staying on main dashboard')
-      setLoading(false)
-    } catch (err) {
-      console.error('❌ Auth check failed:', err)
-      setError('Failed to load user data')
-      setLoading(false)
-    }
-  }
 
   // Calculate derived metrics
   const activeBookings = bookings.filter(booking => 

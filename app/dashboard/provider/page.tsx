@@ -42,10 +42,105 @@ export default function ProviderDashboard() {
   const [topServices, setTopServices] = useState<TopService[]>([])
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarnings[]>([])
 
-  // Check auth and load data on mount
+  // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    console.log('🏠 Provider dashboard mounted')
-    checkUserAndFetchData()
+    let isMounted = true
+    const controller = new AbortController()
+
+    const init = async () => {
+      try {
+        console.log('🔐 Checking authentication...')
+        const supabase = await getSupabaseClient()
+        
+        // Add timeout safety (5s for auth)
+        const authTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth timeout')), 5000)
+        )
+        
+        const { data: { user }, error: userError } = (await Promise.race([
+          supabase.auth.getUser(),
+          authTimeout
+        ])) as any
+
+        if (!isMounted) return
+
+        if (userError || !user) {
+          console.log('❌ No user found, redirecting to sign-in')
+          if (isMounted) router.replace('/auth/sign-in')
+          return
+        }
+
+        // Determine role
+        let userRole = user.user_metadata?.role
+        if (!userRole) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+          userRole = profile?.role || 'provider'
+        }
+
+        if (!isMounted) return
+
+        console.log('✅ User authenticated:', user.email, '| Role:', userRole)
+
+        // Handle redirect logic cleanly
+        if (userRole !== 'provider') {
+          console.log(`🔄 Redirecting ${userRole} to their dashboard`)
+          if (isMounted) {
+            setRedirecting(true)
+            const dashboardUrl = userRole === 'client' 
+              ? '/dashboard/client'
+              : '/dashboard'
+            router.replace(dashboardUrl)
+          }
+          return
+        }
+
+        // Provider user - set user and load data
+        console.log('👤 Provider user confirmed, loading data...')
+        if (isMounted) setUserId(user.id)
+
+        // Load data with timeout safety (8s for data)
+        const dataTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Data timeout')), 8000)
+        )
+
+        try {
+          await Promise.race([loadDashboardData(user.id), dataTimeout])
+          if (isMounted) console.log('✅ Data loaded successfully')
+        } catch (dataError) {
+          if (!isMounted) return
+          logger.warn('⚠️ Error fetching provider data:', dataError)
+          setStats({
+            total_earnings: 0,
+            active_bookings: 0,
+            active_services: 0,
+            avg_rating: 0
+          } as any)
+          toast.error('Some data could not be loaded')
+        } finally {
+          if (isMounted) setLoading(false)
+        }
+      } catch (error) {
+        if (!isMounted) return
+        logger.error('❌ Auth check failed:', error)
+        setError('Failed to load dashboard')
+        toast.error('Failed to load dashboard')
+        setLoading(false)
+      } finally {
+        if (isMounted) setLoading(false)
+        controller.abort()
+      }
+    }
+
+    init()
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
   }, [])
 
   // Register with centralized auto-refresh system
@@ -56,71 +151,6 @@ export default function ProviderDashboard() {
     }
   }, [userId, refreshing])
 
-  const checkUserAndFetchData = async () => {
-    console.log('🔐 Checking authentication...')
-    setError(null)
-
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        console.log('❌ No user found, redirecting to sign-in')
-        router.replace('/auth/sign-in')
-        return
-      }
-
-      // Determine role
-      let userRole = user.user_metadata?.role
-      if (!userRole) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-        userRole = profile?.role || 'provider'
-      }
-
-      console.log('✅ User authenticated:', user.email, '| Role:', userRole)
-
-      // Handle redirect logic cleanly
-      if (userRole !== 'provider') {
-        console.log(`🔄 Redirecting ${userRole} to their dashboard`)
-        setRedirecting(true)
-        const dashboardUrl = userRole === 'client' 
-          ? '/dashboard/client'
-          : '/dashboard'
-        router.replace(dashboardUrl)
-        return
-      }
-
-      // Provider user - set user and load data
-      console.log('👤 Provider user confirmed, loading data...')
-      setUserId(user.id)
-
-      // Load data with proper error handling
-      try {
-        await loadDashboardData(user.id)
-        console.log('✅ Data loaded successfully')
-      } catch (dataError) {
-        logger.warn('⚠️ Error fetching provider data:', dataError)
-        setStats({
-          total_earnings: 0,
-          active_bookings: 0,
-          active_services: 0,
-          avg_rating: 0
-        } as any)
-        toast.error('Some data could not be loaded')
-      } finally {
-        setLoading(false)
-      }
-    } catch (error) {
-      logger.error('❌ Auth check failed:', error)
-      setError('Failed to load dashboard')
-      toast.error('Failed to load dashboard')
-      setLoading(false)
-    }
-  }
 
   const loadDashboardData = async (providerId: string) => {
     try {
