@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -874,34 +875,38 @@ export default function AdminServicesPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
-                        className="col-span-2 h-36 rounded-lg overflow-hidden border focus:outline-none hover:ring-2 hover:ring-blue-200"
+                        className="col-span-2 h-36 rounded-lg overflow-hidden border focus:outline-none hover:ring-2 hover:ring-blue-200 relative"
                         onClick={() => setLightboxOpen(true)}
                         title="Open image"
                       >
-                        <img
+                        <Image
                           src={detailsService.images[galleryIndex]}
                           alt={`${detailsService.title} image ${galleryIndex + 1}`}
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 50vw"
                         />
                       </button>
                       {detailsService.images.slice(0, 4).map((url, idx) => (
                         <button
                           key={idx}
                           type="button"
-                          className={`h-16 rounded-lg overflow-hidden border focus:outline-none hover:ring-2 hover:ring-blue-200 ${galleryIndex === idx ? 'ring-2 ring-blue-500' : ''}`}
+                          className={`h-16 rounded-lg overflow-hidden border focus:outline-none hover:ring-2 hover:ring-blue-200 relative ${galleryIndex === idx ? 'ring-2 ring-blue-500' : ''}`}
                           onClick={() => setGalleryIndex(idx)}
                           title={`Show image ${idx + 1}`}
                         >
-                          <img src={url} alt={`${detailsService.title} thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                          <Image src={url} alt={`${detailsService.title} thumb ${idx + 1}`} fill className="object-cover" sizes="100px" />
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <div className="w-full h-36 rounded-lg overflow-hidden border">
-                      <img
+                    <div className="w-full h-36 rounded-lg overflow-hidden border relative">
+                      <Image
                         src={getServiceCardImageUrl(detailsService.category, detailsService.title, detailsService.cover_image_url, 640, 360)}
                         alt={`${detailsService.title} cover`}
-                        className="w-full h-full object-cover"
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 640px"
                       />
                     </div>
                   )}
@@ -1239,7 +1244,9 @@ export default function AdminServicesPage() {
         <DialogOverlay />
         <DialogContent onClose={() => setLightboxOpen(false)} className="max-w-3xl p-0 bg-black">
           {detailsService && detailsService.images && detailsService.images.length > 0 && (
-            <img src={detailsService.images[galleryIndex]} alt="Service image" className="w-full h-auto object-contain" />
+            <div className="relative w-full h-[80vh]">
+              <Image src={detailsService.images[galleryIndex]} alt="Service image" fill className="object-contain" sizes="100vw" />
+            </div>
           )}
         </DialogContent>
       </Dialog>

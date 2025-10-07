@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1135,13 +1136,17 @@ export default function CompanyPage() {
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                           {company.logo_url ? (
-                            <img 
-                              src={company.logo_url} 
-                              alt={`${company.name} Logo`} 
-                              className="w-10 h-10 object-cover rounded-md"
-                            />
+                            <div className="relative w-10 h-10">
+                              <Image 
+                                src={company.logo_url} 
+                                alt={`${company.name} Logo`} 
+                                fill
+                                className="object-cover rounded-md"
+                                sizes="40px"
+                              />
+                            </div>
                           ) : (
                             company.name.charAt(0).toUpperCase()
                           )}
@@ -1221,13 +1226,17 @@ export default function CompanyPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                           {company.logo_url ? (
-                            <img 
-                              src={company.logo_url} 
-                              alt={`${company.name} Logo`} 
-                              className="w-10 h-10 object-cover rounded-md"
-                            />
+                            <div className="relative w-10 h-10">
+                              <Image 
+                                src={company.logo_url} 
+                                alt={`${company.name} Logo`} 
+                                fill
+                                className="object-cover rounded-md"
+                                sizes="40px"
+                              />
+                            </div>
                           ) : (
                             company.name.charAt(0).toUpperCase()
                           )}
@@ -1360,19 +1369,27 @@ export default function CompanyPage() {
                         
                         <div className="flex items-start space-x-6">
                           {/* Logo Preview */}
-                          <div className="w-32 h-32 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 overflow-hidden">
+                          <div className="w-32 h-32 bg-gray-100 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 overflow-hidden relative">
                             {logoPreview ? (
-                              <img 
-                                src={logoPreview} 
-                                alt="Logo Preview" 
-                                className="w-28 h-28 object-cover rounded-lg"
-                              />
+                              <div className="relative w-28 h-28">
+                                <Image 
+                                  src={logoPreview} 
+                                  alt="Logo Preview" 
+                                  fill
+                                  className="object-cover rounded-lg"
+                                  sizes="112px"
+                                />
+                              </div>
                             ) : form.logo_url ? (
-                              <img 
-                                src={form.logo_url} 
-                                alt="Current Logo" 
-                                className="w-28 h-28 object-cover rounded-lg"
-                              />
+                              <div className="relative w-28 h-28">
+                                <Image 
+                                  src={form.logo_url} 
+                                  alt="Current Logo" 
+                                  fill
+                                  className="object-cover rounded-lg"
+                                  sizes="112px"
+                                />
+                              </div>
                             ) : (
                               <Upload className="h-8 w-8 text-gray-400" />
                             )}
@@ -1809,21 +1826,18 @@ export default function CompanyPage() {
             <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 p-8 text-white">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-6">
-                  <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border-2 border-white/30">
+                  <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border-2 border-white/30 relative overflow-hidden">
                     {currentCompany?.logo_url ? (
-                      <img 
+                      <Image 
                         src={currentCompany.logo_url} 
                         alt={`${currentCompany.name} Logo`} 
-                        className="w-20 h-20 object-cover rounded-xl"
-                        onError={(e) => {
-                          // Fallback to icon if image fails to load
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling?.classList.remove('hidden');
-                        }}
+                        fill
+                        className="object-cover rounded-xl p-1"
+                        sizes="96px"
                       />
-                    ) : null}
-                    <Building2 className={`h-12 w-12 text-white ${currentCompany?.logo_url ? 'hidden' : ''}`} />
+                    ) : (
+                      <Building2 className="h-12 w-12 text-white" />
+                    )}
                   </div>
                   <div>
                     <h2 className="text-3xl font-bold mb-2">{safeRenderValue(currentCompany?.name) || 'Company Name'}</h2>
@@ -1895,21 +1909,18 @@ export default function CompanyPage() {
               </CardHeader>
               <CardContent className="p-6">
                 <div className="text-center">
-                  <div className="w-32 h-32 bg-gray-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-300 mx-auto mb-4 overflow-hidden">
+                  <div className="w-32 h-32 bg-gray-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-300 mx-auto mb-4 overflow-hidden relative">
                     {currentCompany?.logo_url ? (
-                      <img 
+                      <Image 
                         src={currentCompany.logo_url} 
                         alt={`${currentCompany.name} Logo`} 
-                        className="w-28 h-28 object-cover rounded-xl"
-                        onError={(e) => {
-                          // Fallback to icon if image fails to load
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          target.nextElementSibling?.classList.remove('hidden');
-                        }}
+                        fill
+                        className="object-cover rounded-xl p-1"
+                        sizes="128px"
                       />
-                    ) : null}
-                    <Upload className={`h-12 w-12 text-gray-400 ${currentCompany?.logo_url ? 'hidden' : ''}`} />
+                    ) : (
+                      <Upload className="h-12 w-12 text-gray-400" />
+                    )}
                   </div>
                   {currentCompany?.logo_url ? (
                     <div className="space-y-2">

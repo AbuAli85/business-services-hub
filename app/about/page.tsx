@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -202,11 +203,15 @@ export default function AboutPage() {
             {teamMembers.map((member, index) => (
               <Card key={index} className="border-0 shadow-lg text-center hover:shadow-xl transition-shadow">
                 <CardContent className="p-6">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
-                  />
+                  <div className="relative w-24 h-24 rounded-full mx-auto mb-4 overflow-hidden">
+                    <Image
+                      src={member.image}
+                      alt={member.name}
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                    />
+                  </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-2">{member.name}</h3>
                   <p className="text-blue-600 font-medium mb-3">{member.role}</p>
                   <p className="text-gray-600 text-sm leading-relaxed mb-4">{member.bio}</p>

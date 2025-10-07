@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import NextImage from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -922,10 +923,12 @@ export default function ProjectFilesPage() {
                     >
                       {file.file_type.startsWith('image/') ? (
                         <div className="relative w-full h-full">
-                          <img 
+                          <NextImage 
                             src={file.file_url} 
                             alt={file.original_name}
-                            className="w-full h-full object-cover rounded-lg"
+                            fill
+                            className="object-cover rounded-lg"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
                           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all rounded-lg flex items-center justify-center">
                             <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />

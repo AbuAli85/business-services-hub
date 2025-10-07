@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -570,9 +571,9 @@ export default function CreateServicePage() {
       <div>
         <Label className="text-sm font-medium text-slate-700 mb-2 block">Cover Image</Label>
         <div className="flex items-center gap-4">
-          <div className="w-40 h-24 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border">
+          <div className="w-40 h-24 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border relative">
             {coverPreview ? (
-              <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover" />
+              <Image src={coverPreview} alt="Cover preview" fill className="object-cover" sizes="160px" />
             ) : (
               <Building2 className="h-8 w-8 text-gray-400" />
             )}
@@ -857,11 +858,15 @@ export default function CreateServicePage() {
                 <SelectItem key={company.id} value={company.id}>
                   <div className="flex items-center space-x-3">
                     {company.logo_url ? (
-                      <img 
-                        src={company.logo_url} 
-                        alt={`${company.name} logo`} 
-                        className="w-6 h-6 rounded object-cover"
-                      />
+                      <div className="relative w-6 h-6 rounded overflow-hidden">
+                        <Image 
+                          src={company.logo_url} 
+                          alt={`${company.name} logo`} 
+                          fill
+                          className="object-cover"
+                          sizes="24px"
+                        />
+                      </div>
                     ) : (
                       <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
                         {company.name.charAt(0).toUpperCase()}

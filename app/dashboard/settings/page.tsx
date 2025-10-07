@@ -596,7 +596,7 @@ export default function SettingsPage() {
                 <div className="relative w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                   {avatarPreview || profile?.avatar_url ? (
                     <Image
-                      src={avatarPreview || profile?.avatar_url}
+                      src={avatarPreview || profile?.avatar_url || ''}
                       alt="Profile"
                       fill
                       className="object-cover"
