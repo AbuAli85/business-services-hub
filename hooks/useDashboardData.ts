@@ -54,18 +54,17 @@ export function useDashboardData(userRole?: string, userId?: string) {
     }
   }, [updateData])
 
-  // Refresh data
+  // Refresh data (silent refresh - don't show loading state)
   const refresh = useCallback(async () => {
     try {
-      setLoading(true)
+      // Don't set loading to true during refresh - keep it silent
       setError(null)
       await dashboardData.loadData(userRole, userId)
       updateData()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to refresh data')
-    } finally {
-      setLoading(false)
     }
+    // Don't set loading to false either - keep current state
   }, [updateData, userRole, userId])
 
   // Get specific items
