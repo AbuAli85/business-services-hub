@@ -451,23 +451,25 @@ export default function ProjectFilesPage() {
 
   // Get file icon
   const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) return <Image className="h-5 w-5 text-blue-600" />
-    if (fileType.includes('pdf')) return <FileText className="h-5 w-5 text-red-600" />
-    if (fileType.includes('word') || fileType.includes('document')) return <FileText className="h-5 w-5 text-blue-600" />
-    if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileText className="h-5 w-5 text-green-600" />
-    return <File className="h-5 w-5 text-gray-600" />
+    // eslint-disable-next-line jsx-a11y/alt-text
+    if (fileType.startsWith('image/')) return <Image className="h-5 w-5 text-blue-600" aria-hidden="true" />
+    if (fileType.includes('pdf')) return <FileText className="h-5 w-5 text-red-600" aria-hidden="true" />
+    if (fileType.includes('word') || fileType.includes('document')) return <FileText className="h-5 w-5 text-blue-600" aria-hidden="true" />
+    if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileText className="h-5 w-5 text-green-600" aria-hidden="true" />
+    return <File className="h-5 w-5 text-gray-600" aria-hidden="true" />
   }
 
   // Get category icon with colors
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'documents': return <FileText className="h-4 w-4 text-gray-700" />
-      case 'images': return <Image className="h-4 w-4 text-purple-600" />
-      case 'contracts': return <FileText className="h-4 w-4 text-blue-600" />
-      case 'deliverables': return <CheckCircle className="h-4 w-4 text-green-600" />
-      case 'references': return <Star className="h-4 w-4 text-yellow-600" />
-      case 'other': return <Paperclip className="h-4 w-4 text-gray-500" />
-      default: return <File className="h-4 w-4 text-gray-500" />
+      case 'documents': return <FileText className="h-4 w-4 text-gray-700" aria-hidden="true" />
+      // eslint-disable-next-line jsx-a11y/alt-text
+      case 'images': return <Image className="h-4 w-4 text-purple-600" aria-hidden="true" />
+      case 'contracts': return <FileText className="h-4 w-4 text-blue-600" aria-hidden="true" />
+      case 'deliverables': return <CheckCircle className="h-4 w-4 text-green-600" aria-hidden="true" />
+      case 'references': return <Star className="h-4 w-4 text-yellow-600" aria-hidden="true" />
+      case 'other': return <Paperclip className="h-4 w-4 text-gray-500" aria-hidden="true" />
+      default: return <File className="h-4 w-4 text-gray-500" aria-hidden="true" />
     }
   }
 
@@ -792,7 +794,8 @@ export default function ProjectFilesPage() {
                   </SelectItem>
                   <SelectItem value="images">
                     <div className="flex items-center gap-2">
-                      <Image className="h-4 w-4" />
+                      {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                      <Image className="h-4 w-4" aria-hidden="true" />
                       Images
                     </div>
                   </SelectItem>
