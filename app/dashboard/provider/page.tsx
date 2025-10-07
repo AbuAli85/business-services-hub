@@ -51,12 +51,10 @@ export default function ProviderDashboard() {
     
     // Safety timeout to prevent infinite loading (similar to client dashboard)
     const safetyTimeout = setTimeout(() => {
-      if (loading) {
-        console.log('⚠️ Provider dashboard: Safety timeout triggered, forcing loading to false')
-        setLoading(false)
-        setError('Dashboard loading timed out. Please refresh the page.')
-        toast.warning('Dashboard loading timed out. Please refresh.')
-      }
+      console.log('⚠️ Provider dashboard: Safety timeout triggered, forcing loading to false')
+      setLoading(false)
+      setError('Dashboard loading timed out. Please refresh the page.')
+      toast.warning('Dashboard loading timed out. Please refresh.')
     }, 10000) // 10 second safety timeout
     
     // Cleanup function to clear flags when component unmounts
@@ -65,7 +63,7 @@ export default function ProviderDashboard() {
       sessionStorage.removeItem('dashboard-provider-loaded')
       clearTimeout(safetyTimeout)
     }
-  }, [loading])
+  }, []) // FIXED: Remove loading dependency to prevent infinite loop
 
   const loadUserAndData = async () => {
     try {
@@ -76,8 +74,14 @@ export default function ProviderDashboard() {
 
       const supabase = await getSupabaseClient()
       
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      // Get current user with timeout
+      const userPromise = supabase.auth.getUser()
+      const userTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('User auth timeout')), 5000)
+      )
+      
+      const { data: { user }, error: userError } = await Promise.race([userPromise, userTimeout]) as any
+      
       if (userError || !user) {
         console.log('❌ Provider dashboard: No user, redirecting to sign-in')
         router.push('/auth/sign-in')
@@ -87,15 +91,15 @@ export default function ProviderDashboard() {
       console.log('✅ Provider dashboard: User found:', user.email)
       setUserId(user.id)
       
-      // SIMPLIFIED: Load dashboard data with better error handling and timeout
+      // Load dashboard data with individual timeouts
       try {
         console.log('📊 Provider dashboard: Starting data load...')
         const startTime = Date.now()
         
-        // Add overall timeout to prevent hanging
+        // Load data with shorter timeout to prevent hanging
         const dataLoadPromise = loadDashboardData(user.id)
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Data load timeout after 10 seconds')), 10000)
+          setTimeout(() => reject(new Error('Data load timeout after 8 seconds')), 8000)
         )
         
         await Promise.race([dataLoadPromise, timeoutPromise])

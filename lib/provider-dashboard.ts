@@ -319,11 +319,12 @@ export class ProviderDashboardService {
         ])
       }
       
+      // Use shorter timeouts for faster loading
       const [stats, recentBookings, topServices, monthlyEarnings] = await Promise.allSettled([
-        timeoutPromise(this.getDashboardStats(providerId), 'Stats', 5000),
-        timeoutPromise(this.getRecentBookings(providerId, 10), 'Recent Bookings', 5000),
-        timeoutPromise(this.getTopServices(providerId, 5), 'Top Services', 5000),
-        timeoutPromise(this.getMonthlyEarnings(providerId, 12), 'Monthly Earnings', 5000)
+        timeoutPromise(this.getDashboardStats(providerId), 'Stats', 3000),
+        timeoutPromise(this.getRecentBookings(providerId, 5), 'Recent Bookings', 3000), // Reduced limit
+        timeoutPromise(this.getTopServices(providerId, 3), 'Top Services', 3000), // Reduced limit
+        timeoutPromise(this.getMonthlyEarnings(providerId, 6), 'Monthly Earnings', 3000) // Reduced months
       ])
 
       // Extract values from settled promises, using defaults if failed
@@ -338,12 +339,15 @@ export class ProviderDashboardService {
         monthly_growth: 0
       }
 
-      return {
+      const result = {
         stats: stats.status === 'fulfilled' ? stats.value : defaultStats,
         recentBookings: recentBookings.status === 'fulfilled' ? recentBookings.value : [],
         topServices: topServices.status === 'fulfilled' ? topServices.value : [],
         monthlyEarnings: monthlyEarnings.status === 'fulfilled' ? monthlyEarnings.value : []
       }
+
+      console.log('✅ Provider dashboard service: Data loaded successfully')
+      return result
     } catch (error) {
       console.error('❌ Error fetching dashboard data:', error)
       // Return empty data instead of throwing
