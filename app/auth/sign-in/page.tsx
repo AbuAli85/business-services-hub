@@ -159,8 +159,6 @@ function SignInForm() {
       }
     } catch (err) {
       setAttempts(prev => prev + 1)
-      setCaptchaToken('')
-      setCaptchaKey(k => k + 1)
       authLogger.logLoginFailure({ success: false, method: 'password', email, error: err instanceof Error ? err.message : 'Unknown error', attemptCount: attempts + 1 })
       toast.error('An unexpected error occurred. Please try again.')
     } finally {

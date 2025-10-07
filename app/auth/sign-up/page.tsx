@@ -155,8 +155,8 @@ export default function SignUpPage() {
           toast.error('Password is too weak. Please choose a stronger password.')
         } else if (error.message.includes('Invalid email') || error.message.includes('email')) {
           toast.error('Please enter a valid email address.')
-        } else if (error.message.includes('captcha') || error.message.includes('verification')) {
-          toast.error('Captcha verification failed. Please try again.')
+        } else if (error.message.includes('verification')) {
+          toast.error('Verification failed. Please try again.')
         } else if (error.message.includes('rate limit') || error.message.includes('too many')) {
           toast.error('Too many signup attempts. Please wait a moment before trying again.')
         } else if (error.message.includes('network') || error.message.includes('connection')) {
@@ -165,9 +165,7 @@ export default function SignUpPage() {
           toast.error(`Signup failed: ${error.message}`)
         }
         
-        // Reset captcha on error
-        setCaptchaToken('')
-        setCaptchaKey(k => k + 1)
+        // Clear any error state
         return
       }
 
@@ -207,15 +205,15 @@ export default function SignUpPage() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Try resend without captcha first (some Supabase configurations allow this)
+      // Try resend verification email
       let { error } = await supabase.auth.resend({
         type: 'signup',
         email: registeredEmail
       })
 
-      // If captcha is required, show a message to refresh the page
-      if (error && error.message.includes('captcha')) {
-        throw new Error('Please refresh the page and try again to get a new captcha verification.')
+      // If verification is required, show a message to refresh the page
+      if (error && error.message.includes('verification')) {
+        throw new Error('Please refresh the page and try again.')
       }
 
       if (error) {
@@ -223,8 +221,8 @@ export default function SignUpPage() {
         
         if (error.message.includes('rate limit') || error.message.includes('too many')) {
           throw new Error('Too many resend attempts. Please wait before trying again.')
-        } else if (error.message.includes('captcha') || error.message.includes('verification')) {
-          throw new Error('Captcha verification failed. Please refresh and try again.')
+        } else if (error.message.includes('verification')) {
+          throw new Error('Verification failed. Please refresh and try again.')
         } else {
           throw new Error(error.message)
         }
