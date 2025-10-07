@@ -15,7 +15,8 @@ import {
   DollarSign,
   Building2,
   HelpCircle,
-  Receipt
+  Receipt,
+  FileBarChart
 } from 'lucide-react'
 
 export interface NavigationItem {
@@ -110,9 +111,9 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
       },
       { 
         name: 'Reports', 
-        href: '/dashboard/admin/reports', 
-        icon: FileText,
-        description: 'Generate reports'
+        href: '/dashboard/reports/bookings', 
+        icon: FileBarChart,
+        description: 'Booking reports'
       },
       { 
         name: 'All Invoices', 
@@ -151,6 +152,12 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         icon: Receipt,
         description: 'Create and manage invoices',
         badge: 'New'
+      },
+      { 
+        name: 'Reports', 
+        href: '/dashboard/reports/bookings', 
+        icon: FileBarChart,
+        description: 'Booking reports'
       }
     )
     // Update dashboard link to use dynamic route
@@ -182,6 +189,12 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         href: '/dashboard/client/invoices', 
         icon: Receipt,
         description: 'View and pay invoices'
+      },
+      { 
+        name: 'Reports', 
+        href: '/dashboard/reports/bookings', 
+        icon: FileBarChart,
+        description: 'Booking reports'
       }
     )
   }
@@ -206,6 +219,12 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         href: '/dashboard/client/invoices', 
         icon: Receipt,
         description: 'View and pay invoices'
+      },
+      { 
+        name: 'Reports', 
+        href: '/dashboard/reports/bookings', 
+        icon: FileBarChart,
+        description: 'Booking reports'
       }
     )
   }
