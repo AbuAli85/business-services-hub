@@ -82,6 +82,7 @@ export default function CreateBookingPage() {
   const [user, setUser] = useState<any>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const preSelectedServiceId = searchParams?.get('service') || null
 
   const [formData, setFormData] = useState<BookingForm>({
     service_id: '',
@@ -353,6 +354,11 @@ export default function CreateBookingPage() {
               )}
             </CardHeader>
             <CardContent>
+              {preSelectedServiceId && !selectedService && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  Loading selected service...
+                </div>
+              )}
               <div className="space-y-4">
                 {(selectedService ? [selectedService] : services).map((service) => (
                   <div
