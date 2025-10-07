@@ -65,8 +65,8 @@ export async function GET(request: NextRequest) {
         provider_id,
         service_id,
         services(title, category),
-        profiles!bookings_client_id_fkey(full_name, company_name),
-        profiles!bookings_provider_id_fkey(full_name, company_name)
+        client_profile:profiles!bookings_client_id_fkey(full_name, company_name),
+        provider_profile:profiles!bookings_provider_id_fkey(full_name, company_name)
       `)
     
     // Apply user-specific filters
@@ -137,12 +137,12 @@ export async function GET(request: NextRequest) {
       client_id: booking.client_id,
       provider_id: booking.provider_id,
       service_id: booking.service_id,
-      service_title: booking.services?.title || 'Unknown Service',
-      service_category: booking.services?.category || 'Unknown',
-      client_name: booking.profiles?.full_name || 'Unknown Client',
-      client_company: booking.profiles?.company_name || '',
-      provider_name: booking.profiles?.full_name || 'Unknown Provider',
-      provider_company: booking.profiles?.company_name || ''
+      service_title: booking.services?.[0]?.title || 'Unknown Service',
+      service_category: booking.services?.[0]?.category || 'Unknown',
+      client_name: booking.client_profile?.full_name || 'Unknown Client',
+      client_company: booking.client_profile?.company_name || '',
+      provider_name: booking.provider_profile?.full_name || 'Unknown Provider',
+      provider_company: booking.provider_profile?.company_name || ''
     })) || []
     
     // Calculate summary statistics
