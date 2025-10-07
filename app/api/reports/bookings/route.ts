@@ -8,24 +8,28 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
     
-    // Get current user session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    // Get current user - use getUser() for consistency with other APIs
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     // Debug logging
     if (process.env.NODE_ENV !== 'production') {
-      console.log('🔍 Reports API: Session check', {
-        hasSession: !!session,
-        sessionError: sessionError?.message,
-        userId: session?.user?.id
+      console.log('🔍 Reports API: User check', {
+        hasUser: !!user,
+        authError: authError?.message,
+        userId: user?.id
       })
     }
     
-    if (sessionError || !session) {
+    if (authError || !user) {
       console.error('❌ Reports API: Unauthorized', {
-        sessionError: sessionError?.message,
-        hasSession: !!session
+        authError: authError?.message,
+        hasUser: !!user
       })
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ 
+        success: false,
+        error: 'Failed to get user',
+        message: 'Authentication failed'
+      }, { status: 401 })
     }
 
     // Get query parameters
@@ -41,7 +45,7 @@ export async function GET(request: NextRequest) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, role, company_id')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single()
 
     // Debug logging
@@ -57,9 +61,13 @@ export async function GET(request: NextRequest) {
       console.error('❌ Reports API: Profile not found', {
         profileError: profileError?.message,
         hasProfile: !!profile,
-        userId: session.user.id
+        userId: user.id
       })
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
+      return NextResponse.json({ 
+        success: false,
+        error: 'Profile not found',
+        message: 'User profile not found'
+      }, { status: 404 })
     }
 
     let reportData: any = {}
@@ -79,6 +87,7 @@ export async function GET(request: NextRequest) {
     if (format === 'pdf') {
       // TODO: Implement PDF generation
       return NextResponse.json({ 
+        success: true,
         message: 'PDF generation not implemented yet',
         data: reportData 
       })
@@ -88,22 +97,23 @@ export async function GET(request: NextRequest) {
       success: true,
       report: reportData,
       generated_at: new Date().toISOString(),
-      generated_by: session.user.id
+      generated_by: user.id
     })
 
   } catch (error) {
     console.error('Error generating booking report:', error)
-    return NextResponse.json(
-      { error: 'Failed to generate report' },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to generate report',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
 async function generateDetailedBookingReport(supabase: any, bookingId: string, profile: any) {
-  // Get comprehensive booking data
+  // Get comprehensive booking data from bookings_full_view for detailed information
   const { data: booking, error: bookingError } = await supabase
-    .from('v_booking_status')
+    .from('bookings_full_view')
     .select('*')
     .eq('id', bookingId)
     .single()
@@ -164,9 +174,9 @@ async function generateDetailedBookingReport(supabase: any, bookingId: string, p
   return {
     booking: {
       id: booking.id,
-      title: booking.booking_title,
+      title: booking.title,
       status: booking.display_status,
-      raw_status: booking.raw_status,
+      raw_status: booking.status,
       progress: booking.progress,
       created_at: booking.created_at,
       updated_at: booking.updated_at,
@@ -198,8 +208,8 @@ async function generateDetailedBookingReport(supabase: any, bookingId: string, p
       category: booking.service_category
     },
     payment: {
-      amount: booking.amount,
-      amount_cents: booking.amount_cents,
+      amount: booking.total_amount,
+      amount_cents: booking.total_amount * 100,
       currency: booking.currency,
       status: booking.payment_status,
       invoice_status: booking.invoice_status
@@ -238,7 +248,7 @@ async function generateDetailedBookingReport(supabase: any, bookingId: string, p
 
 async function generateSummaryReport(supabase: any, profile: any, filters: any) {
   let query = supabase
-    .from('v_booking_status')
+    .from('bookings_full_view')
     .select('*', { count: 'exact' })
 
   // Apply role-based filtering
@@ -268,7 +278,7 @@ async function generateSummaryReport(supabase: any, profile: any, filters: any) 
 
   // Calculate summary statistics
   const totalBookings = count || 0
-  const totalRevenue = bookings?.reduce((sum: number, booking: any) => sum + (booking.amount || 0), 0) || 0
+  const totalRevenue = bookings?.reduce((sum: number, booking: any) => sum + (booking.total_amount || 0), 0) || 0
   const avgProgress = bookings?.length > 0 ? 
     bookings.reduce((sum: number, booking: any) => sum + (booking.progress || 0), 0) / bookings.length : 0
 
@@ -293,7 +303,7 @@ async function generateSummaryReport(supabase: any, profile: any, filters: any) 
       acc[month] = { count: 0, revenue: 0 }
     }
     acc[month].count += 1
-    acc[month].revenue += booking.amount || 0
+    acc[month].revenue += booking.total_amount || 0
     return acc
   }, {}) || {}
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createMiddlewareClient } from '@/lib/supabase-middleware'
+import { createClient } from '@/utils/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = createMiddlewareClient()
+    const supabase = await createClient()
 
     // Check if email exists in profiles table
     const { data: profile, error: profileError } = await supabase
@@ -44,27 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ exists: true })
     }
 
-    // Also check auth.users table for additional security
-    try {
-      const { data: authUser, error: authError } = await supabase
-        .from('auth.users')
-        .select('email')
-        .eq('email', email.toLowerCase())
-        .single()
-
-      if (authError && authError.code !== 'PGRST116') {
-        console.error('Error checking email in auth.users:', authError)
-        // Don't fail the request, just log the error
-      }
-
-      if (authUser) {
-        return NextResponse.json({ exists: true })
-      }
-    } catch (error) {
-      // If we can't check auth.users, that's okay - we already checked profiles
-      console.warn('Could not check auth.users table:', error)
-    }
-
+    // Email is not registered
     return NextResponse.json({ exists: false })
 
   } catch (error) {

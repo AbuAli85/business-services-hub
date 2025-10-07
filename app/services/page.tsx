@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency } from '@/lib/utils'
 import { getServiceCardImageUrl } from '@/lib/service-images'
+import { getBaseUrl, safeFetch } from '@/lib/url-utils'
 import { Search, Filter, Star, MapPin, Eye } from 'lucide-react'
 
 export const revalidate = 300
@@ -50,13 +51,58 @@ async function fetchServicesSSR(params: { category?: string; search?: string; pa
   if (params.category && params.category !== 'all') query.set('category', params.category)
   if (params.search) query.set('search', params.search)
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
-  const res = await fetch(`${baseUrl}/api/services?${query.toString()}`, {
-    // Use ISR; let upstream API be cached by Next
-    next: { revalidate }
-  })
-  if (!res.ok) return { services: [], pagination: { page: 1, pages: 1, total: 0 } }
-  return res.json()
+  // Use the utility function to get a corrected base URL
+  let baseUrl = getBaseUrl()
+  
+  // Additional safety check - if URL still contains typo, force correct it
+  if (baseUrl.includes('theditgialmorph.com')) {
+    baseUrl = baseUrl.replace('theditgialmorph.com', 'thedigitalmorph.com')
+    console.warn('🚨 Emergency URL correction applied:', baseUrl)
+  }
+  
+  const apiUrl = `${baseUrl}/api/services?${query.toString()}`
+  
+  // Log the final URL for debugging
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🌐 Final API URL:', apiUrl)
+  }
+
+  try {
+    const res = await safeFetch(apiUrl, {
+      // Use ISR; let upstream API be cached by Next
+      next: { revalidate }
+    })
+    
+    if (!res || !res.ok) {
+      console.error('Services API error:', res?.status, res?.statusText)
+      return { services: [], pagination: { page: 1, pages: 1, total: 0 } }
+    }
+    
+    return res.json()
+  } catch (error) {
+    console.error('Services fetch error:', error)
+    
+    // If the error is DNS related, try with the hardcoded correct URL as fallback
+    if (error instanceof Error && error.message.includes('ENOTFOUND')) {
+      console.warn('🔄 DNS error detected, trying fallback URL...')
+      const fallbackUrl = `https://marketing.thedigitalmorph.com/api/services?${query.toString()}`
+      
+      try {
+        const fallbackRes = await safeFetch(fallbackUrl, {
+          next: { revalidate }
+        })
+        
+        if (fallbackRes && fallbackRes.ok) {
+          console.log('✅ Fallback URL succeeded')
+          return fallbackRes.json()
+        }
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError)
+      }
+    }
+    
+    return { services: [], pagination: { page: 1, pages: 1, total: 0 } }
+  }
 }
 
 export default async function ServicesPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
