@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
-import { BrandLoader } from '@/components/ui/BrandLoader'
 
 type Role = 'admin' | 'manager' | 'provider' | 'client'
 
@@ -51,7 +50,10 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
   if (ok === null) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center">
-        <BrandLoader size={48} />
+        <div className="flex flex-col items-center space-y-3">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-sm text-gray-600">Loading...</p>
+        </div>
       </div>
     )
   }

@@ -238,15 +238,7 @@ export function validatePasswordConfirmation(password: string, confirmPassword: 
  * Validates captcha token
  */
 export function validateCaptcha(captchaToken: string): { isValid: boolean; error?: string } {
-  if (!captchaToken) {
-    return { isValid: false, error: 'Please complete the captcha verification' }
-  }
-
-  // Basic token format validation
-  if (captchaToken.length < 10) {
-    return { isValid: false, error: 'Invalid captcha token' }
-  }
-
+  // Captcha is now optional - always return valid
   return { isValid: true }
 }
 
@@ -319,20 +311,7 @@ export function validateSignupForm(formData: SignupFormData, captchaToken: strin
     errors.companyName = companyNameValidation.error!
   }
 
-  // Captcha validation (only required if site key is configured)
-  const hasCaptchaKey = typeof window !== 'undefined' 
-    ? !!process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY 
-    : false
-    
-  if (hasCaptchaKey && captchaToken) {
-    const captchaValidation = validateCaptcha(captchaToken)
-    if (!captchaValidation.isValid) {
-      errors.captcha = captchaValidation.error!
-    }
-  } else if (hasCaptchaKey && !captchaToken) {
-    // Only show error if captcha is configured but not completed
-    errors.captcha = 'Please complete the security verification'
-  }
+  // Captcha validation removed - no longer required
 
   // Additional warnings
   if (formData.email && formData.email.includes('+')) {

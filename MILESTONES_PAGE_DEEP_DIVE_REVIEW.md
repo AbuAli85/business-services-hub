@@ -475,7 +475,7 @@ Client can:
 - ✅ **Responsive layout** - Works on all screen sizes
 
 #### User Interactions
-- ✅ **Loading states** - BrandLoader component
+- ✅ **Loading states** - Simple spinner component
 - ✅ **Toast notifications** - Success/error feedback
 - ✅ **Confirmation dialogs** - Before destructive actions
 - ✅ **Form validation** - Real-time error messages

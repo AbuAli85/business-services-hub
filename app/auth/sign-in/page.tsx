@@ -12,7 +12,6 @@ import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2, AlertTriangle, Shield } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
-import { HCaptcha } from '@/components/ui/hcaptcha'
 import { authLogger } from '@/lib/auth-logger'
 import { syncSessionCookies } from '@/lib/utils/session-sync'
 
@@ -22,8 +21,6 @@ function SignInForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [attempts, setAttempts] = useState(0)
-  const [captchaToken, setCaptchaToken] = useState<string>('')
-  const [captchaKey, setCaptchaKey] = useState<number>(0)
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectParam = searchParams?.get('redirect') || ''
@@ -59,14 +56,11 @@ function SignInForm() {
       authLogger.logLoginAttempt({ success: true, method: 'password', email, metadata: { attempts } })
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        options: { captchaToken }
+        password
       })
 
       if (error) {
         setAttempts(prev => prev + 1)
-        setCaptchaToken('')
-        setCaptchaKey(k => k + 1)
         authLogger.logLoginFailure({ success: false, method: 'password', email, error: error.message, attemptCount: attempts + 1 })
         
         // Handle specific error cases for production
@@ -211,8 +205,7 @@ function SignInForm() {
       const supabase = await getSupabaseClient()
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email,
-        options: { captchaToken }
+        email: email
       })
 
       if (error) {
@@ -237,8 +230,7 @@ function SignInForm() {
       setLoading(true)
       const supabase = await getSupabaseClient()
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-        captchaToken
+        redirectTo: `${window.location.origin}/auth/reset-password`
       })
 
       if (error) {
@@ -310,23 +302,6 @@ function SignInForm() {
               />
             </div>
 
-            {/* Professional hCaptcha Section */}
-            {attempts >= 2 && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-blue-800">
-                    <Shield className="h-4 w-4" />
-                    <span className="text-sm font-medium">Security Verification</span>
-                  </div>
-                  <p className="text-sm text-blue-700">
-                    Please complete the security verification to continue
-                  </p>
-                  <div className="flex justify-center">
-                    <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
-                  </div>
-                </div>
-              </div>
-            )}
             
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -364,14 +339,6 @@ function SignInForm() {
               </div>
             </div>
 
-            {/* hCaptcha - Only show if configured */}
-            <HCaptcha 
-              key={captchaKey} 
-              onVerify={setCaptchaToken}
-              onExpire={() => setCaptchaToken('')}
-              theme="light"
-              showLabel={true}
-            />
             
             <Button
               type="button"

@@ -13,7 +13,6 @@ import { toast } from 'sonner'
 import { Eye, EyeOff, Loader2, Building2, User, CheckCircle, XCircle, AlertTriangle, Mail, Phone, Lock, Briefcase, ArrowRight, Shield, Star } from 'lucide-react'
 import { EmailVerificationModal } from '@/components/ui/email-verification-modal'
 import { PlatformLogo } from '@/components/ui/platform-logo'
-import { HCaptcha } from '@/components/ui/hcaptcha'
 import { validateSignupForm, sanitizeSignupForm, validatePassword, checkEmailExists } from '@/lib/signup-validation'
 
 export default function SignUpPage() {
@@ -36,8 +35,6 @@ export default function SignUpPage() {
     feedback: '',
     meetsRequirements: false
   })
-  const [captchaToken, setCaptchaToken] = useState<string>('')
-  const [captchaKey, setCaptchaKey] = useState<number>(0)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -88,7 +85,7 @@ export default function SignUpPage() {
 
   const validateForm = async () => {
     const sanitizedData = sanitizeSignupForm(formData)
-    const validation = validateSignupForm(sanitizedData, captchaToken)
+    const validation = validateSignupForm(sanitizedData, '')
     
     setErrors(validation.errors)
 
@@ -139,7 +136,6 @@ export default function SignUpPage() {
         email: formData.email,
         password: formData.password,
         options: {
-          ...(captchaToken && { captchaToken }),
           data: {
             role: formData.role,
             full_name: formData.fullName,
@@ -552,31 +548,6 @@ export default function SignUpPage() {
                   )}
                 </div>
 
-                {/* Professional Captcha Section - Only show if configured */}
-                {process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY && (
-                  <div className="space-y-3">
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-blue-800">
-                          <Shield className="h-4 w-4" />
-                          <span className="text-sm font-medium">Security Verification</span>
-                        </div>
-                        <p className="text-sm text-blue-700">
-                          Complete the security verification to protect your account
-                        </p>
-                        <div className="flex justify-center">
-                          <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
-                        </div>
-                        {errors.captcha && (
-                          <p className="text-sm text-red-500 flex items-center gap-1 justify-center">
-                            <AlertTriangle className="h-3 w-3" />
-                            {errors.captcha}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Submit Button */}
                 <Button

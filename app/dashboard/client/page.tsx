@@ -159,11 +159,18 @@ export default function ClientDashboard() {
 
       setUser(user)
       
-      // Fetch data and then set loading to false
+      // Fetch data with timeout protection
+      const dataTimeout = setTimeout(() => {
+        console.warn('⏰ Client data fetch timeout - showing dashboard with default data')
+        setLoading(false)
+      }, 15000) // 15 second timeout
+      
       try {
         await fetchAllClientData(user.id)
+        clearTimeout(dataTimeout)
       } catch (dataError) {
         console.warn('Error fetching client data:', dataError)
+        clearTimeout(dataTimeout)
         // Continue to show dashboard even if data fetch fails
       }
       
@@ -215,27 +222,37 @@ export default function ClientDashboard() {
       const serviceIds = Array.from(new Set((bookings || []).map((b: any) => b.service_id).filter(Boolean)))
       const providerIds = Array.from(new Set((bookings || []).map((b: any) => b.provider_id).filter(Boolean)))
 
-      // Add timeout protection for profile queries
-      const profileController = new AbortController()
-      const profileTimeout = setTimeout(() => profileController.abort(), 5000)
+      // Add timeout protection for all queries
+      const queryController = new AbortController()
+      const queryTimeout = setTimeout(() => queryController.abort(), 8000) // 8 second timeout
       
       const [servicesResponse, providersResponse, reviewsResponse] = await Promise.allSettled([
-        serviceIds.length ? supabase.from('services').select('id, title').in('id', serviceIds) : Promise.resolve({ data: [], error: null } as any),
-        providerIds.length ? supabase.from('profiles').select('id, full_name, company_name').in('id', providerIds).abortSignal(profileController.signal) : Promise.resolve({ data: [], error: null } as any),
-        supabase.from('reviews').select('rating').eq('client_id', userId)
+        serviceIds.length ? supabase.from('services').select('id, title').in('id', serviceIds).abortSignal(queryController.signal) : Promise.resolve({ data: [], error: null } as any),
+        providerIds.length ? supabase.from('profiles').select('id, full_name, company_name').in('id', providerIds).abortSignal(queryController.signal) : Promise.resolve({ data: [], error: null } as any),
+        supabase.from('reviews').select('rating').eq('client_id', userId).abortSignal(queryController.signal)
       ])
       
-      clearTimeout(profileTimeout)
+      clearTimeout(queryTimeout)
 
       // Handle Promise.allSettled results
       const services = servicesResponse.status === 'fulfilled' ? (servicesResponse.value as any).data || [] : []
       const providers = providersResponse.status === 'fulfilled' ? (providersResponse.value as any).data || [] : []
       const reviews = reviewsResponse.status === 'fulfilled' ? (reviewsResponse.value as any).data || [] : []
       
-      // Handle profile query errors gracefully
+      // Handle query errors gracefully
+      if (servicesResponse.status === 'rejected') {
+        console.warn('⏰ Services query failed, continuing without service names:', servicesResponse.reason)
+      } else if (servicesResponse.status === 'fulfilled' && (servicesResponse.value as any).error) {
+        const error = (servicesResponse.value as any).error
+        if (error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('canceling statement')) {
+          console.warn('⏰ Services query timed out, continuing without service names')
+        } else {
+          console.warn('⚠️ Services query failed:', error)
+        }
+      }
+      
       if (providersResponse.status === 'rejected') {
-        const error = providersResponse.reason
-        console.warn('⏰ Profile enrichment query failed, continuing without provider names:', error)
+        console.warn('⏰ Profile enrichment query failed, continuing without provider names:', providersResponse.reason)
       } else if (providersResponse.status === 'fulfilled' && (providersResponse.value as any).error) {
         const error = (providersResponse.value as any).error
         if (error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('canceling statement')) {
@@ -245,6 +262,10 @@ export default function ClientDashboard() {
         } else {
           console.warn('⚠️ Profile enrichment query failed:', error)
         }
+      }
+      
+      if (reviewsResponse.status === 'rejected') {
+        console.warn('⏰ Reviews query failed, continuing without reviews:', reviewsResponse.reason)
       }
 
       // Compute stats from a single dataset
@@ -295,8 +316,8 @@ export default function ClientDashboard() {
         return {
           ...b,
           service_title: service?.title || 'Unknown Service',
-          provider_name: provider?.full_name || 'Unknown Provider',
-          provider_company: provider?.company_name || provider?.full_name || 'Unknown Company',
+          provider_name: provider?.full_name || `Provider ${b.provider_id?.slice(-8) || 'Unknown'}`,
+          provider_company: provider?.company_name || provider?.full_name || `Provider ${b.provider_id?.slice(-8) || 'Unknown'}`,
           amount: b.total_amount || (b.subtotal ? b.subtotal + (b.subtotal * 0.05) : 0),
           scheduled_date: b.scheduled_date || b.start_time || b.created_at
         }
@@ -397,6 +418,16 @@ export default function ClientDashboard() {
               <div className="text-center">
                 <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
                 <p className="text-sm text-gray-600">Preparing your client insights...</p>
+                <button 
+                  onClick={() => {
+                    console.log('🔧 Force refresh client dashboard')
+                    setLoading(false)
+                    window.location.reload()
+                  }}
+                  className="mt-3 text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Taking too long? Click here to refresh
+                </button>
               </div>
             </div>
           </div>
