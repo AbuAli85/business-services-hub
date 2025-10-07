@@ -1,10 +1,9 @@
--- Fix v_booking_status view to include all required columns
--- This view is used by useBookingsFullData hook and other components
+-- Quick fix for missing scheduled_date column in booking views
+-- Run this if you get "column v_booking_status.scheduled_date does not exist"
 
--- Drop the existing view
+-- Drop and recreate v_booking_status view with scheduled_date
 DROP VIEW IF EXISTS public.v_booking_status CASCADE;
 
--- Create the v_booking_status view with all required columns
 CREATE VIEW public.v_booking_status AS
 SELECT
   b.id,
@@ -67,14 +66,13 @@ SELECT
   b.total_amount as amount,
   b.currency,
   
-  -- Timestamps
+  -- Timestamps (including scheduled_date)
   b.created_at,
   b.updated_at,
   b.due_at,
   b.scheduled_date,
   b.requirements,
-  b.notes,
-  b.location
+  b.notes
   
 FROM public.bookings b
 LEFT JOIN public.services s ON b.service_id = s.id
@@ -86,5 +84,5 @@ GRANT SELECT ON public.v_booking_status TO authenticated;
 GRANT SELECT ON public.v_booking_status TO service_role;
 
 -- Test the view
-SELECT '✅ v_booking_status view created successfully!' as status;
+SELECT '✅ v_booking_status view fixed with scheduled_date column!' as status;
 SELECT COUNT(*) as total_bookings FROM public.v_booking_status;

@@ -46,6 +46,13 @@ function SignInForm() {
     }
     
     setLoading(true)
+    
+    // Set a timeout to prevent stuck loading state
+    const timeoutId = setTimeout(() => {
+      console.log('⏰ Login timeout - resetting loading state')
+      setLoading(false)
+      toast.error('Login is taking longer than expected. Please try again.')
+    }, 30000) // 30 second timeout
 
     try {
       const supabase = await getSupabaseClient()
@@ -116,6 +123,8 @@ function SignInForm() {
           }
         } catch (error) {
           console.error('❌ Session sync failed:', error)
+          // Don't fail the login if session sync fails - continue with redirect
+          console.log('⚠️ Continuing with redirect despite sync failure')
         }
 
         // Redirect to role-specific dashboard
@@ -132,8 +141,27 @@ function SignInForm() {
           }
           // Admin and other roles go to /dashboard
         }
+        
         console.log('🚀 Redirecting to:', target)
-        router.replace(target)
+        
+        // Reset loading state before redirect to prevent stuck state
+        setLoading(false)
+        
+        // Use window.location.href for more reliable redirect
+        try {
+          router.replace(target)
+          // Fallback redirect if router.replace doesn't work
+          setTimeout(() => {
+            if (window.location.pathname === '/auth/sign-in') {
+              console.log('🔄 Router redirect failed, using window.location')
+              window.location.href = target
+            }
+          }, 1000)
+        } catch (redirectError) {
+          console.error('❌ Router redirect failed:', redirectError)
+          // Fallback to window.location
+          window.location.href = target
+        }
       }
     } catch (err) {
       setAttempts(prev => prev + 1)
@@ -142,6 +170,8 @@ function SignInForm() {
       authLogger.logLoginFailure({ success: false, method: 'password', email, error: err instanceof Error ? err.message : 'Unknown error', attemptCount: attempts + 1 })
       toast.error('An unexpected error occurred. Please try again.')
     } finally {
+      // Clear the timeout
+      clearTimeout(timeoutId)
       setLoading(false)
     }
   }
