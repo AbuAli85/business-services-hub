@@ -3,7 +3,7 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
 
 interface BookingFullData {
-  // Core booking data from v_booking_status view
+  // Core booking data from booking_list_optimized view
   id: string
   booking_title: string
   service_id: string
@@ -34,7 +34,7 @@ interface BookingFullData {
   // Payment information
   payment_status: string
   invoice_status?: string
-  invoice_id?: string
+  invoice_id?: string | null
   amount_cents?: number
   amount?: number
   currency: string
@@ -98,7 +98,7 @@ export function useBookingsFullData({
       
       // Build query based on user role
       let query = supabase
-        .from('v_booking_status')
+        .from('booking_list_optimized')
         .select('*', { count: 'exact' })
 
       // Apply role-based filtering
@@ -140,7 +140,44 @@ export function useBookingsFullData({
         throw new Error(fetchError.message)
       }
 
-      setBookings(data || [])
+      // Transform data to match expected format
+      const transformedData = (data || []).map(item => ({
+        id: item.id,
+        booking_title: item.booking_title,
+        service_id: item.service_id,
+        service_title: item.service_title,
+        service_description: item.service_description || undefined,
+        service_category: item.service_category || undefined,
+        client_id: item.client_id,
+        client_name: item.client_name,
+        client_email: item.client_email || undefined,
+        client_company: item.client_company || undefined,
+        client_avatar: item.client_avatar || undefined,
+        provider_id: item.provider_id,
+        provider_name: item.provider_name,
+        provider_email: item.provider_email || undefined,
+        provider_company: item.provider_company || undefined,
+        provider_avatar: item.provider_avatar || undefined,
+        progress: item.progress_percentage || 0,
+        total_milestones: 0, // Will be calculated separately if needed
+        completed_milestones: 0, // Will be calculated separately if needed
+        raw_status: item.status,
+        approval_status: item.approval_status || undefined,
+        display_status: item.display_status,
+        payment_status: item.payment_status,
+        invoice_status: item.payment_display_status || undefined,
+        invoice_id: null, // Will be populated from invoices table separately
+        amount_cents: item.amount_cents || undefined,
+        amount: item.total_amount || undefined,
+        currency: item.currency || 'USD',
+        created_at: item.created_at,
+        updated_at: item.updated_at || undefined,
+        due_at: item.due_at || undefined,
+        requirements: item.requirements || undefined,
+        notes: item.notes || undefined
+      }))
+
+      setBookings(transformedData)
       setTotalCount(count || 0)
       setLastUpdatedAt(new Date().toISOString())
 
