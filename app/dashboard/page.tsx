@@ -55,10 +55,9 @@ if (typeof window !== 'undefined') {
     REDIRECT_TRACKER.lastRedirectTime = 0
     REDIRECT_TRACKER.redirecting = false
     
-    // Clear any stuck session storage flags
+    // Only clear redirecting flag, NOT the loaded flags to prevent remounting
     sessionStorage.removeItem('dashboard-redirecting')
-    sessionStorage.removeItem('dashboard-provider-loaded')
-    sessionStorage.removeItem('dashboard-client-loaded')
+    // REMOVED: Don't clear loaded flags to prevent component remounting
   }
 }
 

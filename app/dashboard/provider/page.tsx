@@ -43,6 +43,14 @@ export default function ProviderDashboard() {
   useEffect(() => {
     console.log('🏠 Provider dashboard mounted, loading data')
     
+    // Check if already loaded to prevent unnecessary reloading
+    const alreadyLoaded = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
+    if (alreadyLoaded && stats) {
+      console.log('✅ Provider dashboard already loaded, skipping reload')
+      setLoading(false)
+      return
+    }
+    
     // Mark successful landing - this will be read by the global tracker
     // to prevent the /dashboard page from re-checking auth
     sessionStorage.setItem('dashboard-provider-loaded', 'true')
@@ -57,11 +65,24 @@ export default function ProviderDashboard() {
       toast.warning('Dashboard loading timed out. Please refresh.')
     }, 10000) // 10 second safety timeout
     
+    // Add beforeunload listener to clear flag only when actually leaving
+    const handleBeforeUnload = () => {
+      sessionStorage.removeItem('dashboard-provider-loaded')
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    
     // Cleanup function to clear flags when component unmounts
     return () => {
       console.log('🧹 Provider dashboard unmounting, clearing flags')
-      sessionStorage.removeItem('dashboard-provider-loaded')
       clearTimeout(safetyTimeout)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Only clear flag if user is actually navigating away
+      setTimeout(() => {
+        if (document.visibilityState === 'hidden') {
+          sessionStorage.removeItem('dashboard-provider-loaded')
+        }
+      }, 1000)
     }
   }, []) // FIXED: Remove loading dependency to prevent infinite loop
 
