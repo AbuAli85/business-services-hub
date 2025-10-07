@@ -38,9 +38,18 @@ provider_profile:profiles!bookings_provider_id_fkey(full_name, company_name)
 client_name: booking.profiles?.full_name || 'Unknown Client',
 provider_name: booking.profiles?.full_name || 'Unknown Provider',
 
-// After (using correct aliases):
+// After (using correct aliases and array access):
+client_name: booking.client_profile?.[0]?.full_name || 'Unknown Client',
+provider_name: booking.provider_profile?.[0]?.full_name || 'Unknown Provider',
+```
+
+### **4. Fixed Profile Array Access:**
+```typescript
+// Before (treating arrays as objects):
 client_name: booking.client_profile?.full_name || 'Unknown Client',
-provider_name: booking.provider_profile?.full_name || 'Unknown Provider',
+
+// After (accessing first element of array):
+client_name: booking.client_profile?.[0]?.full_name || 'Unknown Client',
 ```
 
 ## **Result:**

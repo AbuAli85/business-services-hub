@@ -139,10 +139,10 @@ export async function GET(request: NextRequest) {
       service_id: booking.service_id,
       service_title: booking.services?.[0]?.title || 'Unknown Service',
       service_category: booking.services?.[0]?.category || 'Unknown',
-      client_name: booking.client_profile?.full_name || 'Unknown Client',
-      client_company: booking.client_profile?.company_name || '',
-      provider_name: booking.provider_profile?.full_name || 'Unknown Provider',
-      provider_company: booking.provider_profile?.company_name || ''
+      client_name: booking.client_profile?.[0]?.full_name || 'Unknown Client',
+      client_company: booking.client_profile?.[0]?.company_name || '',
+      provider_name: booking.provider_profile?.[0]?.full_name || 'Unknown Provider',
+      provider_company: booking.provider_profile?.[0]?.company_name || ''
     })) || []
     
     // Calculate summary statistics
