@@ -87,7 +87,7 @@ export default function DashboardLayout({
         console.error('❌ No user after emergency timeout, redirecting to sign-in')
         router.push('/auth/sign-in')
       }
-    }, 8000) // 8 second emergency timeout
+    }, 5000) // Reduced to 5 seconds
     
     // Use simpleAuthCheck as primary - it's much faster
     simpleAuthCheck().finally(() => {
@@ -117,7 +117,7 @@ export default function DashboardLayout({
           console.error('❌ No user after timeout, redirecting to sign-in')
           router.push('/auth/sign-in')
         }
-      }, 5000) // 5 second timeout
+      }, 3000) // Reduced to 3 seconds
       
       return () => clearTimeout(timeout)
     }
@@ -724,6 +724,16 @@ export default function DashboardLayout({
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading dashboard...</p>
           <p className="text-sm text-gray-400 mt-2">Please wait while we verify your session</p>
+          <button 
+            onClick={() => {
+              console.log('🔧 Force refresh dashboard')
+              setLoading(false)
+              window.location.reload()
+            }}
+            className="mt-4 text-xs text-blue-600 hover:text-blue-800 underline"
+          >
+            Taking too long? Click here to refresh
+          </button>
         </div>
       </div>
     )
