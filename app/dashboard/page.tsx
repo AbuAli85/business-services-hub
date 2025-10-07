@@ -105,6 +105,12 @@ export default function DashboardPage() {
   }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname, isRedirecting])
 
   async function checkAuth() {
+    // Add timeout to prevent infinite loading
+    const authTimeout = setTimeout(() => {
+      console.warn('⏰ Auth check timeout, setting loading to false')
+      setLoading(false)
+    }, 10000) // 10 second timeout
+    
     try {
       console.log('🔐 Main dashboard: Checking auth...')
       const supabase = await getSupabaseClient()
@@ -136,6 +142,8 @@ export default function DashboardPage() {
             if (!profileError && profileData) {
               role = profileData.role
               console.log('✅ Role from profile:', role)
+            } else {
+              console.warn('⚠️ Profile role fetch failed:', profileError?.message)
             }
           } catch (err) {
             console.warn('⚠️ Profile role fetch failed, using default:', err)
@@ -167,6 +175,7 @@ export default function DashboardPage() {
         
         // Admin stays on this page
         console.log('👑 Admin user, staying on main dashboard')
+        clearTimeout(authTimeout)
         setLoading(false)
         return
       }
@@ -176,6 +185,7 @@ export default function DashboardPage() {
       
       if (error || !user) {
         console.log('❌ No user found, redirecting to sign-in')
+        clearTimeout(authTimeout)
         router.push('/auth/sign-in')
         return
       }
@@ -230,10 +240,12 @@ export default function DashboardPage() {
       
       // Admin stays on this page
       console.log('👑 Admin user, staying on main dashboard')
+      clearTimeout(authTimeout)
       setLoading(false)
       
     } catch (error) {
       console.error('❌ Auth check failed:', error)
+      clearTimeout(authTimeout)
       setError('Authentication failed. Please try again.')
       setLoading(false)
     }
@@ -369,8 +381,8 @@ export default function DashboardPage() {
       dateOk = diff <= 31
     }
     // search
-    const q = activityQ.toLowerCase()
-    const searchOk = !q || a.description.toLowerCase().includes(q)
+    const q = activityQ?.toLowerCase() || ''
+    const searchOk = !q || (a.description?.toLowerCase() || '').includes(q)
     return typeOk && statusOk && dateOk && searchOk
   })
 
