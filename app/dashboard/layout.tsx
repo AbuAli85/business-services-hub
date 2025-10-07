@@ -591,7 +591,7 @@ export default function DashboardLayout({
         config={{
           warningTime: 300, // 5 minutes
           inactivityTimeout: 1800, // 30 minutes
-          checkInterval: 60 // 60 seconds - increased to reduce frequency
+          checkInterval: 120 // 120 seconds (2 minutes) - reduced noise
         }}
       >
         <div className="h-screen bg-gray-50 flex overflow-hidden">

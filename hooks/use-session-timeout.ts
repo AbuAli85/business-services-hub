@@ -56,11 +56,7 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   // Check session expiry
   const checkSession = useCallback(async () => {
     try {
-      console.log('🔍 Session timeout: Checking session...', {
-        timestamp: new Date().toISOString(),
-        currentUrl: window.location.href,
-        currentPath: window.location.pathname
-      })
+      // Silent check - only log issues
       const supabase = await getSupabaseClient()
       const { data: { session }, error } = await supabase.auth.getSession()
       
@@ -87,7 +83,7 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
         return
       }
 
-      console.log('✅ Session is valid, continuing...')
+      // Session is valid - no log needed
 
       const timeUntilExpiry = getSessionTimeRemaining(session)
 
