@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 // Layout-level sidebar and header are provided by app/dashboard/layout.tsx
 import { EnhancedKPIGrid, EnhancedPerformanceMetrics } from '@/components/dashboard/enhanced-kpi-cards'
@@ -35,6 +35,7 @@ export default function ProviderDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const hasCheckedAuth = useRef(false)
   
   // Dashboard data
   const [stats, setStats] = useState<ProviderDashboardStats | null>(null)
@@ -44,6 +45,9 @@ export default function ProviderDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
+    if (hasCheckedAuth.current) return  // Only run once
+    
+    hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
 
@@ -140,6 +144,7 @@ export default function ProviderDashboard() {
     return () => {
       isMounted = false
       controller.abort()
+      hasCheckedAuth.current = false  // Reset for next mount
     }
   }, [])
 

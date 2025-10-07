@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 // Uses shared dashboard layout (sidebar/header) from app/dashboard/layout.tsx
 import { EnhancedClientKPIGrid, EnhancedClientPerformanceMetrics } from '@/components/dashboard/enhanced-client-kpi-cards'
@@ -83,6 +83,7 @@ export default function ClientDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
+  const hasCheckedAuth = useRef(false)
   
   // Dashboard data
   const [stats, setStats] = useState<ClientStats | null>(null)
@@ -92,6 +93,9 @@ export default function ClientDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
+    if (hasCheckedAuth.current) return  // Only run once
+    
+    hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
 
@@ -183,6 +187,7 @@ export default function ClientDashboard() {
     return () => {
       isMounted = false
       controller.abort()
+      hasCheckedAuth.current = false  // Reset for next mount
     }
   }, [])
 

@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [redirecting, setRedirecting] = useState(false)
+  const hasCheckedAuth = useRef(false)
   const lastUrlParams = useRef<string>('')
   
   // Only load dashboard data for admin role
@@ -56,7 +57,9 @@ export default function DashboardPage() {
   // Run auth check once on mount with mounted guard
   useEffect(() => {
     if (pathname !== '/dashboard') return
+    if (hasCheckedAuth.current) return  // Only run once
     
+    hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
 
@@ -131,6 +134,8 @@ export default function DashboardPage() {
     return () => {
       isMounted = false
       controller.abort()
+      // Reset for next mount on this route
+      hasCheckedAuth.current = false
     }
   }, [pathname])
 
