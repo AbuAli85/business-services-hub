@@ -76,10 +76,21 @@ export default function ProviderDashboard() {
       console.log('✅ Provider dashboard: User found:', user.email)
       setUserId(user.id)
       
-      // SIMPLIFIED: Load dashboard data without timeout racing
+      // SIMPLIFIED: Load dashboard data with better error handling and timeout
       try {
-        await loadDashboardData(user.id)
-        console.log('✅ Provider dashboard: Data loaded successfully')
+        console.log('📊 Provider dashboard: Starting data load...')
+        const startTime = Date.now()
+        
+        // Add overall timeout to prevent hanging
+        const dataLoadPromise = loadDashboardData(user.id)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Data load timeout after 10 seconds')), 10000)
+        )
+        
+        await Promise.race([dataLoadPromise, timeoutPromise])
+        
+        const loadTime = Date.now() - startTime
+        console.log(`✅ Provider dashboard: Data loaded successfully in ${loadTime}ms`)
       } catch (dataErr) {
         console.error('❌ Provider dashboard: Data load failed:', dataErr)
         // Don't throw - let the user see the dashboard even without data
@@ -95,6 +106,14 @@ export default function ProviderDashboard() {
     } finally {
       console.log('✅ Provider dashboard: Loading complete')
       setLoading(false)
+      
+      // Force loading to false after a maximum time to prevent infinite loading
+      setTimeout(() => {
+        if (loading) {
+          console.log('⚠️ Provider dashboard: Force setting loading to false after timeout')
+          setLoading(false)
+        }
+      }, 15000) // 15 second maximum loading time
     }
   }
 
@@ -140,6 +159,16 @@ export default function ProviderDashboard() {
               <div className="text-center">
                 <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
                 <p className="text-sm text-gray-600">Preparing your business insights...</p>
+                <button 
+                  onClick={() => {
+                    console.log('🔧 Force refresh provider dashboard')
+                    setLoading(false)
+                    window.location.reload()
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  Force Refresh
+                </button>
               </div>
             </div>
           </div>
