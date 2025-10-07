@@ -12,14 +12,14 @@ export async function POST(req: NextRequest) {
 
 		res.cookies.set('sb-access-token', access_token, {
 			httpOnly: true,
-			secure: true,
+			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
 			path: '/',
 			expires
 		})
 		res.cookies.set('sb-refresh-token', refresh_token, {
 			httpOnly: true,
-			secure: true,
+			secure: process.env.NODE_ENV === 'production',
 			sameSite: 'lax',
 			path: '/',
 			// Let refresh token live longer; browsers cap long expirations, but it's fine
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE() {
 	const res = NextResponse.json({ ok: true })
-	res.cookies.set('sb-access-token', '', { httpOnly: true, secure: true, sameSite: 'lax', path: '/', expires: new Date(0) })
-	res.cookies.set('sb-refresh-token', '', { httpOnly: true, secure: true, sameSite: 'lax', path: '/', expires: new Date(0) })
+	res.cookies.set('sb-access-token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: new Date(0) })
+	res.cookies.set('sb-refresh-token', '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', expires: new Date(0) })
 	return res
 }

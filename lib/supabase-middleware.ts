@@ -27,14 +27,28 @@ export function createMiddlewareClient(req?: { headers: { get(name: string): str
   const readAccessTokenFromCookies = (): string | undefined => {
     try {
       const cookieHeader = req?.headers.get('cookie') || ''
+      console.log('🔍 Middleware reading cookies:', { 
+        cookieHeader: cookieHeader.substring(0, 100) + (cookieHeader.length > 100 ? '...' : ''),
+        hasCookieHeader: !!cookieHeader
+      })
+      
       const cookies = Object.fromEntries(
         cookieHeader.split(';').map(c => {
           const [k, v] = c.trim().split('=')
           return [k, decodeURIComponent(v || '')]
         })
       )
-      return cookies['sb-access-token']
-    } catch (_) {
+      
+      const token = cookies['sb-access-token']
+      console.log('🔍 Found access token in cookies:', { 
+        hasToken: !!token, 
+        tokenPreview: token ? `${token.substring(0, 20)}...` : 'N/A',
+        allCookieNames: Object.keys(cookies)
+      })
+      
+      return token
+    } catch (error) {
+      console.error('❌ Error reading cookies:', error)
       return undefined
     }
   }

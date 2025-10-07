@@ -122,6 +122,16 @@ export async function middleware(req: NextRequest) {
       (pathname.startsWith('/api/') && !isPublicApiRoute(pathname))) {
     
     try {
+      // Debug cookie information
+      const allCookies = req.cookies.getAll()
+      console.log('🔍 Middleware debug - cookies:', {
+        pathname,
+        cookieCount: allCookies.length,
+        cookieNames: allCookies.map(c => c.name),
+        hasAccessToken: !!req.cookies.get('sb-access-token'),
+        hasRefreshToken: !!req.cookies.get('sb-refresh-token')
+      })
+      
       // Quick session check using access token from HttpOnly cookie
       const supabase = createMiddlewareClient(req)
       const { data, error } = await supabase.auth.getUser()
