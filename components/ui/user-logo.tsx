@@ -46,7 +46,12 @@ export function UserLogo({ email, className = '', showFallback = true }: UserLog
       const normalizedRequestedEmail = email.toLowerCase().trim()
       const normalizedCurrentEmail = authUser.user.email?.toLowerCase().trim()
       
-      if (normalizedCurrentEmail !== normalizedRequestedEmail) {
+      // Only warn if emails are significantly different (not just minor formatting)
+      // Allow for partial matches or incomplete email rendering
+      if (normalizedCurrentEmail && normalizedRequestedEmail && 
+          !normalizedCurrentEmail.startsWith(normalizedRequestedEmail) && 
+          !normalizedRequestedEmail.startsWith(normalizedCurrentEmail) &&
+          normalizedCurrentEmail !== normalizedRequestedEmail) {
         console.log(`Email mismatch: requested ${normalizedRequestedEmail}, current user ${normalizedCurrentEmail}`)
         setLoading(false)
         return

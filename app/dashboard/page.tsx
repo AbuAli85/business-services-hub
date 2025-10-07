@@ -47,7 +47,14 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Prevent multiple checkAuth calls
+    // Check if we're currently in a redirect flow (persisted across mounts)
+    const redirectingFlag = sessionStorage.getItem('dashboard-redirecting')
+    if (redirectingFlag === 'true') {
+      console.log('⏭️ Redirect in progress (from session), skipping auth check')
+      return
+    }
+    
+    // Prevent multiple checkAuth calls in same mount
     if (hasCheckedAuth.current) {
       console.log('⏭️ Auth already checked, skipping')
       return
@@ -56,6 +63,12 @@ export default function DashboardPage() {
     // Don't run if we're redirecting
     if (isRedirecting.current) {
       console.log('⏭️ Currently redirecting, skipping auth check')
+      return
+    }
+    
+    // Only run on the actual /dashboard page
+    if (pathname !== '/dashboard') {
+      console.log('⏭️ Not on /dashboard page, skipping auth check')
       return
     }
     
@@ -90,15 +103,20 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Persist filters to URL
+  // Persist filters to URL (only if still on this page)
   useEffect(() => {
+    // Don't update URL if we're redirecting or not on /dashboard
+    if (isRedirecting.current || pathname !== '/dashboard') {
+      return
+    }
+    
     const params = new URLSearchParams(window.location.search)
     params.set('atype', activityType)
     params.set('astatus', activityStatus)
     params.set('adate', activityDateRange)
     if (activityQ) params.set('q', activityQ); else params.delete('q')
     router.replace(`?${params.toString()}`)
-  }, [activityType, activityStatus, activityDateRange, activityQ, router])
+  }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname])
 
   async function checkAuth() {
     try {
@@ -160,13 +178,19 @@ export default function DashboardPage() {
         if (role === 'provider') {
           console.log('🔄 Redirecting provider to /dashboard/provider')
           isRedirecting.current = true
+          sessionStorage.setItem('dashboard-redirecting', 'true')
           router.replace('/dashboard/provider')
+          // Clear flag after redirect completes
+          setTimeout(() => sessionStorage.removeItem('dashboard-redirecting'), 1000)
           return null // Return null to indicate redirect happened
         }
         if (role === 'client') {
           console.log('🔄 Redirecting client to /dashboard/client')
           isRedirecting.current = true
+          sessionStorage.setItem('dashboard-redirecting', 'true')
           router.replace('/dashboard/client')
+          // Clear flag after redirect completes
+          setTimeout(() => sessionStorage.removeItem('dashboard-redirecting'), 1000)
           return null // Return null to indicate redirect happened
         }
         
