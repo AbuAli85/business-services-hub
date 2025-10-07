@@ -31,10 +31,10 @@ import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
 export default function ProviderDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [redirecting, setRedirecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
-  // Sidebar and header are provided by the shared dashboard layout
   
   // Dashboard data
   const [stats, setStats] = useState<ProviderDashboardStats | null>(null)
@@ -42,65 +42,11 @@ export default function ProviderDashboard() {
   const [topServices, setTopServices] = useState<TopService[]>([])
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarnings[]>([])
 
+  // Check auth and load data on mount
   useEffect(() => {
-    console.log('🏠 Provider dashboard mounted, loading data')
-    console.log('🔍 Provider dashboard: Current URL:', window.location.href)
-    console.log('🔍 Provider dashboard: Current pathname:', window.location.pathname)
-    console.log('🔍 Provider dashboard: Mount timestamp:', new Date().toISOString())
-    
-    // Add a listener to track when the page is about to be unloaded
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      console.log('🚪 Provider dashboard: Before unload triggered', {
-        timestamp: new Date().toISOString(),
-        currentUrl: window.location.href,
-        currentPath: window.location.pathname
-      })
-    }
-    
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    
-    // Check if already loaded to prevent unnecessary reloading
-    const alreadyLoaded = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
-    if (alreadyLoaded && stats) {
-      console.log('✅ Provider dashboard already loaded, skipping reload')
-      setLoading(false)
-      return
-    }
-    
-    // Mark successful landing - this will be read by the global tracker
-    // to prevent the /dashboard page from re-checking auth
-    sessionStorage.setItem('dashboard-provider-loaded', 'true')
-    
-    loadUserAndData()
-    
-    // Safety timeout to prevent infinite loading (similar to client dashboard)
-    const safetyTimeout = setTimeout(() => {
-      console.log('⚠️ Provider dashboard: Safety timeout triggered, forcing loading to false')
-      setLoading(false)
-      setError('Dashboard loading timed out. Please refresh the page.')
-      toast.warning('Dashboard loading timed out. Please refresh.')
-    }, 10000) // 10 second safety timeout
-    
-    // Add beforeunload listener to clear flag only when actually leaving
-    const handleBeforeUnloadCleanup = () => {
-      sessionStorage.removeItem('dashboard-provider-loaded')
-    }
-    
-    window.addEventListener('beforeunload', handleBeforeUnloadCleanup)
-    
-    // Cleanup function to clear flags when component unmounts
-    return () => {
-      console.log('🧹 Provider dashboard unmounting, clearing flags')
-      clearTimeout(safetyTimeout)
-      window.removeEventListener('beforeunload', handleBeforeUnloadCleanup)
-      // Only clear flag if user is actually navigating away
-      setTimeout(() => {
-        if (document.visibilityState === 'hidden') {
-          sessionStorage.removeItem('dashboard-provider-loaded')
-        }
-      }, 1000)
-    }
-  }, []) // FIXED: Remove loading dependency to prevent infinite loop
+    console.log('🏠 Provider dashboard mounted')
+    checkUserAndFetchData()
+  }, [])
 
   // Register with centralized auto-refresh system
   useRefreshCallback(() => {
@@ -110,61 +56,68 @@ export default function ProviderDashboard() {
     }
   }, [userId, refreshing])
 
-  const loadUserAndData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      console.log('🔐 Provider dashboard: Loading user and data...')
+  const checkUserAndFetchData = async () => {
+    console.log('🔐 Checking authentication...')
+    setError(null)
 
+    try {
       const supabase = await getSupabaseClient()
-      
-      // Get current user with timeout
-      const userPromise = supabase.auth.getUser()
-      const userTimeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('User auth timeout')), 5000)
-      )
-      
-      const { data: { user }, error: userError } = await Promise.race([userPromise, userTimeout]) as any
-      
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
       if (userError || !user) {
-        console.log('❌ Provider dashboard: No user, redirecting to sign-in')
-        router.push('/auth/sign-in')
+        console.log('❌ No user found, redirecting to sign-in')
+        router.replace('/auth/sign-in')
         return
       }
 
-      console.log('✅ Provider dashboard: User found:', user.email)
-      setUserId(user.id)
-      
-      // Load dashboard data with individual timeouts
-      try {
-        console.log('📊 Provider dashboard: Starting data load...')
-        const startTime = Date.now()
-        
-        // Load data with shorter timeout to prevent hanging
-        const dataLoadPromise = loadDashboardData(user.id)
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Data load timeout after 8 seconds')), 8000)
-        )
-        
-        await Promise.race([dataLoadPromise, timeoutPromise])
-        
-        const loadTime = Date.now() - startTime
-        console.log(`✅ Provider dashboard: Data loaded successfully in ${loadTime}ms`)
-      } catch (dataErr) {
-        console.error('❌ Provider dashboard: Data load failed:', dataErr)
-        // Don't throw - let the user see the dashboard even without data
-        setError('Some dashboard data failed to load')
-        toast.warning('Some dashboard data failed to load. Please refresh.')
+      // Determine role
+      let userRole = user.user_metadata?.role
+      if (!userRole) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        userRole = profile?.role || 'provider'
       }
-      
-    } catch (err) {
-      console.error('❌ Provider dashboard: Critical error:', err)
-      logger.error('Error loading user and data:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
-      toast.error('Failed to load dashboard data')
-    } finally {
-      console.log('✅ Provider dashboard: Loading complete')
+
+      console.log('✅ User authenticated:', user.email, '| Role:', userRole)
+
+      // Handle redirect logic cleanly
+      if (userRole !== 'provider') {
+        console.log(`🔄 Redirecting ${userRole} to their dashboard`)
+        setRedirecting(true)
+        const dashboardUrl = userRole === 'client' 
+          ? '/dashboard/client'
+          : '/dashboard'
+        router.replace(dashboardUrl)
+        return
+      }
+
+      // Provider user - set user and load data
+      console.log('👤 Provider user confirmed, loading data...')
+      setUserId(user.id)
+
+      // Load data with proper error handling
+      try {
+        await loadDashboardData(user.id)
+        console.log('✅ Data loaded successfully')
+      } catch (dataError) {
+        logger.warn('⚠️ Error fetching provider data:', dataError)
+        setStats({
+          total_earnings: 0,
+          active_bookings: 0,
+          active_services: 0,
+          avg_rating: 0
+        } as any)
+        toast.error('Some data could not be loaded')
+      } finally {
+        setLoading(false)
+      }
+    } catch (error) {
+      logger.error('❌ Auth check failed:', error)
+      setError('Failed to load dashboard')
+      toast.error('Failed to load dashboard')
       setLoading(false)
     }
   }
@@ -198,30 +151,15 @@ export default function ProviderDashboard() {
     }
   }
 
-  if (loading) {
+  // Show redirecting state
+  if (redirecting) {
     return (
       <main className="p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-                <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
-                <p className="text-sm text-gray-600">Preparing your business insights...</p>
-                <button 
-                  onClick={() => {
-                    console.log('🔧 Force refresh provider dashboard')
-                    setLoading(false)
-                    window.location.reload()
-                  }}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                >
-                  Force Refresh
-                </button>
-              </div>
+          <div className="flex items-center justify-center h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-sm text-gray-600">Redirecting to your dashboard...</p>
             </div>
           </div>
         </div>
@@ -229,25 +167,36 @@ export default function ProviderDashboard() {
     )
   }
 
+  // Show loading state
+  if (loading) {
+    return (
+      <main className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <p className="text-sm text-gray-600">Loading dashboard...</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  // Show error state
   if (error || !stats) {
     return (
       <main className="p-6">
-        <div className="max-w-3xl mx-auto">
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardContent className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="h-8 w-8 text-red-600" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-                <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
-                <Button onClick={loadUserAndData} variant="outline" className="bg-white hover:bg-gray-50">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-center h-screen text-red-600">
+          <div className="text-center">
+            <p className="mb-4">{error || 'Failed to load dashboard data'}</p>
+            <Button
+              onClick={() => location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Retry
+            </Button>
+          </div>
         </div>
       </main>
     )
