@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [isRedirecting, setIsRedirecting] = useState(false)
   const hasCheckedAuth = useRef(false)
   const hasTriggeredRedirect = useRef(false)
+  const lastUrlParams = useRef<string>('')
   
   // Only load dashboard data after we have user info
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole, user?.id)
@@ -111,11 +112,14 @@ export default function DashboardPage() {
   }, [pathname])
 
   // Register with centralized auto-refresh system
+  // Note: Only depends on refresh function, not user state
+  // This prevents re-registration loops when user state updates
   useRefreshCallback(() => {
     if (user?.id) {
+      console.log('🔄 Auto-refresh triggered (silent)')
       refresh()
     }
-  }, [user, refresh])
+  }, [refresh])
 
   // Hydrate filters from URL once
   useEffect(() => {
@@ -141,7 +145,14 @@ export default function DashboardPage() {
     params.set('astatus', activityStatus)
     params.set('adate', activityDateRange)
     if (activityQ) params.set('q', activityQ); else params.delete('q')
-    router.replace(`?${params.toString()}`)
+    
+    const newUrlParams = params.toString()
+    
+    // Only update URL if it actually changed to prevent unnecessary re-renders
+    if (newUrlParams !== lastUrlParams.current) {
+      lastUrlParams.current = newUrlParams
+      router.replace(`?${newUrlParams}`, { scroll: false })
+    }
   }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname, isRedirecting])
 
   async function checkAuth() {
