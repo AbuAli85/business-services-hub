@@ -321,6 +321,15 @@ function SignInForm() {
                 </Button>
               </div>
             </div>
+
+            {/* hCaptcha - Only show if configured */}
+            <HCaptcha 
+              key={captchaKey} 
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken('')}
+              theme="light"
+              showLabel={true}
+            />
             
             <Button
               type="button"

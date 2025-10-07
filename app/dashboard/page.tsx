@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useState, useRef } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
@@ -32,9 +32,12 @@ import UnifiedSearch, { useDebouncedValue } from '@/components/ui/unified-search
 
 export default function DashboardPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading, error, refresh } = useDashboardData()
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string>('client')
+  const hasCheckedAuth = useRef(false)
+  const isRedirecting = useRef(false)
   // Activity filters
   const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
   const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
@@ -44,24 +47,25 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    // Prevent multiple checkAuth calls
+    if (hasCheckedAuth.current) {
+      console.log('⏭️ Auth already checked, skipping')
+      return
+    }
+    
+    // Don't run if we're redirecting
+    if (isRedirecting.current) {
+      console.log('⏭️ Currently redirecting, skipping auth check')
+      return
+    }
+    
+    console.log('✅ First mount on /dashboard, running auth check')
+    hasCheckedAuth.current = true
     checkAuth()
   }, [])
 
-  // Once we know the user's role, send them to their role-specific dashboard
-  useEffect(() => {
-    if (!user) return
-    if (!userRole) return
-    // Redirect providers and clients to their dedicated dashboards
-    if (userRole === 'provider') {
-      router.replace('/dashboard/provider')
-      return
-    }
-    if (userRole === 'client') {
-      router.replace('/dashboard/client')
-      return
-    }
-    // Admins remain on this page (admin overview)
-  }, [user, userRole, router])
+  // DISABLED: Redirect logic moved to checkAuth() to prevent useEffect loops
+  // The redirect now happens immediately when role is detected
 
   // Set up real-time refresh every 30 seconds
   useEffect(() => {
@@ -98,37 +102,84 @@ export default function DashboardPage() {
 
   async function checkAuth() {
     try {
+      console.log('🔐 Main dashboard: Checking auth...')
       const supabase = await getSupabaseClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
       
-      if (error || !user) {
-        router.push('/auth/sign-in')
-        return
-      }
+      // Add timeout to entire auth check
+      const authTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Auth check timeout')), 5000)
+      )
+      
+      const authCheck = async () => {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error || !user) {
+          console.log('❌ No user found, redirecting to sign-in')
+          router.push('/auth/sign-in')
+          return null
+        }
 
-      setUser(user)
-      
-      // Prefer role from profiles table when available; fallback to metadata (with timeout)
-      try {
-        const profilePromise = supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
+        console.log('✅ User found:', user.email)
+        setUser(user)
         
-        const profileTimeout = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Profile check timeout')), 3000)
-        )
+        // Prefer role from metadata first (instant), then try profiles table
+        let role = user.user_metadata?.role as string
+        console.log('📋 Role from metadata:', role)
         
-        const profileResult = await Promise.race([profilePromise, profileTimeout]) as { data: any }
-        const role = (profileResult.data?.role as string) || (user.user_metadata?.role as string) || 'client'
+        if (!role) {
+          console.log('🔍 No role in metadata, checking profiles table...')
+          try {
+            const profilePromise = supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', user.id)
+              .single()
+            
+            const profileTimeout = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Profile check timeout')), 2000)
+            )
+            
+            const profileResult = await Promise.race([profilePromise, profileTimeout]) as { data: any }
+            role = profileResult.data?.role
+            console.log('✅ Role from profile:', role)
+          } catch (err) {
+            console.warn('⚠️ Profile role fetch failed, using default:', err)
+          }
+        }
+        
+        // Default to client
+        if (!role) {
+          console.warn('⚠️ No role found, defaulting to client')
+          role = 'client'
+        }
+        
+        console.log('🎭 Final role:', role)
         setUserRole(role)
-      } catch {
-        const role = (user.user_metadata?.role as string) || 'client'
-        setUserRole(role)
+        
+        // Redirect immediately based on role (prevents useEffect loops)
+        if (role === 'provider') {
+          console.log('🔄 Redirecting provider to /dashboard/provider')
+          isRedirecting.current = true
+          router.replace('/dashboard/provider')
+          return null // Return null to indicate redirect happened
+        }
+        if (role === 'client') {
+          console.log('🔄 Redirecting client to /dashboard/client')
+          isRedirecting.current = true
+          router.replace('/dashboard/client')
+          return null // Return null to indicate redirect happened
+        }
+        
+        // Admin stays on this page
+        console.log('👑 Admin user, staying on main dashboard')
+        return role
       }
+      
+      await Promise.race([authCheck(), authTimeout])
+      
     } catch (error) {
-      console.error('Auth check failed:', error)
+      console.error('❌ Auth check failed:', error)
+      // On timeout or error, try to use cached auth or redirect
       router.push('/auth/sign-in')
     }
   }
@@ -272,6 +323,19 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    )
+  }
+
+  // If user is provider or client, don't render this page (they should be redirected)
+  if (userRole === 'provider' || userRole === 'client') {
+    console.log(`⏭️ ${userRole} detected, should be on dedicated dashboard page`)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Redirecting to {userRole} dashboard...</p>
+        </div>
       </div>
     )
   }

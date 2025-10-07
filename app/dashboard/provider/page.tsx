@@ -41,6 +41,7 @@ export default function ProviderDashboard() {
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarnings[]>([])
 
   useEffect(() => {
+    console.log('🏠 Provider dashboard mounted, loading data')
     loadUserAndData()
   }, [])
 
@@ -48,23 +49,52 @@ export default function ProviderDashboard() {
     try {
       setLoading(true)
       setError(null)
+      
+      console.log('🔐 Provider dashboard: Loading user and data...')
 
       const supabase = await getSupabaseClient()
       
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError || !user) {
-        router.push('/auth/sign-in')
-        return
-      }
+      // Add timeout protection
+      const loadTimeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Provider dashboard load timeout')), 8000)
+      )
+      
+      const loadData = async () => {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        if (userError || !user) {
+          console.log('❌ Provider dashboard: No user, redirecting to sign-in')
+          router.push('/auth/sign-in')
+          return
+        }
 
-      setUserId(user.id)
-      await loadDashboardData(user.id)
+        console.log('✅ Provider dashboard: User found:', user.email)
+        setUserId(user.id)
+        
+        // Load dashboard data with its own timeout
+        try {
+          const dataTimeout = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Dashboard data load timeout')), 5000)
+          )
+          await Promise.race([loadDashboardData(user.id), dataTimeout])
+          console.log('✅ Provider dashboard: Data loaded successfully')
+        } catch (dataErr) {
+          console.error('❌ Provider dashboard: Data load failed:', dataErr)
+          // Don't throw - let the user see the dashboard even without data
+          setError('Some dashboard data failed to load')
+          toast.warning('Some dashboard data failed to load. Please refresh.')
+        }
+      }
+      
+      await Promise.race([loadData(), loadTimeout])
+      
     } catch (err) {
+      console.error('❌ Provider dashboard: Critical error:', err)
       logger.error('Error loading user and data:', err)
       setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
       toast.error('Failed to load dashboard data')
     } finally {
+      console.log('✅ Provider dashboard: Loading complete')
       setLoading(false)
     }
   }

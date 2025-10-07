@@ -577,6 +577,23 @@ export default function SignUpPage() {
                         </div>
                       </div>
                     </div>
+                  {/* Captcha - Only show if configured */}
+                  <HCaptcha 
+                    key={captchaKey} 
+                    onVerify={setCaptchaToken}
+                    onExpire={() => setCaptchaToken('')}
+                    onError={() => {
+                      setCaptchaToken('')
+                      setErrors(prev => ({ ...prev, captcha: 'Verification failed. Please try again.' }))
+                    }}
+                    theme="light"
+                    showLabel={true}
+                  />
+                  {errors.captcha && (
+                    <p className="text-sm text-red-500 flex items-center gap-1 -mt-2">
+                      <AlertTriangle className="h-3 w-3" />
+                      {errors.captcha}
+                    </p>
                   )}
 
                   {/* Submit Button */}

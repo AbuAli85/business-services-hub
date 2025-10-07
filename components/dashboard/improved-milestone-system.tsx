@@ -253,16 +253,106 @@ export function ImprovedMilestoneSystem({
         throw fetchError
       }
 
+      // Fetch comments and files for all tasks
+      const milestonesWithDetails = await Promise.all((data || []).map(async (milestone) => {
+        const tasksWithDetails = await Promise.all((milestone.tasks || []).map(async (task) => {
+          // Fetch comments for this task (with error handling)
+          let comments: any[] = []
+          try {
+            const { data: commentsData, error: commentsError } = await supabase
+              .from('task_comments')
+              .select(`
+                *,
+                created_by_user:created_by (
+                  id,
+                  full_name,
+                  avatar_url,
+                  role
+                )
+              `)
+              .eq('task_id', task.id)
+              .order('created_at', { ascending: true })
+            
+            if (!commentsError) {
+              comments = commentsData || []
+            } else {
+              console.warn('Could not load comments for task:', task.id, commentsError)
+            }
+          } catch (err) {
+            console.warn('Error fetching comments:', err)
+          }
+
+          // Fetch files for this task (with error handling)
+          let files: any[] = []
+          try {
+            const { data: filesData, error: filesError } = await supabase
+              .from('task_files')
+              .select(`
+                *,
+                uploaded_by_user:uploaded_by (
+                  id,
+                  full_name,
+                  avatar_url,
+                  role
+                )
+              `)
+              .eq('task_id', task.id)
+              .order('created_at', { ascending: false })
+            
+            if (!filesError) {
+              files = filesData || []
+            } else {
+              console.warn('Could not load files for task:', task.id, filesError)
+            }
+          } catch (err) {
+            console.warn('Error fetching files:', err)
+          }
+
+          // Fetch client approval for this task (with error handling)
+          let clientApproval: any = null
+          try {
+            const { data: approvalsData, error: approvalsError } = await supabase
+              .from('task_approvals')
+              .select('*')
+              .eq('task_id', task.id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+            
+            if (!approvalsError) {
+              clientApproval = approvalsData?.[0] || null
+            } else {
+              console.warn('Could not load approvals for task:', task.id, approvalsError)
+            }
+          } catch (err) {
+            console.warn('Error fetching approvals:', err)
+          }
+
+          return {
+            ...task,
+            comments: comments,
+            files: files,
+            client_approval: clientApproval
+          }
+        }))
+
+        return {
+          ...milestone,
+          tasks: tasksWithDetails
+        }
+      }))
+
       // Log loaded data for debugging
-      console.log('📊 Milestones loaded:', data?.map(m => ({
+      console.log('📊 Milestones loaded with comments & files:', milestonesWithDetails?.map(m => ({
         id: m.id,
         title: m.title,
         total_tasks: m.total_tasks,
         tasks_array_length: m.tasks?.length || 0,
-        has_tasks: !!m.tasks && m.tasks.length > 0
+        has_tasks: !!m.tasks && m.tasks.length > 0,
+        tasks_with_comments: m.tasks?.filter(t => t.comments && t.comments.length > 0).length || 0,
+        tasks_with_files: m.tasks?.filter(t => t.files && t.files.length > 0).length || 0
       })))
 
-      setMilestones(data || [])
+      setMilestones(milestonesWithDetails || [])
     } catch (err) {
       console.error('Error loading milestones:', err)
       setError(err instanceof Error ? err.message : 'Failed to load milestones')
@@ -1669,7 +1759,7 @@ export function ImprovedMilestoneSystem({
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => openCommentsDialog(task)}
-                                      className="h-8 w-8 p-0 hover:bg-blue-50"
+                                      className="relative h-8 w-8 p-0 hover:bg-blue-50"
                                       title={`Comments (${task.comments?.length || 0})`}
                                     >
                                       <MessageSquare className="h-4 w-4 text-blue-600" />
@@ -1685,7 +1775,7 @@ export function ImprovedMilestoneSystem({
                                       size="sm"
                                       variant="ghost"
                                       onClick={() => openFilesDialog(task)}
-                                      className="h-8 w-8 p-0 hover:bg-purple-50"
+                                      className="relative h-8 w-8 p-0 hover:bg-purple-50"
                                       title={`Files (${task.files?.length || 0})`}
                                     >
                                       <Paperclip className="h-4 w-4 text-purple-600" />
