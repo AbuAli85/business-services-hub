@@ -36,6 +36,18 @@ const REDIRECT_TRACKER = {
   redirecting: false
 }
 
+// Reset tracker on page load to prevent stale state
+if (typeof window !== 'undefined') {
+  // Check if this is a fresh page load (not a navigation)
+  const navigationEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+  const isPageRefresh = navigationEntries.length > 0 && navigationEntries[0].type === 'reload'
+  if (isPageRefresh) {
+    console.log('🔄 Page refresh detected, resetting redirect tracker')
+    REDIRECT_TRACKER.lastRedirectTime = 0
+    REDIRECT_TRACKER.redirecting = false
+  }
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -43,13 +55,37 @@ export default function DashboardPage() {
   // IMMEDIATE early check - before ANY hooks or state
   // Check if we recently redirected (global tracker)
   const timeSinceRedirect = Date.now() - REDIRECT_TRACKER.lastRedirectTime
-  if (REDIRECT_TRACKER.redirecting || (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 3000)) {
+  console.log(`🔍 Dashboard page mount check:`, {
+    pathname,
+    redirecting: REDIRECT_TRACKER.redirecting,
+    lastRedirectTime: REDIRECT_TRACKER.lastRedirectTime,
+    timeSinceRedirect,
+    shouldBlock: REDIRECT_TRACKER.redirecting || (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 5000)
+  })
+  
+  // More aggressive blocking - extend time window and add additional checks
+  if (REDIRECT_TRACKER.redirecting || 
+      (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 5000) ||
+      (typeof window !== 'undefined' && sessionStorage.getItem('dashboard-redirecting') === 'true')) {
     console.log(`⏭️ EARLY RETURN: ${timeSinceRedirect}ms since last redirect, not rendering`)
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-sm text-gray-600">Redirecting to your dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Only allow rendering if we're exactly on /dashboard
+  if (pathname !== '/dashboard') {
+    console.log('⏭️ Not on /dashboard path, not rendering')
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Redirecting...</p>
         </div>
       </div>
     )
@@ -69,19 +105,21 @@ export default function DashboardPage() {
   const activityQ = useDebouncedValue(activityQuery, 250)
   const searchParams = useSearchParams()
 
-  // IMMEDIATE check on component mount - before any effects run
-  const shouldRenderPage = (() => {
-    // Only allow rendering if we're exactly on /dashboard
-    if (pathname !== '/dashboard') {
-      return false
-    }
-    
-    return true
-  })()
-
   useEffect(() => {
-    if (!shouldRenderPage) {
-      console.log('⏭️ Page render blocked, skipping auth check')
+    // CRITICAL: Only run on the exact /dashboard path, not sub-routes
+    if (pathname !== '/dashboard') {
+      console.log('⏭️ Not on exact /dashboard path, skipping auth check')
+      return
+    }
+
+    // Check global redirect tracker (survives component remounts)
+    const timeSinceRedirect = Date.now() - REDIRECT_TRACKER.lastRedirectTime
+    const isRedirectingInStorage = typeof window !== 'undefined' && sessionStorage.getItem('dashboard-redirecting') === 'true'
+    
+    if (REDIRECT_TRACKER.redirecting || 
+        (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 5000) ||
+        isRedirectingInStorage) {
+      console.log(`⏭️ Global redirect guard: ${timeSinceRedirect}ms since last redirect, isRedirectingInStorage: ${isRedirectingInStorage}, skipping auth check`)
       return
     }
     
@@ -94,7 +132,7 @@ export default function DashboardPage() {
     console.log('✅ First mount on /dashboard, running auth check')
     hasCheckedAuth.current = true
     checkAuth()
-  }, [shouldRenderPage])
+  }, [pathname])
 
   // DISABLED: Redirect logic moved to checkAuth() to prevent useEffect loops
   // The redirect now happens immediately when role is detected
@@ -108,6 +146,15 @@ export default function DashboardPage() {
       return () => clearInterval(interval)
     }
   }, [user, refresh])
+
+  // Cleanup effect to clear redirect flags when component unmounts
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('dashboard-redirecting')
+      }
+    }
+  }, [])
 
   // Hydrate filters from URL once
   useEffect(() => {
@@ -196,30 +243,50 @@ export default function DashboardPage() {
         // Redirect immediately based on role (prevents useEffect loops)
         if (role === 'provider') {
           console.log('🔄 Redirecting provider to /dashboard/provider')
+          console.log('🔍 Before redirect - REDIRECT_TRACKER:', REDIRECT_TRACKER)
           isRedirecting.current = true
           hasRedirected.current = true
           // Update global tracker (survives component remounts)
           REDIRECT_TRACKER.redirecting = true
           REDIRECT_TRACKER.lastRedirectTime = Date.now()
+          // Also set sessionStorage flag for additional protection
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('dashboard-redirecting', 'true')
+          }
+          console.log('🔍 After setting tracker - REDIRECT_TRACKER:', REDIRECT_TRACKER)
           router.replace('/dashboard/provider')
           // Clear redirecting flag after a delay
           setTimeout(() => {
             REDIRECT_TRACKER.redirecting = false
-          }, 2000)
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('dashboard-redirecting')
+            }
+            console.log('🔍 Cleared redirecting flag')
+          }, 3000)
           return null // Return null to indicate redirect happened
         }
         if (role === 'client') {
           console.log('🔄 Redirecting client to /dashboard/client')
+          console.log('🔍 Before redirect - REDIRECT_TRACKER:', REDIRECT_TRACKER)
           isRedirecting.current = true
           hasRedirected.current = true
           // Update global tracker (survives component remounts)
           REDIRECT_TRACKER.redirecting = true
           REDIRECT_TRACKER.lastRedirectTime = Date.now()
+          // Also set sessionStorage flag for additional protection
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('dashboard-redirecting', 'true')
+          }
+          console.log('🔍 After setting tracker - REDIRECT_TRACKER:', REDIRECT_TRACKER)
           router.replace('/dashboard/client')
           // Clear redirecting flag after a delay
           setTimeout(() => {
             REDIRECT_TRACKER.redirecting = false
-          }, 2000)
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('dashboard-redirecting')
+            }
+            console.log('🔍 Cleared redirecting flag')
+          }, 3000)
           return null // Return null to indicate redirect happened
         }
         
@@ -372,17 +439,6 @@ export default function DashboardPage() {
     return typeOk && statusOk && dateOk && searchOk
   })
 
-  // BLOCK rendering if we shouldn't show this page
-  if (!shouldRenderPage) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Redirecting...</p>
-        </div>
-      </div>
-    )
-  }
 
   if (loading) {
     return (

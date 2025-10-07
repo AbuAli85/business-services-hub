@@ -167,10 +167,10 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         description: 'Booking reports'
       }
     )
-    // Update dashboard link to use dynamic route
+    // Update dashboard link to use provider route
     baseItems[0] = { 
       name: 'Dashboard', 
-      href: `/dashboard/provider/${user.id}`, 
+      href: '/dashboard/provider', 
       icon: Home,
       description: 'Provider overview'
     }
