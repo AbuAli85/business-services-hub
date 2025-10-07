@@ -106,12 +106,16 @@ export default function DashboardPage() {
     )
   }
   
-  const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading, error, refresh } = useDashboardData()
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string>('client')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const hasCheckedAuth = useRef(false)
   const isRedirecting = useRef(false)
   const hasRedirected = useRef(false)
+  
+  // Only load dashboard data after we have user info
+  const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole, user?.id)
   // Activity filters
   const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
   const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
@@ -431,10 +435,29 @@ export default function DashboardPage() {
   })
 
 
-  if (loading) {
+  // Combined loading state with safety timeout - only show loading for initial load
+  const isLoading = loading && !user // Only show loading if we don't have user yet
+  
+  // Safety timeout to prevent infinite loading - only run once
+  useEffect(() => {
+    if (isLoading) {
+      const timeout = setTimeout(() => {
+        console.log('⚠️ Main dashboard: Safety timeout triggered, forcing loading to false')
+        setLoading(false)
+        setError('Dashboard loading timed out. Please refresh the page.')
+      }, 10000) // 10 second safety timeout
+      
+      return () => clearTimeout(timeout)
+    }
+  }, []) // Only run once on mount
+  
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     )
   }
@@ -452,26 +475,29 @@ export default function DashboardPage() {
     )
   }
 
-  if (error) {
+  if (error || dataError) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading dashboard data</p>
+          <p className="text-red-600 mb-4">Error loading dashboard data: {error || dataError}</p>
           <Button onClick={refresh}>Retry</Button>
         </div>
       </div>
     )
   }
 
-  if (!metrics) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">No data available</p>
-          <Button onClick={refresh}>Refresh</Button>
-        </div>
-      </div>
-    )
+  // Show dashboard even if some data is missing - provide fallback data
+  const safeMetrics = metrics || {
+    totalUsers: 0,
+    totalServices: 0,
+    totalBookings: 0,
+    totalRevenue: 0,
+    totalInvoices: 0,
+    userGrowth: 0,
+    revenueGrowth: 0,
+    bookingGrowth: 0,
+    serviceGrowth: 0,
+    lastUpdated: new Date()
   }
 
   if (!user) {
@@ -529,7 +555,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Project Completion"
             value={`${Math.round(performanceMetrics.completionRate)}%`}
-            trendPercent={metrics.bookingGrowth || 0}
+            trendPercent={safeMetrics.bookingGrowth || 0}
             trendLabel="this month"
             icon={<Calendar className="h-8 w-8" />}
             accent="blue"
@@ -544,7 +570,7 @@ export default function DashboardPage() {
           <MetricCard
             title="Revenue"
             value={formatCurrency(totalRevenue)}
-            trendPercent={metrics.revenueGrowth || 0}
+            trendPercent={safeMetrics.revenueGrowth || 0}
             trendLabel="this month"
             icon={<DollarSign className="h-8 w-8" />}
             accent="green"
@@ -715,19 +741,19 @@ export default function DashboardPage() {
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">User Growth</span>
                       <span className="font-medium text-green-600">
-                        +{metrics.userGrowth.toFixed(1)}%
+                        +{safeMetrics.userGrowth.toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Revenue Growth</span>
                       <span className="font-medium text-green-600">
-                        +{metrics.revenueGrowth.toFixed(1)}%
+                        +{safeMetrics.revenueGrowth.toFixed(1)}%
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">Booking Growth</span>
                       <span className="font-medium text-green-600">
-                        +{metrics.bookingGrowth.toFixed(1)}%
+                        +{safeMetrics.bookingGrowth.toFixed(1)}%
                       </span>
                     </div>
                   </div>
