@@ -39,6 +39,22 @@ const REDIRECT_TRACKER = {
 export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
+  
+  // IMMEDIATE early check - before ANY hooks or state
+  // Check if we recently redirected (global tracker)
+  const timeSinceRedirect = Date.now() - REDIRECT_TRACKER.lastRedirectTime
+  if (REDIRECT_TRACKER.redirecting || (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 3000)) {
+    console.log(`⏭️ EARLY RETURN: ${timeSinceRedirect}ms since last redirect, not rendering`)
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Redirecting to your dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+  
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading, error, refresh } = useDashboardData()
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<string>('client')
@@ -57,13 +73,6 @@ export default function DashboardPage() {
   const shouldRenderPage = (() => {
     // Only allow rendering if we're exactly on /dashboard
     if (pathname !== '/dashboard') {
-      return false
-    }
-    
-    // Check if we recently redirected (global tracker)
-    const timeSinceRedirect = Date.now() - REDIRECT_TRACKER.lastRedirectTime
-    if (REDIRECT_TRACKER.redirecting || (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 5000)) {
-      console.log(`⏭️ RENDER BLOCKED: ${timeSinceRedirect}ms since last redirect`)
       return false
     }
     

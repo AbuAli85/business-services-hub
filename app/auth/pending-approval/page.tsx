@@ -78,10 +78,15 @@ export default function PendingApprovalPage() {
 
       setProfile(profileData)
 
-      // If profile is approved, redirect to dashboard
+      // If profile is approved, redirect to role-specific dashboard
       if (profileData.verification_status === 'approved') {
         toast.success('Your account has been approved! Redirecting to dashboard...')
-        router.push('/dashboard')
+        const dashboardUrl = profileData.role === 'provider' 
+          ? '/dashboard/provider'
+          : profileData.role === 'client'
+          ? '/dashboard/client'
+          : '/dashboard'
+        router.push(dashboardUrl)
         return
       }
 

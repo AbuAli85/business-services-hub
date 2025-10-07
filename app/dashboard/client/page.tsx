@@ -143,7 +143,11 @@ export default function ClientDashboard() {
       // Check if user is a client
       const userRole = user.user_metadata?.role
       if (userRole !== 'client') {
-        router.push('/dashboard')
+        // Redirect to role-specific dashboard instead of generic /dashboard
+        const dashboardUrl = userRole === 'provider' 
+          ? '/dashboard/provider'
+          : '/dashboard'
+        router.push(dashboardUrl)
         return
       }
 

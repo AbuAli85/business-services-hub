@@ -118,8 +118,20 @@ function SignInForm() {
           console.error('❌ Session sync failed:', error)
         }
 
-        // Redirect back if provided, else dashboard
-        const target = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard'
+        // Redirect to role-specific dashboard
+        let target = '/dashboard'
+        if (redirectParam && redirectParam.startsWith('/')) {
+          target = redirectParam
+        } else {
+          // Determine role-specific dashboard
+          const userRole = data.user.user_metadata?.role
+          if (userRole === 'provider') {
+            target = '/dashboard/provider'
+          } else if (userRole === 'client') {
+            target = '/dashboard/client'
+          }
+          // Admin and other roles go to /dashboard
+        }
         console.log('🚀 Redirecting to:', target)
         router.replace(target)
       }
