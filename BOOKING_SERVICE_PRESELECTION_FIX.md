@@ -41,12 +41,15 @@ Added a loading state indicator and improved the pre-selection logic:
    const preSelectedServiceId = searchParams?.get('service') || null
    ```
 
-2. **Added loading message** when a service is being pre-selected
+2. **Added loading spinner** when a service is being pre-selected (hides all services during load)
    ```typescript
-   {preSelectedServiceId && !selectedService && (
-     <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-       Loading selected service...
+   {preSelectedServiceId && !selectedService ? (
+     <div className="p-8 text-center">
+       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+       <p className="text-gray-600">Loading selected service...</p>
      </div>
+   ) : (
+     // Show services list
    )}
    ```
 

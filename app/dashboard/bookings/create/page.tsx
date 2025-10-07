@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { getSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -354,13 +355,14 @@ export default function CreateBookingPage() {
               )}
             </CardHeader>
             <CardContent>
-              {preSelectedServiceId && !selectedService && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-                  Loading selected service...
+              {preSelectedServiceId && !selectedService ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Loading selected service...</p>
                 </div>
-              )}
-              <div className="space-y-4">
-                {(selectedService ? [selectedService] : services).map((service) => (
+              ) : (
+                <div className="space-y-4">
+                  {(selectedService ? [selectedService] : services).map((service) => (
                   <div
                     key={service.id}
                     className={`p-4 border rounded-lg cursor-pointer transition-all ${
@@ -372,11 +374,15 @@ export default function CreateBookingPage() {
                   >
                     <div className="flex items-start space-x-4">
                       {service.cover_image_url && (
-                        <img
-                          src={service.cover_image_url}
-                          alt={service.title}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
+                        <div className="relative w-16 h-16 flex-shrink-0">
+                          <Image
+                            src={service.cover_image_url}
+                            alt={service.title}
+                            fill
+                            className="object-cover rounded-lg"
+                            sizes="64px"
+                          />
+                        </div>
                       )}
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
@@ -411,7 +417,8 @@ export default function CreateBookingPage() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -803,8 +810,12 @@ export default function CreateBookingPage() {
                     </a>
                   </Button>
                   {selectedService.provider.email && (
-                    <Button asChild variant="outline" size="sm" className="w-full" title="Email">
-                      <a href={`mailto:${selectedService.provider.email}?subject=Booking inquiry: ${encodeURIComponent(selectedService.title)}`}>
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <a 
+                        href={`mailto:${selectedService.provider.email}?subject=Booking inquiry: ${encodeURIComponent(selectedService.title)}`}
+                        title="Send email to provider"
+                        aria-label="Send email to provider"
+                      >
                         <Mail className="h-4 w-4" />
                       </a>
                     </Button>
