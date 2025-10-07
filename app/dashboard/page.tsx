@@ -74,19 +74,29 @@ export default function DashboardPage() {
       return
     }
 
-    // Check if we're navigating from provider or client dashboard
-    // Clear the flags and reset the auth check
+    // IMMEDIATE REDIRECT: Check if coming from provider/client dashboard
+    // If so, redirect immediately without waiting for auth check
     const wasOnProviderDashboard = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
     const wasOnClientDashboard = sessionStorage.getItem('dashboard-client-loaded') === 'true'
     
-    if (wasOnProviderDashboard || wasOnClientDashboard) {
-      console.log('🧹 Clearing dashboard flags and resetting auth check')
+    if (wasOnProviderDashboard) {
+      console.log('⚡ INSTANT redirect: Coming from provider dashboard, redirecting back NOW')
       sessionStorage.removeItem('dashboard-provider-loaded')
+      setIsRedirecting(true)
+      // Use replace for instant redirect without browser history
+      window.location.replace('/dashboard/provider')
+      return
+    }
+    
+    if (wasOnClientDashboard) {
+      console.log('⚡ INSTANT redirect: Coming from client dashboard, redirecting back NOW')
       sessionStorage.removeItem('dashboard-client-loaded')
-      hasCheckedAuth.current = false // Reset to allow auth check
+      setIsRedirecting(true)
+      window.location.replace('/dashboard/client')
+      return
     }
 
-    // Prevent multiple auth checks (but allow retry if reset above)
+    // Prevent multiple auth checks
     if (hasCheckedAuth.current) {
       console.log('⏭️ Already checked auth, skipping')
       return
@@ -186,17 +196,20 @@ export default function DashboardPage() {
         console.log('🎭 Final role:', role)
         setUserRole(role)
         
-        // Redirect based on role
+        // Redirect based on role - IMMEDIATELY without delay
         if (role === 'provider') {
-          console.log('🔄 Redirecting provider to /dashboard/provider')
+          console.log('⚡ INSTANT redirect: Provider to /dashboard/provider')
+          clearTimeout(authTimeout)
           setIsRedirecting(true)
-          window.location.href = '/dashboard/provider'
+          // Use replace instead of href for faster redirect
+          window.location.replace('/dashboard/provider')
           return
         }
         if (role === 'client') {
-          console.log('🔄 Redirecting client to /dashboard/client')
+          console.log('⚡ INSTANT redirect: Client to /dashboard/client')
+          clearTimeout(authTimeout)
           setIsRedirecting(true)
-          window.location.href = '/dashboard/client'
+          window.location.replace('/dashboard/client')
           return
         }
         
@@ -442,19 +455,20 @@ export default function DashboardPage() {
   if (userRole === 'provider' || userRole === 'client') {
     console.log(`⏭️ ${userRole} detected, should be on dedicated dashboard page`)
     
-    // Force redirect if not already redirecting
+    // Force INSTANT redirect if not already redirecting
     if (!isRedirecting) {
-      console.log(`🔄 Force redirecting ${userRole} to dedicated dashboard`)
+      console.log(`⚡ INSTANT force redirect: ${userRole} to dedicated dashboard NOW`)
       const targetUrl = userRole === 'provider' ? '/dashboard/provider' : '/dashboard/client'
       setIsRedirecting(true)
-      window.location.href = targetUrl
+      // Use replace for instant redirect
+      window.location.replace(targetUrl)
     }
     
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Redirecting to {userRole} dashboard...</p>
+          <p className="text-sm text-gray-600">Redirecting...</p>
         </div>
       </div>
     )
