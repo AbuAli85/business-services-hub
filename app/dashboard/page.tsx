@@ -60,12 +60,15 @@ export default function DashboardPage() {
     // Check sessionStorage to prevent re-runs across component instances
     if (typeof window !== 'undefined' && sessionStorage.getItem('main-dashboard-auth-checked') === 'true') {
       console.log('⏭️ Auth already checked, skipping but fetching user for render')
+      // Keep loading=true while fetching user
+      let isMounted = true
+      
       // Still need to get user for rendering, but skip role verification and redirects
       const loadUserQuick = async () => {
         try {
           const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
+          if (user && isMounted) {
             setUser(user)
             const role = user.user_metadata?.role || 'admin'
             setUserRole(role)
@@ -73,11 +76,14 @@ export default function DashboardPage() {
         } catch (error) {
           console.error('Error loading user:', error)
         } finally {
-          setLoading(false)
+          if (isMounted) setLoading(false)
         }
       }
       loadUserQuick()
-      return
+      
+      return () => {
+        isMounted = false
+      }
     }
     
     console.log('🏠 Main dashboard mounted')
