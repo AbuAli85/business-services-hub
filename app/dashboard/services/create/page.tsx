@@ -7,6 +7,12 @@ export default function CreateServicePage() {
   const router = useRouter()
 
   useEffect(() => {
+    // Clear any dashboard flags that might interfere with navigation
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('main-dashboard-auth-checked')
+      sessionStorage.removeItem('provider-dashboard-auth-checked')
+      sessionStorage.removeItem('client-dashboard-auth-checked')
+    }
     // Redirect to the new unified Create Service page
     router.replace('/dashboard/provider/create-service')
   }, [router])

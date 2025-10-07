@@ -55,6 +55,7 @@ export default function DashboardPage() {
 
   // Run auth check once on mount with mounted guard
   useEffect(() => {
+    // Only run on exact /dashboard path, not sub-paths like /dashboard/services
     if (pathname !== '/dashboard') return
     
     // Check sessionStorage to prevent re-runs across component instances
