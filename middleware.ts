@@ -124,12 +124,30 @@ export async function middleware(req: NextRequest) {
     try {
       // Debug cookie information
       const allCookies = req.cookies.getAll()
+      const cookieHeader = req.headers.get('cookie') || ''
+      
       console.log('🔍 Middleware debug - cookies:', {
         pathname,
         cookieCount: allCookies.length,
         cookieNames: allCookies.map(c => c.name),
         hasAccessToken: !!req.cookies.get('sb-access-token'),
         hasRefreshToken: !!req.cookies.get('sb-refresh-token')
+      })
+      
+      console.log('🔍 Middleware reading cookies:', {
+        cookieHeader: cookieHeader.substring(0, 100) + (cookieHeader.length > 100 ? '...' : ''),
+        hasCookieHeader: !!cookieHeader
+      })
+      
+      // Look for Supabase auth tokens
+      const accessToken = req.cookies.get('sb-access-token')?.value
+      const supabaseAuthToken0 = req.cookies.get('sb-reootcngcptfogfozlmz-auth-token.0')?.value
+      const supabaseAuthToken1 = req.cookies.get('sb-reootcngcptfogfozlmz-auth-token.1')?.value
+      
+      console.log('🔍 Found access token in cookies:', {
+        hasToken: !!accessToken || !!supabaseAuthToken0,
+        tokenPreview: accessToken ? accessToken.substring(0, 20) + '...' : supabaseAuthToken0 ? supabaseAuthToken0.substring(0, 20) + '...' : 'N/A',
+        allCookieNames: allCookies.length > 0 ? allCookies.map(c => c.name) : ['']
       })
       
       // Check for Authorization header as fallback
