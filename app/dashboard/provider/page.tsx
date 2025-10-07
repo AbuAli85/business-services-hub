@@ -48,6 +48,12 @@ export default function ProviderDashboard() {
     sessionStorage.setItem('dashboard-provider-loaded', 'true')
     
     loadUserAndData()
+    
+    // Cleanup function to clear flags when component unmounts
+    return () => {
+      console.log('🧹 Provider dashboard unmounting, clearing flags')
+      sessionStorage.removeItem('dashboard-provider-loaded')
+    }
   }, [])
 
   const loadUserAndData = async () => {

@@ -97,6 +97,12 @@ export default function ClientDashboard() {
     checkUserAndFetchData()
     // Remove the 10-second timeout as it can interfere with proper loading
     // The loading state will be managed by the checkUserAndFetchData function
+    
+    // Cleanup function to clear flags when component unmounts
+    return () => {
+      console.log('🧹 Client dashboard unmounting, clearing flags')
+      sessionStorage.removeItem('dashboard-client-loaded')
+    }
   }, [])
 
   // Real-time updates (only what we actually need)

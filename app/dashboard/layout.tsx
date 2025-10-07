@@ -68,6 +68,17 @@ export default function DashboardLayout({
   useEffect(() => {
     console.log('🚀 Dashboard layout mounted, starting auth check...')
     
+    // Skip auth check if we're already on a specific dashboard and it's loaded
+    const isProviderLoaded = typeof window !== 'undefined' && sessionStorage.getItem('dashboard-provider-loaded') === 'true'
+    const isClientLoaded = typeof window !== 'undefined' && sessionStorage.getItem('dashboard-client-loaded') === 'true'
+    
+    if ((pathname === '/dashboard/provider' && isProviderLoaded) || 
+        (pathname === '/dashboard/client' && isClientLoaded)) {
+      console.log('⏭️ Skipping auth check - already on correct dashboard with loaded flag')
+      setLoading(false)
+      return
+    }
+    
     // Add emergency timeout to prevent infinite loading
     const emergencyTimeout = setTimeout(() => {
       console.error('🚨 EMERGENCY: Dashboard taking too long to load, forcing end of loading')
