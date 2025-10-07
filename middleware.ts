@@ -132,6 +132,14 @@ export async function middleware(req: NextRequest) {
         hasRefreshToken: !!req.cookies.get('sb-refresh-token')
       })
       
+      // Check for Authorization header as fallback
+      const authHeader = req.headers.get('authorization')
+      const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null
+      
+      if (bearerToken) {
+        console.log('🔍 Found Bearer token in Authorization header')
+      }
+      
       // Quick session check using access token from HttpOnly cookie
       const supabase = createMiddlewareClient(req)
       const { data, error } = await supabase.auth.getUser()
@@ -141,6 +149,28 @@ export async function middleware(req: NextRequest) {
         if (error) {
           console.error('[auth] getUser error:', { message: (error as any).message, pathname })
         }
+        
+        // If we have a bearer token, try to use it
+        if (bearerToken) {
+          console.log('🔄 Trying Bearer token authentication...')
+          try {
+            const { data: bearerData, error: bearerError } = await supabase.auth.getUser(bearerToken)
+            if (!bearerError && bearerData?.user) {
+              console.log('✅ Bearer token authentication successful')
+              const user = bearerData.user
+              
+              // Add minimal headers
+              res.headers.set('x-internal-user-id', user.id)
+              res.headers.set('x-user-email', user.email || '')
+              
+              return res
+            }
+          } catch (bearerAuthError) {
+            console.error('[auth] Bearer token auth failed:', bearerAuthError)
+          }
+        }
+        
+        console.log('❌ No valid authentication found, redirecting to sign-in')
         return NextResponse.redirect(new URL('/auth/sign-in', req.url))
       }
 

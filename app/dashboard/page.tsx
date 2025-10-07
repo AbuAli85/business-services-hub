@@ -109,6 +109,69 @@ export default function DashboardPage() {
       console.log('🔐 Main dashboard: Checking auth...')
       const supabase = await getSupabaseClient()
       
+      // Try to get session first
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('❌ Session error:', sessionError)
+      }
+      
+      if (session?.user) {
+        console.log('✅ User found in session:', session.user.email)
+        setUser(session.user)
+        
+        // Get role from metadata first, then try profiles table
+        let role = session.user.user_metadata?.role as string
+        console.log('📋 Role from metadata:', role)
+        
+        if (!role) {
+          console.log('🔍 No role in metadata, checking profiles table...')
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', session.user.id)
+              .single()
+            
+            if (!profileError && profileData) {
+              role = profileData.role
+              console.log('✅ Role from profile:', role)
+            }
+          } catch (err) {
+            console.warn('⚠️ Profile role fetch failed, using default:', err)
+          }
+        }
+        
+        // Default to client
+        if (!role) {
+          console.warn('⚠️ No role found, defaulting to client')
+          role = 'client'
+        }
+        
+        console.log('🎭 Final role:', role)
+        setUserRole(role)
+        
+        // Redirect based on role
+        if (role === 'provider') {
+          console.log('🔄 Redirecting provider to /dashboard/provider')
+          setIsRedirecting(true)
+          window.location.href = '/dashboard/provider'
+          return
+        }
+        if (role === 'client') {
+          console.log('🔄 Redirecting client to /dashboard/client')
+          setIsRedirecting(true)
+          window.location.href = '/dashboard/client'
+          return
+        }
+        
+        // Admin stays on this page
+        console.log('👑 Admin user, staying on main dashboard')
+        setLoading(false)
+        return
+      }
+      
+      // Fallback: try getUser directly
       const { data: { user }, error } = await supabase.auth.getUser()
       
       if (error || !user) {
