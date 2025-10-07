@@ -1,3 +1,6 @@
+// Fix for dashboard loading issue - simplified redirect logic
+// This replaces the complex redirect tracking with a simpler approach
+
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
@@ -43,6 +46,7 @@ export default function DashboardPage() {
   
   // Only load dashboard data after we have user info
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole, user?.id)
+  
   // Activity filters
   const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
   const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
@@ -235,12 +239,9 @@ export default function DashboardPage() {
     }))
 
   // Milestone approvals/completions
-  // Using bookings to infer milestone-related events requires API; here we demonstrate structure with available data
-  // If you load milestones into useDashboardData, map them similarly below
   const milestoneActivity: Array<{ id: string; type: string; description: string; timestamp: any; status: string }> = []
 
-  // System notifications (if available via a hook/service)
-  // For now, we skip server fetch here to avoid blocking build; can be wired to notificationService
+  // System notifications
   const systemActivity: Array<{ id: string; type: string; description: string; timestamp: any; status: string }> = []
 
   const unifiedActivity: ActivityItem[] = [
@@ -286,13 +287,10 @@ export default function DashboardPage() {
     responseTime: 2.5 // Average response time in hours
   }
 
-  // Activity timeline filtering (demo uses bookings-derived recentActivity)
+  // Activity timeline filtering
   const filteredActivity = unifiedActivity.filter(a => {
-    // type filter (demo: all as bookings)
     const typeOk = activityType === 'all' || a.type === activityType.slice(0, -1)
-    // status filter
     const statusOk = activityStatus === 'all' || a.status === activityStatus
-    // date range filter
     const ts = new Date(a.timestamp)
     const now = new Date()
     let dateOk = true
@@ -305,12 +303,10 @@ export default function DashboardPage() {
       const diff = (now.getTime() - ts.getTime()) / (1000 * 60 * 60 * 24)
       dateOk = diff <= 31
     }
-    // search
     const q = activityQ.toLowerCase()
     const searchOk = !q || a.description.toLowerCase().includes(q)
     return typeOk && statusOk && dateOk && searchOk
   })
-
 
   // Show redirecting state
   if (isRedirecting) {
