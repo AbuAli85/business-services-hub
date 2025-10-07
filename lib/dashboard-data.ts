@@ -572,13 +572,59 @@ class DashboardDataManager {
   private async loadMilestoneEvents() {
     try {
       const supabase = await getSupabaseClient()
-      const { data, error } = await supabase
-        .from('milestone_approvals')
-        .select('id, milestone_id, status, created_at, milestones(title)')
-        .order('created_at', { ascending: false })
-        .limit(20)
+      
+      // First, try to get milestone approvals with join
+      let data: any[] = []
+      let error: any = null
+      
+      try {
+        const { data: approvalData, error: approvalError } = await supabase
+          .from('milestone_approvals')
+          .select('id, milestone_id, status, created_at, milestones(title)')
+          .order('created_at', { ascending: false })
+          .limit(20)
+        data = approvalData || []
+        error = approvalError
+      } catch (joinError) {
+        console.warn('⚠️ Join query failed, falling back to separate queries:', joinError)
+        
+        // Fallback: Get approvals and milestones separately
+        const { data: approvalsData, error: approvalsError } = await supabase
+          .from('milestone_approvals')
+          .select('id, milestone_id, status, created_at')
+          .order('created_at', { ascending: false })
+          .limit(20)
+        
+        if (approvalsError) {
+          throw approvalsError
+        }
+        
+        // Get milestone titles separately
+        const milestoneIds = (approvalsData || []).map(a => a.milestone_id).filter(Boolean)
+        let milestoneTitles: Record<string, string> = {}
+        
+        if (milestoneIds.length > 0) {
+          const { data: milestonesData } = await supabase
+            .from('milestones')
+            .select('id, title')
+            .in('id', milestoneIds)
+          
+          milestoneTitles = (milestonesData || []).reduce((acc, m) => {
+            acc[m.id] = m.title
+            return acc
+          }, {} as Record<string, string>)
+        }
+        
+        // Combine the data
+        data = (approvalsData || []).map(approval => ({
+          ...approval,
+          milestones: { title: milestoneTitles[approval.milestone_id] || 'Milestone' }
+        }))
+      }
+      
       if (error) throw error
-      const events: MilestoneEvent[] = (data || []).map((row: any) => ({
+      
+      const events: MilestoneEvent[] = data.map((row: any) => ({
         id: row.id,
         milestoneId: row.milestone_id,
         milestoneTitle: row.milestones?.title || 'Milestone',

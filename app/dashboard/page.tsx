@@ -76,46 +76,19 @@ export default function DashboardPage() {
     redirecting: REDIRECT_TRACKER.redirecting,
     lastRedirectTime: REDIRECT_TRACKER.lastRedirectTime,
     timeSinceRedirect,
-    isProviderLoaded,
-    shouldBlock: REDIRECT_TRACKER.redirecting || (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 10000) || isProviderLoaded
+    isProviderLoaded
   })
   
-  // More aggressive blocking - extend time window and add additional checks
-  // Also block if provider dashboard has already loaded (prevents loop back)
+  // Simplified blocking - only block if actively redirecting or very recent redirect
   if (REDIRECT_TRACKER.redirecting || 
-      (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 10000) ||
-      (typeof window !== 'undefined' && sessionStorage.getItem('dashboard-redirecting') === 'true') ||
-      isProviderLoaded) {
-    console.log(`⏭️ EARLY RETURN: ${timeSinceRedirect}ms since last redirect, isProviderLoaded: ${isProviderLoaded}, not rendering`)
-    
-    // Add a manual reset button if stuck for too long
-    const isStuckTooLong = timeSinceRedirect > 15000
-    const handleManualReset = () => {
-      console.log('🔧 Manual reset triggered')
-      REDIRECT_TRACKER.lastRedirectTime = 0
-      REDIRECT_TRACKER.redirecting = false
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('dashboard-redirecting')
-        sessionStorage.removeItem('dashboard-provider-loaded')
-        sessionStorage.removeItem('dashboard-client-loaded')
-      }
-      // Force a page reload to reset everything
-      window.location.reload()
-    }
+      (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 3000)) {
+    console.log(`⏭️ EARLY RETURN: ${timeSinceRedirect}ms since last redirect, not rendering`)
     
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-sm text-gray-600">Redirecting to your dashboard...</p>
-          {isStuckTooLong && (
-            <div className="mt-4">
-              <p className="text-xs text-gray-500 mb-2">Taking too long? Try refreshing:</p>
-              <Button onClick={handleManualReset} variant="outline" size="sm">
-                Reset & Refresh
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     )
@@ -288,54 +261,24 @@ export default function DashboardPage() {
         // Redirect immediately based on role (prevents useEffect loops)
         if (role === 'provider') {
           console.log('🔄 Redirecting provider to /dashboard/provider')
-          console.log('🔍 Before redirect - REDIRECT_TRACKER:', REDIRECT_TRACKER)
           isRedirecting.current = true
           hasRedirected.current = true
           // Update global tracker (survives component remounts)
           REDIRECT_TRACKER.redirecting = true
           REDIRECT_TRACKER.lastRedirectTime = Date.now()
-          // Also set sessionStorage flag for additional protection
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('dashboard-redirecting', 'true')
-            // Clear any existing provider loaded flag
-            sessionStorage.removeItem('dashboard-provider-loaded')
-          }
-          console.log('🔍 After setting tracker - REDIRECT_TRACKER:', REDIRECT_TRACKER)
-          router.replace('/dashboard/provider')
-          // Clear redirecting flag after a longer delay to prevent loops
-          setTimeout(() => {
-            console.log('🔍 Clearing redirecting flag after timeout')
-            REDIRECT_TRACKER.redirecting = false
-            if (typeof window !== 'undefined') {
-              sessionStorage.removeItem('dashboard-redirecting')
-            }
-          }, 3000) // Reduced timeout for faster recovery
+          // Use window.location.href for more reliable redirect
+          window.location.href = '/dashboard/provider'
           return null // Return null to indicate redirect happened
         }
         if (role === 'client') {
           console.log('🔄 Redirecting client to /dashboard/client')
-          console.log('🔍 Before redirect - REDIRECT_TRACKER:', REDIRECT_TRACKER)
           isRedirecting.current = true
           hasRedirected.current = true
           // Update global tracker (survives component remounts)
           REDIRECT_TRACKER.redirecting = true
           REDIRECT_TRACKER.lastRedirectTime = Date.now()
-          // Also set sessionStorage flag for additional protection
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('dashboard-redirecting', 'true')
-            // Clear any existing client loaded flag
-            sessionStorage.removeItem('dashboard-client-loaded')
-          }
-          console.log('🔍 After setting tracker - REDIRECT_TRACKER:', REDIRECT_TRACKER)
-          router.replace('/dashboard/client')
-          // Clear redirecting flag after a longer delay to prevent loops
-          setTimeout(() => {
-            console.log('🔍 Clearing redirecting flag after timeout')
-            REDIRECT_TRACKER.redirecting = false
-            if (typeof window !== 'undefined') {
-              sessionStorage.removeItem('dashboard-redirecting')
-            }
-          }, 3000) // Reduced timeout for faster recovery
+          // Use window.location.href for more reliable redirect
+          window.location.href = '/dashboard/client'
           return null // Return null to indicate redirect happened
         }
         
