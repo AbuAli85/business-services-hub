@@ -57,8 +57,12 @@ export default function DashboardPage() {
   // Run auth check once on mount with mounted guard
   useEffect(() => {
     if (pathname !== '/dashboard') return
-    if (hasCheckedAuth.current) return  // Only run once
+    if (hasCheckedAuth.current) {
+      console.log('⏭️ Auth already checked, skipping')
+      return  // Only run once
+    }
     
+    console.log('🏠 Main dashboard mounted')
     hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
@@ -132,10 +136,10 @@ export default function DashboardPage() {
     init()
 
     return () => {
+      console.log('🧹 Main dashboard cleanup')
       isMounted = false
       controller.abort()
-      // Reset for next mount on this route
-      hasCheckedAuth.current = false
+      // Don't reset hasCheckedAuth - let it persist to prevent re-runs during redirect
     }
   }, [pathname])
 

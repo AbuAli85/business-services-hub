@@ -45,8 +45,12 @@ export default function ProviderDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    if (hasCheckedAuth.current) return  // Only run once
+    if (hasCheckedAuth.current) {
+      console.log('⏭️ Auth already checked, skipping')
+      return  // Only run once
+    }
     
+    console.log('🏠 Provider dashboard mounted')
     hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
@@ -142,9 +146,10 @@ export default function ProviderDashboard() {
     init()
 
     return () => {
+      console.log('🧹 Provider dashboard cleanup')
       isMounted = false
       controller.abort()
-      hasCheckedAuth.current = false  // Reset for next mount
+      // Don't reset hasCheckedAuth - let it persist to prevent re-runs
     }
   }, [])
 

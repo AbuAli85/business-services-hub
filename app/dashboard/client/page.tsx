@@ -93,8 +93,12 @@ export default function ClientDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    if (hasCheckedAuth.current) return  // Only run once
+    if (hasCheckedAuth.current) {
+      console.log('⏭️ Auth already checked, skipping')
+      return  // Only run once
+    }
     
+    console.log('🏠 Client dashboard mounted')
     hasCheckedAuth.current = true
     let isMounted = true
     const controller = new AbortController()
@@ -185,9 +189,10 @@ export default function ClientDashboard() {
     init()
 
     return () => {
+      console.log('🧹 Client dashboard cleanup')
       isMounted = false
       controller.abort()
-      hasCheckedAuth.current = false  // Reset for next mount
+      // Don't reset hasCheckedAuth - let it persist to prevent re-runs
     }
   }, [])
 
