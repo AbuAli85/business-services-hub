@@ -56,7 +56,11 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   // Check session expiry
   const checkSession = useCallback(async () => {
     try {
-      console.log('🔍 Session timeout: Checking session...')
+      console.log('🔍 Session timeout: Checking session...', {
+        timestamp: new Date().toISOString(),
+        currentUrl: window.location.href,
+        currentPath: window.location.pathname
+      })
       const supabase = await getSupabaseClient()
       const { data: { session }, error } = await supabase.auth.getSession()
       
@@ -88,6 +92,11 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
       const timeUntilExpiry = getSessionTimeRemaining(session)
 
       if (timeUntilExpiry <= 0) {
+        console.log('⚠️ Session expired, marking as expired:', {
+          timeUntilExpiry,
+          expiresAt: session.expires_at,
+          currentTime: Math.floor(Date.now() / 1000)
+        })
         setState(prev => ({ ...prev, isExpired: true }))
         return
       }
@@ -140,6 +149,10 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   const handleLogout = useCallback(async () => {
     console.log('🚪 Session timeout: Logging out user...')
     console.log('🚪 Current URL before logout:', window.location.href)
+    console.log('🚪 Current pathname:', window.location.pathname)
+    console.log('🚪 Session state at logout:', state)
+    console.log('🚪 Stack trace:', new Error().stack)
+    
     try {
       const supabase = await getSupabaseClient()
       await safeSignOut(supabase, { clearLocalStorage: true })
@@ -153,7 +166,7 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
       console.log('🚪 Fallback redirect to sign-in...')
       router.push('/auth/sign-in')
     }
-  }, [router])
+  }, [router, state])
 
   // Refresh session
   const refreshSession = useCallback(async () => {
@@ -225,6 +238,12 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   // Handle session expiry
   useEffect(() => {
     if (state.isExpired) {
+      console.log('🚨 Session expiry effect triggered:', {
+        isExpired: state.isExpired,
+        currentUrl: window.location.href,
+        currentPath: window.location.pathname,
+        timestamp: new Date().toISOString()
+      })
       handleLogout()
     }
   }, [state.isExpired, handleLogout])
@@ -232,6 +251,13 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   // Handle inactivity timeout
   useEffect(() => {
     if (state.isInactive && state.inactivityTimeRemaining <= 0) {
+      console.log('🚨 Inactivity timeout effect triggered:', {
+        isInactive: state.isInactive,
+        inactivityTimeRemaining: state.inactivityTimeRemaining,
+        currentUrl: window.location.href,
+        currentPath: window.location.pathname,
+        timestamp: new Date().toISOString()
+      })
       handleLogout()
     }
   }, [state.isInactive, state.inactivityTimeRemaining, handleLogout])

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Clock, Wifi, WifiOff, AlertTriangle } from 'lucide-react'
-import { useSessionTimeout } from '@/hooks/use-session-timeout'
+import { getSupabaseClient } from '@/lib/supabase'
 
 interface SessionStatusIndicatorProps {
   className?: string
@@ -14,19 +14,61 @@ interface SessionStatusIndicatorProps {
 export function SessionStatusIndicator({ className = '', showDetails = false }: SessionStatusIndicatorProps) {
   const [isOnline, setIsOnline] = useState(true)
   const [lastSeen, setLastSeen] = useState<Date>(new Date())
-
-  const {
-    isWarning,
-    timeRemaining,
-    isInactive,
-    inactivityTimeRemaining,
-    isExpired,
-    formatTime
-  } = useSessionTimeout({
-    warningTime: 300, // 5 minutes
-    inactivityTimeout: 1800, // 30 minutes
-    checkInterval: 30 // 30 seconds
+  const [sessionStatus, setSessionStatus] = useState({
+    isWarning: false,
+    timeRemaining: 0,
+    isInactive: false,
+    inactivityTimeRemaining: 0,
+    isExpired: false
   })
+
+  // Get session status from the parent SessionManager context instead of creating our own
+  useEffect(() => {
+    const checkSessionStatus = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error || !session) {
+          setSessionStatus(prev => ({ ...prev, isExpired: true }))
+          return
+        }
+
+        const now = Math.floor(Date.now() / 1000)
+        const expiresAt = session.expires_at || 0
+        const timeUntilExpiry = Math.max(0, expiresAt - now)
+        
+        setSessionStatus(prev => ({
+          ...prev,
+          isExpired: timeUntilExpiry <= 0,
+          isWarning: timeUntilExpiry <= 300 && timeUntilExpiry > 0, // 5 minutes warning
+          timeRemaining: timeUntilExpiry,
+          isInactive: false, // We don't track inactivity here to avoid conflicts
+          inactivityTimeRemaining: 0
+        }))
+      } catch (error) {
+        console.warn('Session status check failed:', error)
+        setSessionStatus(prev => ({ ...prev, isExpired: true }))
+      }
+    }
+
+    // Check immediately
+    checkSessionStatus()
+    
+    // Check every 60 seconds to match SessionManager
+    const interval = setInterval(checkSessionStatus, 60000)
+    
+    return () => clearInterval(interval)
+  }, [])
+
+  const { isWarning, timeRemaining, isInactive, inactivityTimeRemaining, isExpired } = sessionStatus
+
+  // Format time helper function
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   // Monitor online status
   useEffect(() => {

@@ -46,6 +46,18 @@ export default function ProviderDashboard() {
     console.log('🏠 Provider dashboard mounted, loading data')
     console.log('🔍 Provider dashboard: Current URL:', window.location.href)
     console.log('🔍 Provider dashboard: Current pathname:', window.location.pathname)
+    console.log('🔍 Provider dashboard: Mount timestamp:', new Date().toISOString())
+    
+    // Add a listener to track when the page is about to be unloaded
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      console.log('🚪 Provider dashboard: Before unload triggered', {
+        timestamp: new Date().toISOString(),
+        currentUrl: window.location.href,
+        currentPath: window.location.pathname
+      })
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
     
     // Check if already loaded to prevent unnecessary reloading
     const alreadyLoaded = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
@@ -70,17 +82,17 @@ export default function ProviderDashboard() {
     }, 10000) // 10 second safety timeout
     
     // Add beforeunload listener to clear flag only when actually leaving
-    const handleBeforeUnload = () => {
+    const handleBeforeUnloadCleanup = () => {
       sessionStorage.removeItem('dashboard-provider-loaded')
     }
     
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    window.addEventListener('beforeunload', handleBeforeUnloadCleanup)
     
     // Cleanup function to clear flags when component unmounts
     return () => {
       console.log('🧹 Provider dashboard unmounting, clearing flags')
       clearTimeout(safetyTimeout)
-      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.removeEventListener('beforeunload', handleBeforeUnloadCleanup)
       // Only clear flag if user is actually navigating away
       setTimeout(() => {
         if (document.visibilityState === 'hidden') {
