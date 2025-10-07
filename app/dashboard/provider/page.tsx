@@ -43,9 +43,9 @@ export default function ProviderDashboard() {
   useEffect(() => {
     console.log('🏠 Provider dashboard mounted, loading data')
     
-    // Clear redirect flags since we successfully landed on provider dashboard
-    sessionStorage.removeItem('dashboard-redirecting')
-    sessionStorage.removeItem('dashboard-role-redirected')
+    // Update redirect timestamp to show we successfully landed here
+    // This prevents the /dashboard page from running auth check immediately
+    sessionStorage.setItem('dashboard-last-redirect', Date.now().toString())
     
     loadUserAndData()
   }, [])

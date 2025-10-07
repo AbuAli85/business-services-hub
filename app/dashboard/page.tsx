@@ -48,41 +48,38 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    // CRITICAL: Prevent redirect loop by checking if we've already redirected
-    if (hasRedirected.current) {
-      console.log('⏭️ Already redirected in this session, not checking auth again')
+    // CRITICAL: Only run on the exact /dashboard path, not sub-routes
+    if (pathname !== '/dashboard') {
+      console.log('⏭️ Not on exact /dashboard path, skipping auth check')
       return
     }
     
-    // Check if we're currently in a redirect flow (persisted across mounts)
-    const redirectingFlag = sessionStorage.getItem('dashboard-redirecting')
-    if (redirectingFlag === 'true') {
-      console.log('⏭️ Redirect in progress (from session), skipping auth check')
-      return
+    // Check if we've already done a role redirect recently (within last 5 seconds)
+    const lastRedirect = sessionStorage.getItem('dashboard-last-redirect')
+    if (lastRedirect) {
+      const timeSinceRedirect = Date.now() - parseInt(lastRedirect)
+      if (timeSinceRedirect < 5000) {
+        console.log(`⏭️ Recently redirected ${timeSinceRedirect}ms ago, skipping auth check to prevent loop`)
+        return
+      }
     }
     
     // Prevent multiple checkAuth calls in same mount
     if (hasCheckedAuth.current) {
-      console.log('⏭️ Auth already checked, skipping')
+      console.log('⏭️ Auth already checked in this mount, skipping')
       return
     }
     
-    // Don't run if we're redirecting
+    // Don't run if we're currently redirecting
     if (isRedirecting.current) {
       console.log('⏭️ Currently redirecting, skipping auth check')
-      return
-    }
-    
-    // Only run on the actual /dashboard page
-    if (pathname !== '/dashboard') {
-      console.log('⏭️ Not on /dashboard page, skipping auth check')
       return
     }
     
     console.log('✅ First mount on /dashboard, running auth check')
     hasCheckedAuth.current = true
     checkAuth()
-  }, [])
+  }, [pathname])
 
   // DISABLED: Redirect logic moved to checkAuth() to prevent useEffect loops
   // The redirect now happens immediately when role is detected
@@ -185,27 +182,19 @@ export default function DashboardPage() {
         if (role === 'provider') {
           console.log('🔄 Redirecting provider to /dashboard/provider')
           isRedirecting.current = true
-          hasRedirected.current = true // Mark that we've redirected
-          sessionStorage.setItem('dashboard-redirecting', 'true')
-          sessionStorage.setItem('dashboard-role-redirected', 'true')
+          hasRedirected.current = true
+          // Store timestamp of redirect to prevent immediate re-check
+          sessionStorage.setItem('dashboard-last-redirect', Date.now().toString())
           router.replace('/dashboard/provider')
-          // Clear redirect flag after navigation completes
-          setTimeout(() => {
-            sessionStorage.removeItem('dashboard-redirecting')
-          }, 2000)
           return null // Return null to indicate redirect happened
         }
         if (role === 'client') {
           console.log('🔄 Redirecting client to /dashboard/client')
           isRedirecting.current = true
-          hasRedirected.current = true // Mark that we've redirected
-          sessionStorage.setItem('dashboard-redirecting', 'true')
-          sessionStorage.setItem('dashboard-role-redirected', 'true')
+          hasRedirected.current = true
+          // Store timestamp of redirect to prevent immediate re-check
+          sessionStorage.setItem('dashboard-last-redirect', Date.now().toString())
           router.replace('/dashboard/client')
-          // Clear redirect flag after navigation completes
-          setTimeout(() => {
-            sessionStorage.removeItem('dashboard-redirecting')
-          }, 2000)
           return null // Return null to indicate redirect happened
         }
         
