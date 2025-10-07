@@ -79,9 +79,9 @@ interface UpcomingBooking {
 export default function ClientDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [redirecting, setRedirecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Sidebar/header come from shared dashboard layout
   const [user, setUser] = useState<any>(null)
   
   // Dashboard data
@@ -90,24 +90,10 @@ export default function ClientDashboard() {
   const [upcomingBookings, setUpcomingBookings] = useState<UpcomingBooking[]>([])
   const [serviceSuggestions, setServiceSuggestions] = useState<ServiceSuggestion[]>([])
 
+  // Check auth and load data on mount
   useEffect(() => {
-    console.log('🏠 Client dashboard mounted, starting initialization')
-    console.log('🔍 Client dashboard: Current URL:', window.location.href)
-    console.log('🔍 Client dashboard: Current pathname:', window.location.pathname)
-    console.log('🔍 Client dashboard: Mount timestamp:', new Date().toISOString())
-    
-    // Mark successful landing
-    sessionStorage.setItem('dashboard-client-loaded', 'true')
-    
+    console.log('🏠 Client dashboard mounted')
     checkUserAndFetchData()
-    // Remove the 10-second timeout as it can interfere with proper loading
-    // The loading state will be managed by the checkUserAndFetchData function
-    
-    // Cleanup function to clear flags when component unmounts
-    return () => {
-      console.log('🧹 Client dashboard unmounting, clearing flags')
-      sessionStorage.removeItem('dashboard-client-loaded')
-    }
   }, [])
 
   // Real-time updates (ONLY for critical updates, not continuous refresh)
@@ -139,94 +125,62 @@ export default function ClientDashboard() {
   }, [user?.id])
 
   const checkUserAndFetchData = async () => {
-    console.log('🚀 Client dashboard: Starting checkUserAndFetchData')
-    try {
-      setLoading(true)
-      setError(null)
+    console.log('🔐 Checking authentication...')
+    setError(null)
 
+    try {
       const supabase = await getSupabaseClient()
-      console.log('✅ Client dashboard: Supabase client created')
-      
-      const { data, error: userError } = await supabase.auth.getUser()
-      const user = data?.user
-      
-      console.log('👤 Client dashboard: User check result:', { 
-        hasUser: !!user, 
-        userError: userError?.message,
-        role: user?.user_metadata?.role 
-      })
-      
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+
       if (userError || !user) {
-        console.log('❌ Client dashboard: No user found, redirecting to sign-in')
-        setLoading(false)
-        router.push('/auth/sign-in')
+        console.log('❌ No user found, redirecting to sign-in')
+        router.replace('/auth/sign-in')
         return
       }
 
-      // Check if user is a client
+      // Determine role
       let userRole = user.user_metadata?.role
-      
-      // If no role in metadata, check profiles table
       if (!userRole) {
-        console.log('🔍 Client dashboard: No role in metadata, checking profiles table...')
-        try {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-          
-          if (!profileError && profileData) {
-            userRole = profileData.role
-            console.log('✅ Client dashboard: Role from profile:', userRole)
-          } else {
-            console.warn('⚠️ Client dashboard: Profile role fetch failed:', profileError?.message)
-          }
-        } catch (err) {
-          console.warn('⚠️ Client dashboard: Profile role fetch exception:', err)
-        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        userRole = profile?.role || 'client'
       }
-      
-      // Default to client if no role found (for backwards compatibility)
-      if (!userRole) {
-        console.warn('⚠️ Client dashboard: No role found anywhere, defaulting to client')
-        userRole = 'client'
-      }
-      
+
+      console.log('✅ User authenticated:', user.email, '| Role:', userRole)
+
+      // Handle redirect logic cleanly
       if (userRole !== 'client') {
-        console.log(`🔀 Client dashboard: User is ${userRole}, redirecting to appropriate dashboard`)
-        // Redirect to role-specific dashboard instead of generic /dashboard
+        console.log(`🔄 Redirecting ${userRole} to their dashboard`)
+        setRedirecting(true)
         const dashboardUrl = userRole === 'provider' 
           ? '/dashboard/provider'
-          : userRole === 'admin'
-          ? '/dashboard'
           : '/dashboard'
-        setLoading(false)
-        // Use window.location for hard redirect to avoid routing issues
-        window.location.href = dashboardUrl
+        router.replace(dashboardUrl)
         return
       }
 
-      console.log('✅ Client dashboard: User is a client, proceeding with data load')
+      // Client user - set user and load data
+      console.log('👤 Client user confirmed, loading data...')
       setUser(user)
-      
-      // SIMPLIFIED: Just try to fetch data without complex timeout logic
+
+      // Load data with proper error handling
       try {
-        console.log('📊 Client dashboard: Fetching client data...')
         await fetchAllClientData(user.id)
-        console.log('✅ Client dashboard: Data fetched successfully')
+        console.log('✅ Data loaded successfully')
       } catch (dataError) {
-        console.warn('⚠️ Client dashboard: Error fetching client data:', dataError)
-        // Continue to show dashboard even if data fetch fails with default stats
+        logger.warn('⚠️ Error fetching client data:', dataError)
         setStats(defaultStats())
+        toast.error('Some data could not be loaded')
+      } finally {
+        setLoading(false)
       }
-      
-      console.log('✅ Client dashboard: Loading complete, setting loading=false')
-      setLoading(false)
     } catch (error) {
-      logger.error('❌ Client dashboard: Critical error loading client data:', error)
-      setError('Failed to load dashboard data')
-      toast.error('Failed to load dashboard data')
+      logger.error('❌ Auth check failed:', error)
+      setError('Failed to load dashboard')
+      toast.error('Failed to load dashboard')
       setLoading(false)
     }
   }
@@ -453,30 +407,15 @@ export default function ClientDashboard() {
 
   const userFullName = useMemo(() => user?.user_metadata?.full_name || '', [user?.user_metadata?.full_name])
 
-  if (loading) {
+  // Show redirecting state
+  if (redirecting) {
     return (
       <main className="p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="flex items-center space-x-3">
-              <div className="relative">
-                <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
-                <div className="absolute inset-0 rounded-full border-2 border-blue-200"></div>
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-semibold text-gray-900">Loading Dashboard</p>
-                <p className="text-sm text-gray-600">Preparing your client insights...</p>
-                <button 
-                  onClick={() => {
-                    console.log('🔧 Force refresh client dashboard')
-                    setLoading(false)
-                    window.location.reload()
-                  }}
-                  className="mt-3 text-xs text-blue-600 hover:text-blue-800 underline"
-                >
-                  Taking too long? Click here to refresh
-                </button>
-              </div>
+          <div className="flex items-center justify-center h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-sm text-gray-600">Redirecting to your dashboard...</p>
             </div>
           </div>
         </div>
@@ -484,25 +423,36 @@ export default function ClientDashboard() {
     )
   }
 
+  // Show loading state
+  if (loading) {
+    return (
+      <main className="p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-screen">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <p className="text-sm text-gray-600">Loading dashboard...</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  // Show error state
   if (error || !stats) {
     return (
       <main className="p-6">
-        <div className="max-w-3xl mx-auto">
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardContent className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertCircle className="h-8 w-8 text-red-600" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Dashboard</h2>
-                <p className="text-gray-600 mb-6 max-w-md">{error || 'Failed to load dashboard data'}</p>
-                <Button onClick={checkUserAndFetchData} variant="outline" className="bg-white hover:bg-gray-50">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-center h-screen text-red-600">
+          <div className="text-center">
+            <p className="mb-4">{error || 'Failed to load dashboard data'}</p>
+            <Button
+              onClick={() => location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Retry
+            </Button>
+          </div>
         </div>
       </main>
     )
