@@ -159,18 +159,11 @@ export default function ClientDashboard() {
 
       setUser(user)
       
-      // Fetch data with timeout protection
-      const dataTimeout = setTimeout(() => {
-        console.warn('⏰ Client data fetch timeout - showing dashboard with default data')
-        setLoading(false)
-      }, 15000) // 15 second timeout
-      
+      // SIMPLIFIED: Just try to fetch data without complex timeout logic
       try {
         await fetchAllClientData(user.id)
-        clearTimeout(dataTimeout)
       } catch (dataError) {
         console.warn('Error fetching client data:', dataError)
-        clearTimeout(dataTimeout)
         // Continue to show dashboard even if data fetch fails
       }
       

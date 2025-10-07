@@ -68,60 +68,52 @@ export default function DashboardLayout({
   useEffect(() => {
     console.log('🚀 Dashboard layout mounted, starting auth check...')
     
-    // Skip auth check if we're already on a specific dashboard and it's loaded
-    const isProviderLoaded = typeof window !== 'undefined' && sessionStorage.getItem('dashboard-provider-loaded') === 'true'
-    const isClientLoaded = typeof window !== 'undefined' && sessionStorage.getItem('dashboard-client-loaded') === 'true'
-    
-    if ((pathname === '/dashboard/provider' && isProviderLoaded) || 
-        (pathname === '/dashboard/client' && isClientLoaded)) {
-      console.log('⏭️ Skipping auth check - already on correct dashboard with loaded flag')
-      setLoading(false)
-      return
-    }
-    
-    // Add emergency timeout to prevent infinite loading
-    const emergencyTimeout = setTimeout(() => {
-      console.error('🚨 EMERGENCY: Dashboard taking too long to load, forcing end of loading')
-      setLoading(false)
-      if (!user) {
-        console.error('❌ No user after emergency timeout, redirecting to sign-in')
+    // SIMPLIFIED: Just do a quick auth check without complex logic
+    const quickAuthCheck = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user }, error } = await supabase.auth.getUser()
+        
+        if (error || !user) {
+          console.log('❌ No user, redirecting to sign-in')
+          router.push('/auth/sign-in')
+          return
+        }
+        
+        // Create minimal user object for layout
+        const minimalUser: UserProfile = {
+          id: user.id,
+          role: (user.user_metadata?.role || 'client') as UserProfile['role'],
+          full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          email: user.email || '',
+          company_name: user.user_metadata?.company_name || '',
+          profile_completed: true,
+          verification_status: 'approved',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        
+        setUser(minimalUser)
+        setLoading(false)
+        
+        // Fetch notifications in background
+        fetchNotifications().catch(err => {
+          console.warn('⚠️ Notification fetch failed (non-critical):', err)
+        })
+        
+      } catch (error) {
+        console.error('❌ Auth check failed:', error)
         router.push('/auth/sign-in')
       }
-    }, 5000) // Reduced to 5 seconds
-    
-    // Use simpleAuthCheck as primary - it's much faster
-    simpleAuthCheck().finally(() => {
-      clearTimeout(emergencyTimeout)
-    })
-    
-    // Fetch notifications after auth (non-blocking)
-    fetchNotifications().catch(err => {
-      console.warn('⚠️ Notification fetch failed (non-critical):', err)
-    })
-    
-    return () => {
-      clearTimeout(emergencyTimeout)
     }
+    
+    quickAuthCheck()
   }, [])
 
-  // Add a secondary effect to monitor loading state changes
+  // Simplified loading state monitoring
   useEffect(() => {
     console.log('📊 Loading state changed:', { loading, hasUser: !!user })
-    
-    // Add a timeout to prevent infinite loading
-    if (loading) {
-      const timeout = setTimeout(() => {
-        console.warn('⚠️ Loading timeout reached, forcing end of loading state')
-        setLoading(false)
-        if (!user) {
-          console.error('❌ No user after timeout, redirecting to sign-in')
-          router.push('/auth/sign-in')
-        }
-      }, 3000) // Reduced to 3 seconds
-      
-      return () => clearTimeout(timeout)
-    }
-  }, [loading, user, router])
+  }, [loading, user])
 
   // Realtime notifications table stream (proper cleanup)
   useEffect(() => {
@@ -200,178 +192,6 @@ export default function DashboardLayout({
     }
   }, [user?.id])
 
-  // Fast auth check - optimized for speed
-  const simpleAuthCheck = async () => {
-    console.log('🔄 Starting simple auth check...')
-    try {
-      const supabase = await getSupabaseClient()
-      // Use getUser() instead of getSession() for security - validates with auth server
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error || !user) {
-        console.log('❌ Simple auth check failed, redirecting to sign-in')
-        setLoading(false)
-        router.push('/auth/sign-in')
-        return
-      }
-      
-      console.log('✅ Session found for user:', user.email)
-      
-      // Get basic info from metadata first (instant)
-      let fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
-      let userRole = user.user_metadata?.role
-      let companyName = user.user_metadata?.company_name
-      
-      // 🚨 TEMPORARY BYPASS MODE - Skip all verification checks
-      // If role exists in metadata, skip database checks entirely
-      if (userRole) {
-        console.log('⚡ FAST PATH: Role found in metadata, skipping database checks')
-        
-        const fastUser: UserProfile = {
-          id: user.id,
-          role: userRole as UserProfile['role'],
-          full_name: fullName,
-          email: user.email || '',
-          company_name: companyName,
-          profile_completed: true,
-          verification_status: 'approved',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-        
-        setUser(fastUser)
-        setLoading(false)
-        
-        // Start session in background
-        try {
-          userSessionManager.startSession(user.id)
-        } catch (err) {
-          console.warn('⚠️ Session start failed (non-critical):', err)
-        }
-        
-        return
-      }
-      
-      // If no role in metadata, quickly check profile
-      if (!userRole) {
-        console.log('🔍 No role in metadata, checking profile...')
-        try {
-          // Add timeout to prevent hanging on RLS errors
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
-          )
-          
-          const fetchPromise = supabase
-            .from('profiles')
-            .select('role, is_admin, profile_completed, verification_status')
-            .eq('id', user.id)
-            .single()
-          
-          const result = await Promise.race([fetchPromise, timeoutPromise]) as any
-          const { data: profile, error: profileError } = result
-          
-          if (profileError) {
-            console.warn('⚠️ Profile fetch error:', profileError)
-            
-            // Check if it's a 500 error (RLS issue)
-            if (profileError.message?.includes('500') || profileError.code === 'PGRST301') {
-              console.error('❌ RLS Policy Error - database needs fixing. Defaulting to client role.')
-              // Default to client and let them in anyway
-              userRole = 'client'
-            } else {
-              // If profile doesn't exist, redirect to onboarding
-              setLoading(false)
-              router.push('/auth/onboarding?role=client')
-              return
-            }
-          }
-          
-          if (profile) {
-            userRole = profile.is_admin ? 'admin' : profile.role
-            console.log('✅ Profile found with role:', userRole)
-            
-            // 🚨 TEMPORARY: Skip verification checks to debug loading issue
-            // TODO: Re-enable after fixing database issues
-            /*
-            // Check verification status for non-admin users
-            if (profile.role !== 'admin') {
-              if (profile.verification_status === 'pending' || profile.verification_status === 'rejected') {
-                console.log('⏳ Profile pending/rejected, redirecting to pending approval')
-                setLoading(false)
-                router.push('/auth/pending-approval')
-                return
-              }
-              
-              if (!profile.profile_completed && profile.verification_status !== 'approved') {
-                console.log('📝 Profile incomplete, redirecting to onboarding')
-                setLoading(false)
-                router.push('/auth/onboarding')
-                return
-              }
-            }
-            */
-            console.log('⚡ Skipping verification checks (temporary bypass)')
-          }
-        } catch (profileError: any) {
-          console.error('❌ Profile check failed:', profileError)
-          
-          // If it's a timeout or 500 error, default to client and continue
-          if (profileError?.message?.includes('timeout') || profileError?.message?.includes('500')) {
-            console.warn('⚠️ Profile check timed out or failed, defaulting to client role')
-            userRole = 'client'
-          } else {
-            // For other errors, redirect to onboarding
-            setLoading(false)
-            router.push('/auth/onboarding?role=client')
-            return
-          }
-        }
-      }
-      
-      // Default to client if still no role
-      if (!userRole) {
-        console.warn('⚠️ No role found, defaulting to client')
-        userRole = 'client'
-      }
-      
-      console.log('🎭 User role determined:', userRole)
-      
-      // Create user object immediately for fast render
-      const simpleUser: UserProfile = {
-        id: user.id,
-        role: userRole as UserProfile['role'],
-        full_name: fullName,
-        email: user.email || '',
-        company_name: companyName,
-        profile_completed: true, // Assume completed since they passed verification
-        verification_status: 'approved',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      console.log('✅ Simple auth check successful, setting user:', simpleUser)
-      
-      // Set user immediately so UI renders fast
-      setUser(simpleUser)
-      setLoading(false)
-      
-      // Fetch additional profile data asynchronously (non-blocking)
-      fetchAdditionalProfileData(user.id, simpleUser)
-      
-      // Start user session in background
-      try {
-        userSessionManager.startSession(user.id)
-        console.log('✅ Simple auth session started successfully')
-      } catch (sessionError) {
-        console.warn('⚠️ Failed to start simple auth session:', sessionError)
-      }
-      
-    } catch (error) {
-      console.error('❌ Simple auth check exception:', error)
-      setLoading(false)
-      router.push('/auth/sign-in')
-    }
-  }
   
   // Fetch additional profile data in background (non-blocking)
   const fetchAdditionalProfileData = async (userId: string, currentUser: UserProfile) => {
