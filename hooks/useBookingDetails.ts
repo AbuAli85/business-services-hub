@@ -58,7 +58,7 @@ export interface Booking {
   completed_milestones?: number
   payment_status?: string
   invoice_status?: string
-  invoice_id?: string
+  invoice_id?: string | null
   rating?: number
   client_satisfaction?: string
   location?: string

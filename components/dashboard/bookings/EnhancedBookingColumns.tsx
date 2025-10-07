@@ -33,7 +33,7 @@ interface BookingFullData {
   completed_milestones: number
   payment_status: string
   invoice_status?: string
-  invoice_id?: string
+  invoice_id?: string | null
   amount?: number
   amount_cents?: number
   currency: string

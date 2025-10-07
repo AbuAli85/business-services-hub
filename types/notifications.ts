@@ -78,7 +78,7 @@ export interface NotificationData {
   transaction_id?: string
   
   // Invoice related
-  invoice_id?: string
+  invoice_id?: string | null
   invoice_number?: string
   due_date?: string
   
