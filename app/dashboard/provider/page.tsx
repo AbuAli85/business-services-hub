@@ -49,12 +49,23 @@ export default function ProviderDashboard() {
     
     loadUserAndData()
     
+    // Safety timeout to prevent infinite loading (similar to client dashboard)
+    const safetyTimeout = setTimeout(() => {
+      if (loading) {
+        console.log('⚠️ Provider dashboard: Safety timeout triggered, forcing loading to false')
+        setLoading(false)
+        setError('Dashboard loading timed out. Please refresh the page.')
+        toast.warning('Dashboard loading timed out. Please refresh.')
+      }
+    }, 10000) // 10 second safety timeout
+    
     // Cleanup function to clear flags when component unmounts
     return () => {
       console.log('🧹 Provider dashboard unmounting, clearing flags')
       sessionStorage.removeItem('dashboard-provider-loaded')
+      clearTimeout(safetyTimeout)
     }
-  }, [])
+  }, [loading])
 
   const loadUserAndData = async () => {
     try {
@@ -106,14 +117,6 @@ export default function ProviderDashboard() {
     } finally {
       console.log('✅ Provider dashboard: Loading complete')
       setLoading(false)
-      
-      // Force loading to false after a maximum time to prevent infinite loading
-      setTimeout(() => {
-        if (loading) {
-          console.log('⚠️ Provider dashboard: Force setting loading to false after timeout')
-          setLoading(false)
-        }
-      }, 15000) // 15 second maximum loading time
     }
   }
 
