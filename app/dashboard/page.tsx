@@ -37,16 +37,14 @@ export default function DashboardPage() {
   const pathname = usePathname()
   
   const [user, setUser] = useState<any>(null)
-  const [userRole, setUserRole] = useState<string>('client')
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [isRedirecting, setIsRedirecting] = useState(false)
-  const hasCheckedAuth = useRef(false)
-  const hasTriggeredRedirect = useRef(false)
+  const [redirecting, setRedirecting] = useState(false)
   const lastUrlParams = useRef<string>('')
   
-  // Only load dashboard data after we have user info
-  const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole, user?.id)
+  // Only load dashboard data for admin role
+  const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole === 'admin' ? userRole : undefined, user?.id)
   // Activity filters
   const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
   const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
@@ -55,59 +53,9 @@ export default function DashboardPage() {
   const activityQ = useDebouncedValue(activityQuery, 250)
   const searchParams = useSearchParams()
 
+  // Run auth check once on mount
   useEffect(() => {
-    console.log('🔍 Main dashboard useEffect triggered:', { 
-      pathname, 
-      hasCheckedAuth: hasCheckedAuth.current, 
-      isRedirecting,
-      providerLoaded: sessionStorage.getItem('dashboard-provider-loaded'),
-      clientLoaded: sessionStorage.getItem('dashboard-client-loaded')
-    })
-    
-    // Only run on the exact /dashboard path
-    if (pathname !== '/dashboard') {
-      console.log('⏭️ Not on /dashboard path, skipping auth check')
-      return
-    }
-
-    // If we're redirecting, don't run auth again
-    if (isRedirecting) {
-      console.log('⏭️ Already redirecting, skipping auth check')
-      return
-    }
-
-    // Prevent multiple auth checks - check this BEFORE session storage
-    if (hasCheckedAuth.current) {
-      console.log('⏭️ Already checked auth, skipping')
-      return
-    }
-
-    // IMMEDIATE REDIRECT: Check if coming from provider/client dashboard
-    // If so, redirect immediately without waiting for auth check
-    const wasOnProviderDashboard = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
-    const wasOnClientDashboard = sessionStorage.getItem('dashboard-client-loaded') === 'true'
-    
-    if (wasOnProviderDashboard) {
-      console.log('⚡ INSTANT redirect: Coming from provider dashboard, redirecting back NOW')
-      sessionStorage.removeItem('dashboard-provider-loaded')
-      hasCheckedAuth.current = true // Mark as checked to prevent re-run
-      setIsRedirecting(true)
-      // Use replace for instant redirect without browser history
-      window.location.replace('/dashboard/provider')
-      return
-    }
-    
-    if (wasOnClientDashboard) {
-      console.log('⚡ INSTANT redirect: Coming from client dashboard, redirecting back NOW')
-      sessionStorage.removeItem('dashboard-client-loaded')
-      hasCheckedAuth.current = true // Mark as checked to prevent re-run
-      setIsRedirecting(true)
-      window.location.replace('/dashboard/client')
-      return
-    }
-    
-    console.log('✅ First mount on /dashboard, running auth check')
-    hasCheckedAuth.current = true
+    if (pathname !== '/dashboard') return
     checkAuth()
   }, [pathname])
 
@@ -136,9 +84,7 @@ export default function DashboardPage() {
 
   // Persist filters to URL (only if still on this page)
   useEffect(() => {
-    if (isRedirecting || pathname !== '/dashboard') {
-      return
-    }
+    if (redirecting || pathname !== '/dashboard') return
     
     const params = new URLSearchParams(window.location.search)
     params.set('atype', activityType)
@@ -148,161 +94,56 @@ export default function DashboardPage() {
     
     const newUrlParams = params.toString()
     
-    // Only update URL if it actually changed to prevent unnecessary re-renders
+    // Only update URL if it actually changed
     if (newUrlParams !== lastUrlParams.current) {
       lastUrlParams.current = newUrlParams
       router.replace(`?${newUrlParams}`, { scroll: false })
     }
-  }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname, isRedirecting])
+  }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname, redirecting])
 
   async function checkAuth() {
-    // Add timeout to prevent infinite loading
-    const authTimeout = setTimeout(() => {
-      console.warn('⏰ Auth check timeout, setting loading to false')
-      setLoading(false)
-    }, 10000) // 10 second timeout
-    
     try {
-      console.log('🔐 Main dashboard: Checking auth...')
+      console.log('🔐 Checking authentication...')
       const supabase = await getSupabaseClient()
-      
-      // Try to get session first
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError) {
-        console.error('❌ Session error:', sessionError)
-      }
-      
-      if (session?.user) {
-        console.log('✅ User found in session:', session.user.email)
-        setUser(session.user)
-        
-        // Get role from metadata first, then try profiles table
-        let role = session.user.user_metadata?.role as string
-        console.log('📋 Role from metadata:', role)
-        
-        if (!role) {
-          console.log('🔍 No role in metadata, checking profiles table...')
-          try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', session.user.id)
-              .single()
-            
-            if (!profileError && profileData) {
-              role = profileData.role
-              console.log('✅ Role from profile:', role)
-            } else {
-              console.warn('⚠️ Profile role fetch failed:', profileError?.message)
-            }
-          } catch (err) {
-            console.warn('⚠️ Profile role fetch failed, using default:', err)
-          }
-        }
-        
-        // Default to client
-        if (!role) {
-          console.warn('⚠️ No role found, defaulting to client')
-          role = 'client'
-        }
-        
-        console.log('🎭 Final role:', role)
-        setUserRole(role)
-        
-        // Redirect based on role - IMMEDIATELY without delay
-        if (role === 'provider' && !hasTriggeredRedirect.current) {
-          console.log('⚡ INSTANT redirect: Provider to /dashboard/provider')
-          clearTimeout(authTimeout)
-          hasTriggeredRedirect.current = true
-          setIsRedirecting(true)
-          // Use replace instead of href for faster redirect
-          window.location.replace('/dashboard/provider')
-          return
-        }
-        if (role === 'client' && !hasTriggeredRedirect.current) {
-          console.log('⚡ INSTANT redirect: Client to /dashboard/client')
-          clearTimeout(authTimeout)
-          hasTriggeredRedirect.current = true
-          setIsRedirecting(true)
-          window.location.replace('/dashboard/client')
-          return
-        }
-        
-        // Admin stays on this page
-        console.log('👑 Admin user, staying on main dashboard')
-        clearTimeout(authTimeout)
-        setLoading(false)
-        return
-      }
-      
-      // Fallback: try getUser directly
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      if (error || !user) {
-        console.log('❌ No user found, redirecting to sign-in')
-        clearTimeout(authTimeout)
-        router.push('/auth/sign-in')
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session?.user) {
+        console.log('❌ No session found, redirecting to sign-in')
+        router.replace('/auth/sign-in')
         return
       }
 
-      console.log('✅ User found:', user.email)
+      const user = session.user
       setUser(user)
-      
-      // Get role from metadata first, then try profiles table
-      let role = user.user_metadata?.role as string
-      console.log('📋 Role from metadata:', role)
-      
+
+      // Determine role
+      let role = user.user_metadata?.role
       if (!role) {
-        console.log('🔍 No role in metadata, checking profiles table...')
-        try {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-          
-          if (!profileError && profileData) {
-            role = profileData.role
-            console.log('✅ Role from profile:', role)
-          }
-        } catch (err) {
-          console.warn('⚠️ Profile role fetch failed, using default:', err)
-        }
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        role = profile?.role || 'client'
       }
       
-      // Default to client
-      if (!role) {
-        console.warn('⚠️ No role found, defaulting to client')
-        role = 'client'
-      }
-      
-      console.log('🎭 Final role:', role)
+      console.log('✅ User authenticated:', user.email, '| Role:', role)
       setUserRole(role)
-      
-      // Redirect based on role
-      if (role === 'provider') {
-        console.log('🔄 Redirecting provider to /dashboard/provider')
-        setIsRedirecting(true)
-        window.location.href = '/dashboard/provider'
+
+      // Handle redirect logic cleanly
+      if (['provider', 'client'].includes(role)) {
+        console.log(`🔄 Redirecting ${role} to their dashboard`)
+        setRedirecting(true)
+        router.replace(`/dashboard/${role}`)
         return
       }
-      if (role === 'client') {
-        console.log('🔄 Redirecting client to /dashboard/client')
-        setIsRedirecting(true)
-        window.location.href = '/dashboard/client'
-        return
-      }
-      
+
       // Admin stays on this page
-      console.log('👑 Admin user, staying on main dashboard')
-      clearTimeout(authTimeout)
+      console.log('👑 Admin user - staying on main dashboard')
       setLoading(false)
-      
-    } catch (error) {
-      console.error('❌ Auth check failed:', error)
-      clearTimeout(authTimeout)
-      setError('Authentication failed. Please try again.')
+    } catch (err) {
+      console.error('❌ Auth check failed:', err)
+      setError('Failed to load user data')
       setLoading(false)
     }
   }
@@ -444,7 +285,7 @@ export default function DashboardPage() {
 
 
   // Show redirecting state
-  if (isRedirecting) {
+  if (redirecting) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
@@ -458,45 +299,27 @@ export default function DashboardPage() {
   // Show loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-sm text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     )
   }
 
-  // If user is provider or client, don't render this page (they should be redirected)
-  if (userRole === 'provider' || userRole === 'client') {
-    console.log(`⏭️ ${userRole} detected, should be on dedicated dashboard page`)
-    
-    // Force INSTANT redirect if not already redirecting - use ref to prevent loops
-    if (!isRedirecting && !hasTriggeredRedirect.current) {
-      console.log(`⚡ INSTANT force redirect: ${userRole} to dedicated dashboard NOW`)
-      const targetUrl = userRole === 'provider' ? '/dashboard/provider' : '/dashboard/client'
-      hasTriggeredRedirect.current = true // Mark as triggered
-      setIsRedirecting(true)
-      // Use replace for instant redirect
-      window.location.replace(targetUrl)
-    }
-    
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Redirecting...</p>
-        </div>
-      </div>
-    )
-  }
-
+  // Show error state
   if (error || dataError) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-screen text-red-600">
         <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading dashboard data: {error || dataError}</p>
-          <Button onClick={refresh}>Retry</Button>
+          <p className="mb-4">{error || dataError}</p>
+          <Button
+            onClick={() => location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Retry
+          </Button>
         </div>
       </div>
     )
@@ -514,16 +337,6 @@ export default function DashboardPage() {
     bookingGrowth: 0,
     serviceGrowth: 0,
     lastUpdated: new Date()
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-gray-600">User not found. Redirecting...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
