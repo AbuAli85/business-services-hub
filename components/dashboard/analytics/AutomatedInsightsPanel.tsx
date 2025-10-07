@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -157,10 +158,11 @@ const AutomatedInsightsPanel: React.FC = () => {
 
   useEffect(() => {
     fetchRecentInsights();
-    
-    // Set up auto-refresh every 5 minutes
-    const interval = setInterval(fetchRecentInsights, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+  }, []);
+
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
+    fetchRecentInsights();
   }, []);
 
   const getSeverityColor = (severity: string) => {

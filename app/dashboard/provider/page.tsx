@@ -25,6 +25,8 @@ import { toast } from 'sonner'
 import { SessionStatusIndicator } from '@/components/ui/session-status-indicator'
 import { ProviderDashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
 import { logger } from '@/lib/logger'
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
+import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
 
 export default function ProviderDashboard() {
   const router = useRouter()
@@ -85,6 +87,14 @@ export default function ProviderDashboard() {
       }, 1000)
     }
   }, []) // FIXED: Remove loading dependency to prevent infinite loop
+
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
+    if (userId && !refreshing) {
+      console.log('🔄 Provider dashboard: Auto-refresh triggered')
+      loadDashboardData(userId)
+    }
+  }, [userId, refreshing])
 
   const loadUserAndData = async () => {
     try {
@@ -239,6 +249,10 @@ export default function ProviderDashboard() {
             <p className="text-gray-600">Welcome back! Here's what's happening with your business.</p>
           </div>
           <div className="flex items-center space-x-3">
+            <LiveModeToggle 
+              variant="outline"
+              size="sm"
+            />
             <SessionStatusIndicator showDetails={true} />
             <Button onClick={handleRefresh} variant="outline" disabled={refreshing}>
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
@@ -293,10 +307,11 @@ export default function ProviderDashboard() {
                   </div>
                   
                   <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 lg:space-y-3 lg:space-x-0 xl:space-y-0 xl:space-x-3">
-                    <div className="flex items-center space-x-2 px-4 py-2 bg-green-100/80 backdrop-blur-sm rounded-full border border-green-200/50">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm font-medium text-green-700">Live Dashboard</span>
-            </div>
+                    <LiveModeToggle 
+                      showLabel={true}
+                      variant="outline"
+                      size="sm"
+                    />
             <Button 
               onClick={handleRefresh} 
               disabled={refreshing}

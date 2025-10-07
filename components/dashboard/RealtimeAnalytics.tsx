@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -112,11 +113,63 @@ export function RealtimeAnalytics({ className }: RealtimeAnalyticsProps) {
     }
 
     fetchData()
-    
-    // Update data every 30 seconds
-    const interval = setInterval(fetchData, 30000)
-    
-    return () => clearInterval(interval)
+  }, [])
+
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
+    const fetchData = async () => {
+      setIsLoading(true)
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Generate realistic data with some randomness
+      const baseData = {
+        totalUsers: 5000 + Math.floor(Math.random() * 100),
+        totalServices: 800 + Math.floor(Math.random() * 50),
+        totalBookings: 1200 + Math.floor(Math.random() * 100),
+        totalRevenue: 150000 + Math.floor(Math.random() * 10000),
+        userGrowth: Math.floor(Math.random() * 20) - 10,
+        revenueGrowth: Math.floor(Math.random() * 30) - 15,
+        bookingGrowth: Math.floor(Math.random() * 25) - 12,
+        serviceGrowth: Math.floor(Math.random() * 15) - 7,
+        recentActivity: [
+          {
+            id: '1',
+            type: 'user' as const,
+            message: 'New user registration: Ahmed Al-Rashid',
+            timestamp: new Date(Date.now() - Math.random() * 3600000),
+            value: 1
+          },
+          {
+            id: '2',
+            type: 'service' as const,
+            message: 'Service approved: Digital Marketing by TechStart Oman',
+            timestamp: new Date(Date.now() - Math.random() * 3600000),
+            value: 1
+          },
+          {
+            id: '3',
+            type: 'booking' as const,
+            message: 'New booking: Legal Services consultation',
+            timestamp: new Date(Date.now() - Math.random() * 3600000),
+            value: 1
+          },
+          {
+            id: '4',
+            type: 'revenue' as const,
+            message: 'Payment received: OMR 2,500',
+            timestamp: new Date(Date.now() - Math.random() * 3600000),
+            value: 2500
+          }
+        ]
+      }
+      
+      setData(baseData)
+      setLastUpdated(new Date())
+      setIsLoading(false)
+    }
+    fetchData()
   }, [])
 
   const formatCurrency = (amount: number) => {
