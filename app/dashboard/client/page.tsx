@@ -91,6 +91,11 @@ export default function ClientDashboard() {
   const [serviceSuggestions, setServiceSuggestions] = useState<ServiceSuggestion[]>([])
 
   useEffect(() => {
+    console.log('🏠 Client dashboard mounted, starting initialization')
+    console.log('🔍 Client dashboard: Current URL:', window.location.href)
+    console.log('🔍 Client dashboard: Current pathname:', window.location.pathname)
+    console.log('🔍 Client dashboard: Mount timestamp:', new Date().toISOString())
+    
     // Mark successful landing
     sessionStorage.setItem('dashboard-client-loaded', 'true')
     
@@ -134,43 +139,92 @@ export default function ClientDashboard() {
   }, [user?.id])
 
   const checkUserAndFetchData = async () => {
+    console.log('🚀 Client dashboard: Starting checkUserAndFetchData')
     try {
       setLoading(true)
       setError(null)
 
       const supabase = await getSupabaseClient()
+      console.log('✅ Client dashboard: Supabase client created')
+      
       const { data, error: userError } = await supabase.auth.getUser()
       const user = data?.user
       
+      console.log('👤 Client dashboard: User check result:', { 
+        hasUser: !!user, 
+        userError: userError?.message,
+        role: user?.user_metadata?.role 
+      })
+      
       if (userError || !user) {
+        console.log('❌ Client dashboard: No user found, redirecting to sign-in')
+        setLoading(false)
         router.push('/auth/sign-in')
         return
       }
 
       // Check if user is a client
-      const userRole = user.user_metadata?.role
+      let userRole = user.user_metadata?.role
+      
+      // If no role in metadata, check profiles table
+      if (!userRole) {
+        console.log('🔍 Client dashboard: No role in metadata, checking profiles table...')
+        try {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+          
+          if (!profileError && profileData) {
+            userRole = profileData.role
+            console.log('✅ Client dashboard: Role from profile:', userRole)
+          } else {
+            console.warn('⚠️ Client dashboard: Profile role fetch failed:', profileError?.message)
+          }
+        } catch (err) {
+          console.warn('⚠️ Client dashboard: Profile role fetch exception:', err)
+        }
+      }
+      
+      // Default to client if no role found (for backwards compatibility)
+      if (!userRole) {
+        console.warn('⚠️ Client dashboard: No role found anywhere, defaulting to client')
+        userRole = 'client'
+      }
+      
       if (userRole !== 'client') {
+        console.log(`🔀 Client dashboard: User is ${userRole}, redirecting to appropriate dashboard`)
         // Redirect to role-specific dashboard instead of generic /dashboard
         const dashboardUrl = userRole === 'provider' 
           ? '/dashboard/provider'
+          : userRole === 'admin'
+          ? '/dashboard'
           : '/dashboard'
-        router.push(dashboardUrl)
+        setLoading(false)
+        // Use window.location for hard redirect to avoid routing issues
+        window.location.href = dashboardUrl
         return
       }
 
+      console.log('✅ Client dashboard: User is a client, proceeding with data load')
       setUser(user)
       
       // SIMPLIFIED: Just try to fetch data without complex timeout logic
       try {
+        console.log('📊 Client dashboard: Fetching client data...')
         await fetchAllClientData(user.id)
+        console.log('✅ Client dashboard: Data fetched successfully')
       } catch (dataError) {
-        console.warn('Error fetching client data:', dataError)
-        // Continue to show dashboard even if data fetch fails
+        console.warn('⚠️ Client dashboard: Error fetching client data:', dataError)
+        // Continue to show dashboard even if data fetch fails with default stats
+        setStats(defaultStats())
       }
       
+      console.log('✅ Client dashboard: Loading complete, setting loading=false')
       setLoading(false)
     } catch (error) {
-      logger.error('Error loading client data:', error)
+      logger.error('❌ Client dashboard: Critical error loading client data:', error)
       setError('Failed to load dashboard data')
       toast.error('Failed to load dashboard data')
       setLoading(false)

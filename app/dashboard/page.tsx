@@ -54,19 +54,41 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    console.log('🔍 Main dashboard useEffect triggered:', { 
+      pathname, 
+      hasCheckedAuth: hasCheckedAuth.current, 
+      isRedirecting,
+      providerLoaded: sessionStorage.getItem('dashboard-provider-loaded'),
+      clientLoaded: sessionStorage.getItem('dashboard-client-loaded')
+    })
+    
     // Only run on the exact /dashboard path
     if (pathname !== '/dashboard') {
+      console.log('⏭️ Not on /dashboard path, skipping auth check')
       return
     }
 
-    // Prevent multiple auth checks
-    if (hasCheckedAuth.current || isRedirecting) {
+    // If we're redirecting, don't run auth again
+    if (isRedirecting) {
+      console.log('⏭️ Already redirecting, skipping auth check')
       return
     }
 
-    // Check if we're already on a provider dashboard (prevent redirect loops)
-    if (sessionStorage.getItem('dashboard-provider-loaded') === 'true') {
-      console.log('⚠️ Provider dashboard already loaded, skipping main dashboard auth check')
+    // Check if we're navigating from provider or client dashboard
+    // Clear the flags and reset the auth check
+    const wasOnProviderDashboard = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
+    const wasOnClientDashboard = sessionStorage.getItem('dashboard-client-loaded') === 'true'
+    
+    if (wasOnProviderDashboard || wasOnClientDashboard) {
+      console.log('🧹 Clearing dashboard flags and resetting auth check')
+      sessionStorage.removeItem('dashboard-provider-loaded')
+      sessionStorage.removeItem('dashboard-client-loaded')
+      hasCheckedAuth.current = false // Reset to allow auth check
+    }
+
+    // Prevent multiple auth checks (but allow retry if reset above)
+    if (hasCheckedAuth.current) {
+      console.log('⏭️ Already checked auth, skipping')
       return
     }
     
