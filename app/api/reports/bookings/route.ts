@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase-client'
+import { createClient } from '@/utils/supabase/server'
+
+// Force dynamic rendering for this API route
+export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await getSupabaseClient()
+    const supabase = await createClient()
     
     // Get current user session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    // Debug logging
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔍 Reports API: Session check', {
+        hasSession: !!session,
+        sessionError: sessionError?.message,
+        userId: session?.user?.id
+      })
+    }
+    
     if (sessionError || !session) {
+      console.error('❌ Reports API: Unauthorized', {
+        sessionError: sessionError?.message,
+        hasSession: !!session
+      })
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -27,7 +44,21 @@ export async function GET(request: NextRequest) {
       .eq('id', session.user.id)
       .single()
 
+    // Debug logging
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔍 Reports API: Profile check', {
+        hasProfile: !!profile,
+        profileError: profileError?.message,
+        userRole: profile?.role
+      })
+    }
+
     if (profileError || !profile) {
+      console.error('❌ Reports API: Profile not found', {
+        profileError: profileError?.message,
+        hasProfile: !!profile,
+        userId: session.user.id
+      })
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
