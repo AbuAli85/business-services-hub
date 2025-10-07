@@ -46,8 +46,24 @@ export default function ProviderDashboard() {
   useEffect(() => {
     // Check sessionStorage to prevent re-runs across component instances
     if (typeof window !== 'undefined' && sessionStorage.getItem('provider-dashboard-auth-checked') === 'true') {
-      console.log('⏭️ Auth already checked, skipping')
-      setLoading(false)
+      console.log('⏭️ Auth already checked, skipping auth but still need to load data')
+      // Still need to get user and load data even if auth was checked
+      const loadCachedData = async () => {
+        try {
+          const supabase = await getSupabaseClient()
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            setUserId(user.id)
+            await loadDashboardData(user.id)
+            console.log('✅ Data loaded from cached session')
+          }
+        } catch (error) {
+          logger.error('Error loading cached data:', error)
+        } finally {
+          setLoading(false)
+        }
+      }
+      loadCachedData()
       return
     }
     
