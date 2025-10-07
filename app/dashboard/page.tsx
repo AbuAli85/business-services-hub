@@ -441,6 +441,15 @@ export default function DashboardPage() {
   // If user is provider or client, don't render this page (they should be redirected)
   if (userRole === 'provider' || userRole === 'client') {
     console.log(`⏭️ ${userRole} detected, should be on dedicated dashboard page`)
+    
+    // Force redirect if not already redirecting
+    if (!isRedirecting) {
+      console.log(`🔄 Force redirecting ${userRole} to dedicated dashboard`)
+      const targetUrl = userRole === 'provider' ? '/dashboard/provider' : '/dashboard/client'
+      setIsRedirecting(true)
+      window.location.href = targetUrl
+    }
+    
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
