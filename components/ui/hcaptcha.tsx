@@ -32,7 +32,10 @@ export function HCaptcha({ siteKey, onVerify, onError, theme = 'light' }: HCaptc
           theme,
           callback: (token: string) => onVerify(token),
           'error-callback': () => onError && onError(),
-          'expired-callback': () => onError && onError('expired')
+          'expired-callback': () => onError && onError('expired'),
+          // Professional styling options
+          size: 'normal',
+          tabindex: 0
         })
       } catch (e) {
         onError && onError(e)
@@ -58,8 +61,31 @@ export function HCaptcha({ siteKey, onVerify, onError, theme = 'light' }: HCaptc
   }, [siteKey, onVerify, onError, theme])
 
   return (
-    <div>
-      <div ref={containerRef} />
+    <div className="captcha-container">
+      <div 
+        ref={containerRef} 
+        className="hcaptcha-widget"
+        style={{
+          borderRadius: '8px',
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+          backgroundColor: '#ffffff'
+        }}
+      />
+      <style jsx>{`
+        .captcha-container {
+          display: flex;
+          justify-content: center;
+          margin: 16px 0;
+        }
+        .hcaptcha-widget iframe {
+          border-radius: 8px !important;
+        }
+        .hcaptcha-widget :global(.h-captcha) {
+          border-radius: 8px !important;
+          overflow: hidden !important;
+        }
+      `}</style>
     </div>
   )
 }

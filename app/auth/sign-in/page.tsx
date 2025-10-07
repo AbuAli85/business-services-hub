@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { toast } from 'sonner'
-import { Eye, EyeOff, Loader2, AlertTriangle } from 'lucide-react'
+import { Eye, EyeOff, Loader2, AlertTriangle, Shield } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { UserLogo } from '@/components/ui/user-logo'
 import { HCaptcha } from '@/components/ui/hcaptcha'
@@ -268,10 +268,23 @@ function SignInForm() {
               />
             </div>
 
-            {/* hCaptcha */}
-            <div className="mt-2">
-              <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
-            </div>
+            {/* Professional hCaptcha Section */}
+            {attempts >= 2 && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <Shield className="h-4 w-4" />
+                    <span className="text-sm font-medium">Security Verification</span>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    Please complete the security verification to continue
+                  </p>
+                  <div className="flex justify-center">
+                    <HCaptcha key={captchaKey} onVerify={setCaptchaToken} theme="light" />
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>

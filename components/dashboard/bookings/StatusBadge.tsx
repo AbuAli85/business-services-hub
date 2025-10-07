@@ -30,6 +30,11 @@ export function getDerivedStatus(booking: {
   approval_status?: string
   progress_percentage?: number
 }, invoice?: { status: string }) {
+  // ✅ CRITICAL FIX: Handle 100% progress FIRST, regardless of booking status
+  if (booking.progress_percentage === 100) {
+    return 'delivered'
+  }
+  
   // Use display_status if available, otherwise fall back to status
   const currentStatus = booking.display_status || booking.status
   
