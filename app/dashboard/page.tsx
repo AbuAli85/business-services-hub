@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string>('client')
   const hasCheckedAuth = useRef(false)
   const isRedirecting = useRef(false)
+  const hasRedirected = useRef(false)
   // Activity filters
   const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
   const [activityStatus, setActivityStatus] = useState<'all' | 'completed' | 'pending' | 'failed'>('all')
@@ -47,6 +48,12 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
 
   useEffect(() => {
+    // CRITICAL: Prevent redirect loop by checking if we've already redirected
+    if (hasRedirected.current) {
+      console.log('⏭️ Already redirected in this session, not checking auth again')
+      return
+    }
+    
     // Check if we're currently in a redirect flow (persisted across mounts)
     const redirectingFlag = sessionStorage.getItem('dashboard-redirecting')
     if (redirectingFlag === 'true') {
@@ -178,19 +185,27 @@ export default function DashboardPage() {
         if (role === 'provider') {
           console.log('🔄 Redirecting provider to /dashboard/provider')
           isRedirecting.current = true
+          hasRedirected.current = true // Mark that we've redirected
           sessionStorage.setItem('dashboard-redirecting', 'true')
+          sessionStorage.setItem('dashboard-role-redirected', 'true')
           router.replace('/dashboard/provider')
-          // Clear flag after redirect completes
-          setTimeout(() => sessionStorage.removeItem('dashboard-redirecting'), 1000)
+          // Clear redirect flag after navigation completes
+          setTimeout(() => {
+            sessionStorage.removeItem('dashboard-redirecting')
+          }, 2000)
           return null // Return null to indicate redirect happened
         }
         if (role === 'client') {
           console.log('🔄 Redirecting client to /dashboard/client')
           isRedirecting.current = true
+          hasRedirected.current = true // Mark that we've redirected
           sessionStorage.setItem('dashboard-redirecting', 'true')
+          sessionStorage.setItem('dashboard-role-redirected', 'true')
           router.replace('/dashboard/client')
-          // Clear flag after redirect completes
-          setTimeout(() => sessionStorage.removeItem('dashboard-redirecting'), 1000)
+          // Clear redirect flag after navigation completes
+          setTimeout(() => {
+            sessionStorage.removeItem('dashboard-redirecting')
+          }, 2000)
           return null // Return null to indicate redirect happened
         }
         

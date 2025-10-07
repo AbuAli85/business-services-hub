@@ -91,6 +91,10 @@ export default function ClientDashboard() {
   const [serviceSuggestions, setServiceSuggestions] = useState<ServiceSuggestion[]>([])
 
   useEffect(() => {
+    // Clear redirect flags since we successfully landed on client dashboard
+    sessionStorage.removeItem('dashboard-redirecting')
+    sessionStorage.removeItem('dashboard-role-redirected')
+    
     checkUserAndFetchData()
     // Remove the 10-second timeout as it can interfere with proper loading
     // The loading state will be managed by the checkUserAndFetchData function

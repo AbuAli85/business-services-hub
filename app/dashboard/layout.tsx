@@ -194,21 +194,22 @@ export default function DashboardLayout({
     console.log('🔄 Starting simple auth check...')
     try {
       const supabase = await getSupabaseClient()
-      const { data: { session }, error } = await supabase.auth.getSession()
+      // Use getUser() instead of getSession() for security - validates with auth server
+      const { data: { user }, error } = await supabase.auth.getUser()
       
-      if (error || !session) {
+      if (error || !user) {
         console.log('❌ Simple auth check failed, redirecting to sign-in')
         setLoading(false)
         router.push('/auth/sign-in')
         return
       }
       
-      console.log('✅ Session found for user:', session.user.email)
+      console.log('✅ Session found for user:', user.email)
       
       // Get basic info from metadata first (instant)
-      let fullName = session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User'
-      let userRole = session.user.user_metadata?.role
-      let companyName = session.user.user_metadata?.company_name
+      let fullName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
+      let userRole = user.user_metadata?.role
+      let companyName = user.user_metadata?.company_name
       
       // 🚨 TEMPORARY BYPASS MODE - Skip all verification checks
       // If role exists in metadata, skip database checks entirely
@@ -216,10 +217,10 @@ export default function DashboardLayout({
         console.log('⚡ FAST PATH: Role found in metadata, skipping database checks')
         
         const fastUser: UserProfile = {
-          id: session.user.id,
+          id: user.id,
           role: userRole as UserProfile['role'],
           full_name: fullName,
-          email: session.user.email || '',
+          email: user.email || '',
           company_name: companyName,
           profile_completed: true,
           verification_status: 'approved',
@@ -232,7 +233,7 @@ export default function DashboardLayout({
         
         // Start session in background
         try {
-          userSessionManager.startSession(session.user.id)
+          userSessionManager.startSession(user.id)
         } catch (err) {
           console.warn('⚠️ Session start failed (non-critical):', err)
         }
@@ -252,7 +253,7 @@ export default function DashboardLayout({
           const fetchPromise = supabase
             .from('profiles')
             .select('role, is_admin, profile_completed, verification_status')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single()
           
           const result = await Promise.race([fetchPromise, timeoutPromise]) as any
@@ -326,10 +327,10 @@ export default function DashboardLayout({
       
       // Create user object immediately for fast render
       const simpleUser: UserProfile = {
-        id: session.user.id,
+        id: user.id,
         role: userRole as UserProfile['role'],
         full_name: fullName,
-        email: session.user.email || '',
+        email: user.email || '',
         company_name: companyName,
         profile_completed: true, // Assume completed since they passed verification
         verification_status: 'approved',
@@ -344,11 +345,11 @@ export default function DashboardLayout({
       setLoading(false)
       
       // Fetch additional profile data asynchronously (non-blocking)
-      fetchAdditionalProfileData(session.user.id, simpleUser)
+      fetchAdditionalProfileData(user.id, simpleUser)
       
       // Start user session in background
       try {
-        userSessionManager.startSession(session.user.id)
+        userSessionManager.startSession(user.id)
         console.log('✅ Simple auth session started successfully')
       } catch (sessionError) {
         console.warn('⚠️ Failed to start simple auth session:', sessionError)
@@ -411,12 +412,13 @@ export default function DashboardLayout({
       await new Promise(resolve => setTimeout(resolve, 100))
       console.log('⏱️ Delay completed')
       
-      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      // Note: Using getUser() here for security - validates with auth server
+      let { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser()
       console.log('📋 Session check result:', { 
-        hasSession: !!session, 
+        hasSession: !!sessionUser, 
         hasError: !!sessionError, 
-        userId: session?.user?.id,
-        email: session?.user?.email 
+        userId: sessionUser?.id,
+        email: sessionUser?.email 
       })
       
       if (sessionError) {
@@ -426,7 +428,7 @@ export default function DashboardLayout({
         return
       }
       
-      if (!session) {
+      if (!sessionUser) {
         console.warn('⚠️ No active session found, attempting refresh...')
         logger.warn('No active session found')
         // Try to refresh the session before redirecting
@@ -444,7 +446,7 @@ export default function DashboardLayout({
             return
           }
           // Use the refreshed session
-          session = refreshedSession
+          sessionUser = refreshedSession.user
           console.log('✅ Using refreshed session')
         } catch (refreshError) {
           console.error('❌ Session refresh exception:', refreshError)
@@ -455,7 +457,7 @@ export default function DashboardLayout({
       }
 
       // Use user metadata from auth instead of database profile
-      const userMetadata = session.user.user_metadata
+      const userMetadata = sessionUser.user_metadata
       console.log('👤 User metadata:', userMetadata)
       
       let userRole = userMetadata?.role
@@ -468,7 +470,7 @@ export default function DashboardLayout({
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', sessionUser.id)
             .single()
           
           console.log('📋 Profile data:', profile)
@@ -501,7 +503,7 @@ export default function DashboardLayout({
         const profileCheckPromise = supabase
           .from('profiles')
           .select('profile_completed, verification_status, role')
-          .eq('id', session.user.id)
+          .eq('id', sessionUser.id)
           .single()
         
         const profileCheckTimeout = new Promise((_, reject) => 
@@ -561,7 +563,7 @@ export default function DashboardLayout({
       
       try {
         // Use ProfileManager to get complete profile data
-        const profile = await profileManager.getUserProfile(session.user.id)
+        const profile = await profileManager.getUserProfile(sessionUser.id)
         
         if (profile) {
           console.log('📋 Profile data from ProfileManager:', profile)
@@ -569,7 +571,7 @@ export default function DashboardLayout({
           
           // Get company information if user has company_id
           if (profile.company_id) {
-            const companyInfo = await profileManager.getCompanyInfo(session.user.id)
+            const companyInfo = await profileManager.getCompanyInfo(sessionUser.id)
             if (companyInfo?.name) {
               companyName = companyInfo.name
             }
@@ -591,10 +593,10 @@ export default function DashboardLayout({
       }
       
       const finalUser: UserProfile = {
-        id: session.user.id,
+        id: sessionUser.id,
         role: userRole as UserProfile['role'],
         full_name: fullName,
-        email: session.user.email || '',
+        email: sessionUser.email || '',
         company_name: companyName,
         profile_completed: false,
         verification_status: 'pending',
@@ -606,7 +608,7 @@ export default function DashboardLayout({
       
       // Start user session to ensure proper isolation
       try {
-        userSessionManager.startSession(session.user.id)
+        userSessionManager.startSession(sessionUser.id)
         console.log('✅ User session started successfully')
       } catch (sessionError) {
         console.warn('⚠️ Failed to start user session:', sessionError)
@@ -675,9 +677,10 @@ export default function DashboardLayout({
       }
       
       const supabase = await getSupabaseClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      // Get user info before signing out (for logging purposes only)
+      const { data: { user: logoutUser } } = await supabase.auth.getUser()
       await supabase.auth.signOut()
-      authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'signout' } })
+      authLogger.logLoginSuccess({ success: true, method: 'callback', userId: logoutUser?.id, email: logoutUser?.email, metadata: { action: 'signout' } })
       
       // Clear all sessions as a safety measure
       userSessionManager.clearAllSessions()
