@@ -43,9 +43,9 @@ export default function ProviderDashboard() {
   useEffect(() => {
     console.log('🏠 Provider dashboard mounted, loading data')
     
-    // Update redirect timestamp to show we successfully landed here
-    // This prevents the /dashboard page from running auth check immediately
-    sessionStorage.setItem('dashboard-last-redirect', Date.now().toString())
+    // Mark successful landing - this will be read by the global tracker
+    // to prevent the /dashboard page from re-checking auth
+    sessionStorage.setItem('dashboard-provider-loaded', 'true')
     
     loadUserAndData()
   }, [])

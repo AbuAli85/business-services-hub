@@ -30,6 +30,12 @@ import {
 } from 'lucide-react'
 import UnifiedSearch, { useDebouncedValue } from '@/components/ui/unified-search'
 
+// Global singleton to track redirects across component remounts
+const REDIRECT_TRACKER = {
+  lastRedirectTime: 0,
+  redirecting: false
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -54,14 +60,11 @@ export default function DashboardPage() {
       return
     }
     
-    // Check if we've already done a role redirect recently (within last 5 seconds)
-    const lastRedirect = sessionStorage.getItem('dashboard-last-redirect')
-    if (lastRedirect) {
-      const timeSinceRedirect = Date.now() - parseInt(lastRedirect)
-      if (timeSinceRedirect < 5000) {
-        console.log(`⏭️ Recently redirected ${timeSinceRedirect}ms ago, skipping auth check to prevent loop`)
-        return
-      }
+    // Check global redirect tracker (survives component remounts)
+    const timeSinceRedirect = Date.now() - REDIRECT_TRACKER.lastRedirectTime
+    if (REDIRECT_TRACKER.redirecting || (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 5000)) {
+      console.log(`⏭️ Global redirect guard: ${timeSinceRedirect}ms since last redirect, skipping auth check`)
+      return
     }
     
     // Prevent multiple checkAuth calls in same mount
@@ -183,18 +186,28 @@ export default function DashboardPage() {
           console.log('🔄 Redirecting provider to /dashboard/provider')
           isRedirecting.current = true
           hasRedirected.current = true
-          // Store timestamp of redirect to prevent immediate re-check
-          sessionStorage.setItem('dashboard-last-redirect', Date.now().toString())
+          // Update global tracker (survives component remounts)
+          REDIRECT_TRACKER.redirecting = true
+          REDIRECT_TRACKER.lastRedirectTime = Date.now()
           router.replace('/dashboard/provider')
+          // Clear redirecting flag after a delay
+          setTimeout(() => {
+            REDIRECT_TRACKER.redirecting = false
+          }, 2000)
           return null // Return null to indicate redirect happened
         }
         if (role === 'client') {
           console.log('🔄 Redirecting client to /dashboard/client')
           isRedirecting.current = true
           hasRedirected.current = true
-          // Store timestamp of redirect to prevent immediate re-check
-          sessionStorage.setItem('dashboard-last-redirect', Date.now().toString())
+          // Update global tracker (survives component remounts)
+          REDIRECT_TRACKER.redirecting = true
+          REDIRECT_TRACKER.lastRedirectTime = Date.now()
           router.replace('/dashboard/client')
+          // Clear redirecting flag after a delay
+          setTimeout(() => {
+            REDIRECT_TRACKER.redirecting = false
+          }, 2000)
           return null // Return null to indicate redirect happened
         }
         

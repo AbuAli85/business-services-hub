@@ -91,9 +91,8 @@ export default function ClientDashboard() {
   const [serviceSuggestions, setServiceSuggestions] = useState<ServiceSuggestion[]>([])
 
   useEffect(() => {
-    // Update redirect timestamp to show we successfully landed here
-    // This prevents the /dashboard page from running auth check immediately
-    sessionStorage.setItem('dashboard-last-redirect', Date.now().toString())
+    // Mark successful landing
+    sessionStorage.setItem('dashboard-client-loaded', 'true')
     
     checkUserAndFetchData()
     // Remove the 10-second timeout as it can interfere with proper loading
