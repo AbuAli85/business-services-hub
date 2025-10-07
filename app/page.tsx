@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -457,12 +458,15 @@ export default function HomePage() {
                     "{testimonial.content}"
                   </p>
                   <div className="flex items-center">
-                    <img
-                      src={testimonial.image}
-                      alt={`${testimonial.name} - ${testimonial.title}`}
-                      loading="lazy"
-                      className="w-12 h-12 rounded-full object-cover mr-4"
-                    />
+                    <div className="relative w-12 h-12 rounded-full overflow-hidden mr-4 flex-shrink-0">
+                      <Image
+                        src={testimonial.image}
+                        alt={`${testimonial.name} - ${testimonial.title}`}
+                        fill
+                        className="object-cover"
+                        sizes="48px"
+                      />
+                    </div>
                     <div>
                       <div className="font-semibold text-gray-900">{testimonial.name}</div>
                       <div className="text-sm text-gray-600">{testimonial.title}</div>

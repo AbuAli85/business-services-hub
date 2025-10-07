@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -658,10 +659,12 @@ export default function ServicesPage() {
             <Card key={service.id} className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-lg bg-white overflow-hidden rounded-2xl hover:-translate-y-1">
               {/* Service Image Header */}
               <div className="relative h-48 overflow-hidden">
-                <img
+                <Image
                   src={getServiceCardImageUrl(service.category, service.title, (service as any).cover_image_url, 400, 200)}
                   alt={`${service.title} - ${service.category} service`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
                 
                 {/* Gradient Overlay */}

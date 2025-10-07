@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -192,11 +193,11 @@ export default async function ServicesPage({ searchParams }: { searchParams: Rec
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {services.map((service) => (
               <Card key={service.id} className="hover:shadow-lg transition-shadow">
-                <div className="aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
+                <div className="relative aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
                   {service.cover_image_url ? (
-                    <img src={service.cover_image_url} alt={`${service.title} - ${service.category} service`} loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                    <Image src={service.cover_image_url} alt={`${service.title} - ${service.category} service`} fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                   ) : (
-                    <img src={getServiceImage(service.category, service.title)} alt={`${service.title} - ${service.category} service`} loading="lazy" className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+                    <Image src={getServiceImage(service.category, service.title)} alt={`${service.title} - ${service.category} service`} fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                   )}
                 </div>
                 <CardHeader className="pb-3">

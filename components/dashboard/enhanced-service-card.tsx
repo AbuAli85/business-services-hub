@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -70,10 +71,12 @@ export default function EnhancedServiceCard({
       {/* Image Section */}
       <div className="relative h-48 bg-gradient-to-br from-blue-50 to-indigo-100">
         {service.cover_image_url ? (
-          <img
+          <Image
             src={service.cover_image_url}
             alt={service.title}
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

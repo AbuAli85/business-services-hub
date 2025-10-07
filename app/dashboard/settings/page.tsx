@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { getSupabaseClient } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -592,12 +593,14 @@ export default function SettingsPage() {
             {/* Avatar Section */}
             <div className="flex items-center space-x-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                <div className="relative w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                   {avatarPreview || profile?.avatar_url ? (
-                    <img
+                    <Image
                       src={avatarPreview || profile?.avatar_url}
                       alt="Profile"
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
+                      sizes="96px"
                     />
                   ) : (
                     <User className="w-12 h-12 text-gray-400" />

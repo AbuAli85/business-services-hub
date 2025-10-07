@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -665,6 +666,9 @@ export default function EditServicePage() {
                       id="featured"
                       checked={formData.featured}
                       onChange={(e) => handleInputChange('featured', e.target.checked)}
+                      title="Mark as featured service"
+                      aria-label="Mark as featured service"
+                      placeholder="Mark as featured service"
                       className="rounded border-gray-300"
                       aria-describedby="featured-description"
                     />
@@ -932,20 +936,19 @@ export default function EditServicePage() {
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {formData.gallery.map((url, index) => (
-                        <div key={index} className="relative group">
-                          <img
+                        <div key={index} className="relative group h-24">
+                          <Image
                             src={url}
                             alt={`Gallery ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg border"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                            }}
+                            fill
+                            className="object-cover rounded-lg border"
+                            sizes="(max-width: 768px) 50vw, 33vw"
                           />
                           <Button
                             type="button"
                             variant="destructive"
                             size="sm"
-                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                             onClick={() => {
                               setFormData(prev => ({
                                 ...prev,

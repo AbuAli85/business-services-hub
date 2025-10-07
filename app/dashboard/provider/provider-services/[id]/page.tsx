@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useParams, useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -236,9 +237,9 @@ export default function ProviderServiceDetailPage() {
           
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-24 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <div className="relative w-24 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                 {service.cover_image_url ? (
-                  <img src={service.cover_image_url} alt={service.title} className="w-full h-full object-cover" />
+                  <Image src={service.cover_image_url} alt={service.title} fill className="object-cover" sizes="96px" />
                 ) : (
                   <Building2 className="h-10 w-10 text-white opacity-90" />
                 )}
@@ -250,7 +251,9 @@ export default function ProviderServiceDetailPage() {
                   {company && (
                     <span className="text-sm text-gray-600 flex items-center gap-2">
                       {company.logo_url ? (
-                        <img src={company.logo_url} alt={company.name} className="w-4 h-4 rounded" />
+                        <span className="relative w-4 h-4 rounded inline-block">
+                          <Image src={company.logo_url} alt={company.name} fill className="object-cover rounded" sizes="16px" />
+                        </span>
                       ) : (
                         <Building2 className="h-4 w-4 text-gray-400" />
                       )}
