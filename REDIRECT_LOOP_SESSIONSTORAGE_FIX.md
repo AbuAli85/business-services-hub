@@ -86,16 +86,33 @@ if (typeof window !== 'undefined' && sessionStorage.getItem('client-dashboard-au
 
 ### 2. Set sessionStorage After Successful Auth
 
+**CRITICAL**: For the main dashboard, set the flag **BEFORE** any redirect!
+
 ```typescript
-// Client Dashboard
-sessionStorage.setItem('client-dashboard-auth-checked', 'true')
-
-// Provider Dashboard
-sessionStorage.setItem('provider-dashboard-auth-checked', 'true')
-
-// Main Dashboard (admin only)
+// Main Dashboard - Set BEFORE redirect
 sessionStorage.setItem('main-dashboard-auth-checked', 'true')
+
+// Then redirect if needed
+if (['provider', 'client'].includes(role)) {
+  router.replace(`/dashboard/${role}`)
+  return
+}
+
+// Client Dashboard - Set when staying on page
+if (userRole === 'client') {
+  sessionStorage.setItem('client-dashboard-auth-checked', 'true')
+}
+
+// Provider Dashboard - Set when staying on page
+if (userRole === 'provider') {
+  sessionStorage.setItem('provider-dashboard-auth-checked', 'true')
+}
 ```
+
+**Why this order matters:**
+- Main dashboard needs to mark itself as checked **before** redirecting
+- Otherwise, when it remounts during the redirect, the flag isn't set yet
+- This causes the auth check to run again, creating the loop
 
 ### 3. Different Keys for Each Dashboard
 

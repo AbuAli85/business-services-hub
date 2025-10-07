@@ -110,6 +110,9 @@ export default function DashboardPage() {
         console.log('✅ User authenticated:', user.email, '| Role:', role)
         setUserRole(role)
 
+      // Mark auth as checked BEFORE any redirect
+      sessionStorage.setItem('main-dashboard-auth-checked', 'true')
+
       // Handle redirect logic cleanly
       if (['provider', 'client'].includes(role)) {
         console.log(`🔄 Redirecting ${role} to their dashboard`)
@@ -123,8 +126,6 @@ export default function DashboardPage() {
       // Admin stays on this page
       console.log('👑 Admin user - staying on main dashboard')
       if (isMounted) {
-        // Mark auth as checked for this session
-        sessionStorage.setItem('main-dashboard-auth-checked', 'true')
         setLoading(false)
       }
       } catch (err) {
