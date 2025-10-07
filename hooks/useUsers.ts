@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 import { getSupabaseClient } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { AdminUser, BackendUser, UserAction } from '@/types/users'
@@ -326,16 +327,12 @@ export function useUsers(options: UseUsersOptions = {}): UseUsersReturn {
     fetchUsers(true)
   }, []) // Empty dependency array to run only once on mount
 
-  // Auto refresh
-  useEffect(() => {
-    if (!autoRefresh) return
-    
-    const intervalId = setInterval(() => {
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
+    if (autoRefresh) {
       fetchUsers(false)
-    }, refreshInterval)
-    
-    return () => clearInterval(intervalId)
-  }, [autoRefresh, refreshInterval]) // Remove fetchUsers from dependencies
+    }
+  }, [autoRefresh, fetchUsers])
 
   // Realtime updates
   useEffect(() => {

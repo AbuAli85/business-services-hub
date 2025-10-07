@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 import { Notification, NotificationStats, NotificationFilters, NotificationSettings as NotificationSettingsType } from '@/types/notifications'
 import { notificationService } from '@/lib/notification-service'
 import { getSupabaseClient } from '@/lib/supabase'
@@ -142,17 +143,13 @@ export function useNotifications({
     }
   }, [userId, loadStats])
 
-  // Auto-refresh effect
-  useEffect(() => {
-    if (!autoRefresh || !userId) return
-
-    const interval = setInterval(() => {
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
+    if (autoRefresh && userId) {
       loadNotifications()
       loadStats()
-    }, refreshInterval)
-
-    return () => clearInterval(interval)
-  }, [autoRefresh, refreshInterval, userId, loadNotifications, loadStats])
+    }
+  }, [autoRefresh, userId, loadNotifications, loadStats])
 
   // Initial load
   useEffect(() => {

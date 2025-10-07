@@ -29,6 +29,8 @@ import {
   RefreshCw
 } from 'lucide-react'
 import UnifiedSearch, { useDebouncedValue } from '@/components/ui/unified-search'
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
+import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -67,13 +69,10 @@ export default function DashboardPage() {
     checkAuth()
   }, [pathname, isRedirecting])
 
-  // Set up real-time refresh every 30 seconds
-  useEffect(() => {
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
     if (user?.id) {
-      const interval = setInterval(() => {
-        refresh()
-      }, 30000)
-      return () => clearInterval(interval)
+      refresh()
     }
   }, [user, refresh])
 
@@ -472,7 +471,11 @@ export default function DashboardPage() {
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex items-center space-x-3">
+              <LiveModeToggle 
+                className="text-white"
+                variant="outline"
+              />
               <Button className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => router.push('/dashboard/bookings/new')}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Booking

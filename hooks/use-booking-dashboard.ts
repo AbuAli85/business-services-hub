@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 
 interface BookingStats {
   total: number
@@ -144,15 +145,11 @@ export function useBookingDashboard(): UseBookingDashboardReturn {
     fetchDashboardData()
   }, [fetchDashboardData])
 
-  // Auto-refresh every 30 seconds when not actively refreshing
-  useEffect(() => {
-    if (refreshing) return
-
-    const interval = setInterval(() => {
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
+    if (!refreshing) {
       fetchDashboardData()
-    }, 30000) // 30 seconds
-
-    return () => clearInterval(interval)
+    }
   }, [fetchDashboardData, refreshing])
 
   return {

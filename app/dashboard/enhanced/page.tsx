@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { logger } from '@/lib/logger'
+import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 import { 
   TrendingUp, 
   Users, 
@@ -61,13 +62,11 @@ export default function EnhancedDashboardPage() {
   useEffect(() => {
     checkAuth()
     loadDashboardData()
-    
-    // Set up real-time refresh every 30 seconds
-    const interval = setInterval(() => {
-      loadDashboardData()
-    }, 30000)
+  }, [])
 
-    return () => clearInterval(interval)
+  // Register with centralized auto-refresh system
+  useRefreshCallback(() => {
+    loadDashboardData()
   }, [])
 
   async function checkAuth() {
