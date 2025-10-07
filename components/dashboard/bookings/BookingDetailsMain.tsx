@@ -470,36 +470,10 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
                       </div>
                     )}
                   </div>
-                  <div className="pt-4 border-t border-gray-200">
-                    <Button
-                      variant="outline"
-                      className="w-full border-blue-300 text-blue-700 hover:bg-blue-50 hover:shadow-md transition-all duration-200 h-12"
-                    >
-                      Provider View
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Role Badge Card */}
-            <Card className="border-0 shadow-2xl bg-white/90 backdrop-blur-sm">
-              <CardContent className="p-6">
-                <div className="text-center">
-                  <Badge 
-                    className={`px-8 py-4 text-base font-bold shadow-lg ${
-                      bookingUserRole === 'provider' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                      bookingUserRole === 'client' ? 'bg-green-100 text-green-800 border-green-200' :
-                      'bg-purple-100 text-purple-800 border-purple-200'
-                    }`}
-                  >
-                    {bookingUserRole === 'provider' ? 'Provider View' :
-                     bookingUserRole === 'client' ? 'Client View' :
-                     'Admin View'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
