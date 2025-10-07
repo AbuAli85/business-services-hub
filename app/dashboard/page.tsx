@@ -53,36 +53,39 @@ export default function DashboardPage() {
   const activityQ = useDebouncedValue(activityQuery, 250)
   const searchParams = useSearchParams()
 
-  useEffect(() => {
-    // CRITICAL: Only run on the exact /dashboard path, not sub-routes
+  // IMMEDIATE check on component mount - before any effects run
+  const shouldRenderPage = (() => {
+    // Only allow rendering if we're exactly on /dashboard
     if (pathname !== '/dashboard') {
-      console.log('⏭️ Not on exact /dashboard path, skipping auth check')
-      return
+      return false
     }
     
-    // Check global redirect tracker (survives component remounts)
+    // Check if we recently redirected (global tracker)
     const timeSinceRedirect = Date.now() - REDIRECT_TRACKER.lastRedirectTime
     if (REDIRECT_TRACKER.redirecting || (REDIRECT_TRACKER.lastRedirectTime > 0 && timeSinceRedirect < 5000)) {
-      console.log(`⏭️ Global redirect guard: ${timeSinceRedirect}ms since last redirect, skipping auth check`)
+      console.log(`⏭️ RENDER BLOCKED: ${timeSinceRedirect}ms since last redirect`)
+      return false
+    }
+    
+    return true
+  })()
+
+  useEffect(() => {
+    if (!shouldRenderPage) {
+      console.log('⏭️ Page render blocked, skipping auth check')
       return
     }
     
-    // Prevent multiple checkAuth calls in same mount
-    if (hasCheckedAuth.current) {
-      console.log('⏭️ Auth already checked in this mount, skipping')
-      return
-    }
-    
-    // Don't run if we're currently redirecting
-    if (isRedirecting.current) {
-      console.log('⏭️ Currently redirecting, skipping auth check')
+    // Prevent multiple checkAuth calls
+    if (hasCheckedAuth.current || isRedirecting.current) {
+      console.log('⏭️ Auth already checked or redirecting, skipping')
       return
     }
     
     console.log('✅ First mount on /dashboard, running auth check')
     hasCheckedAuth.current = true
     checkAuth()
-  }, [pathname])
+  }, [shouldRenderPage])
 
   // DISABLED: Redirect logic moved to checkAuth() to prevent useEffect loops
   // The redirect now happens immediately when role is detected
@@ -359,6 +362,18 @@ export default function DashboardPage() {
     const searchOk = !q || a.description.toLowerCase().includes(q)
     return typeOk && statusOk && dateOk && searchOk
   })
+
+  // BLOCK rendering if we shouldn't show this page
+  if (!shouldRenderPage) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (loading) {
     return (

@@ -37,10 +37,17 @@ export interface User {
 export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
   if (!user || !user.role) return []
 
+  // Determine role-specific dashboard URL
+  const dashboardHref = user.role === 'provider' 
+    ? '/dashboard/provider'
+    : user.role === 'client'
+    ? '/dashboard/client'
+    : '/dashboard'
+
   const baseItems: NavigationItem[] = [
     { 
       name: 'Dashboard', 
-      href: '/dashboard', 
+      href: dashboardHref, 
       icon: Home,
       description: 'Overview and quick actions'
     },
