@@ -591,7 +591,7 @@ export default function DashboardLayout({
         config={{
           warningTime: 300, // 5 minutes
           inactivityTimeout: 1800, // 30 minutes
-          checkInterval: 30 // 30 seconds
+          checkInterval: 60 // 60 seconds - increased to reduce frequency
         }}
       >
         <div className="h-screen bg-gray-50 flex overflow-hidden">
@@ -767,7 +767,7 @@ export default function DashboardLayout({
       
 
     </div>
-    </SessionManager>
+      </SessionManager>
     </AutoRefreshProvider>
   )
 }

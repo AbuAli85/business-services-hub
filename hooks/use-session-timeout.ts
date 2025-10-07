@@ -56,11 +56,12 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
   // Check session expiry
   const checkSession = useCallback(async () => {
     try {
+      console.log('🔍 Session timeout: Checking session...')
       const supabase = await getSupabaseClient()
       const { data: { session }, error } = await supabase.auth.getSession()
       
       if (error) {
-        console.warn('Session check error:', error)
+        console.warn('⚠️ Session check error:', error)
         // Handle specific refresh token errors
         if (isRefreshTokenError(error)) {
           console.log('🔄 Invalid refresh token detected, clearing session')
@@ -70,10 +71,19 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
         return
       }
       
-      if (!session || !isSessionValid(session)) {
+      if (!session) {
+        console.log('⚠️ No session found, marking as expired')
         setState(prev => ({ ...prev, isExpired: true }))
         return
       }
+
+      if (!isSessionValid(session)) {
+        console.log('⚠️ Session invalid, marking as expired')
+        setState(prev => ({ ...prev, isExpired: true }))
+        return
+      }
+
+      console.log('✅ Session is valid, continuing...')
 
       const timeUntilExpiry = getSessionTimeRemaining(session)
 
@@ -128,15 +138,19 @@ export function useSessionTimeout(config: Partial<SessionTimeoutConfig> = {}) {
 
   // Handle logout
   const handleLogout = useCallback(async () => {
+    console.log('🚪 Session timeout: Logging out user...')
+    console.log('🚪 Current URL before logout:', window.location.href)
     try {
       const supabase = await getSupabaseClient()
       await safeSignOut(supabase, { clearLocalStorage: true })
       toast.success('You have been logged out due to session timeout.')
+      console.log('🚪 Redirecting to sign-in...')
       router.push('/auth/sign-in')
     } catch (error) {
       console.error('Logout error:', error)
       // Clear auth data even if sign out fails
       clearAuthData({ clearLocalStorage: true })
+      console.log('🚪 Fallback redirect to sign-in...')
       router.push('/auth/sign-in')
     }
   }, [router])

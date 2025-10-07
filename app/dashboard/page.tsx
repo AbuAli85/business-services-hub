@@ -63,6 +63,12 @@ export default function DashboardPage() {
     if (hasCheckedAuth.current || isRedirecting) {
       return
     }
+
+    // Check if we're already on a provider dashboard (prevent redirect loops)
+    if (sessionStorage.getItem('dashboard-provider-loaded') === 'true') {
+      console.log('⚠️ Provider dashboard already loaded, skipping main dashboard auth check')
+      return
+    }
     
     console.log('✅ First mount on /dashboard, running auth check')
     hasCheckedAuth.current = true

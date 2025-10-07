@@ -44,6 +44,8 @@ export default function ProviderDashboard() {
 
   useEffect(() => {
     console.log('🏠 Provider dashboard mounted, loading data')
+    console.log('🔍 Provider dashboard: Current URL:', window.location.href)
+    console.log('🔍 Provider dashboard: Current pathname:', window.location.pathname)
     
     // Check if already loaded to prevent unnecessary reloading
     const alreadyLoaded = sessionStorage.getItem('dashboard-provider-loaded') === 'true'
