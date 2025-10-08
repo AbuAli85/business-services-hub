@@ -383,13 +383,13 @@ export default function Invoice({
                 </span>
               </div>
               
-              {invoice.tax_rate > 0 && (
+              {invoice.vat_percent > 0 && (
                 <div className="flex justify-between items-center py-4 border-b-2 border-slate-200">
                   <span className="text-slate-700 font-black text-xl">
-                    Tax ({(invoice.tax_rate * 100).toFixed(1)}%)
+                    VAT ({(invoice.vat_percent * 100).toFixed(1)}%)
                   </span>
                   <span className="font-black text-slate-900 text-xl">
-                    {formatCurrency(invoice.tax_amount, invoice.currency)}
+                    {formatCurrency(invoice.vat_amount, invoice.currency)}
                   </span>
                 </div>
               )}
