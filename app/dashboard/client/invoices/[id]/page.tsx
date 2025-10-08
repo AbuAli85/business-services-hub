@@ -208,8 +208,8 @@ export default function ClientInvoiceDetailsPage() {
                 return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
               })(),
               subtotal: invoice.subtotal ?? invoice.amount ?? 840,
-              tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
-              tax_amount: invoice.vat_amount ?? (invoice.amount ?? 840) * 0.05,
+              vat_percent: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
+              vat_amount: invoice.vat_amount ?? (invoice.amount ?? 840) * 0.05,
               total: invoice.total_amount ?? invoice.amount ?? 882,
               status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
               currency: invoice.currency || 'USD',
