@@ -281,15 +281,15 @@ export default function ServicesPage() {
       onLogout={() => router.push('/auth/signout')}
       notifications={0}
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">{isProvider ? 'My Services' : 'Services'}</h1>
-            <p className="text-blue-100 text-lg mb-4">{isProvider ? 'Manage your services and bookings' : 'Browse available services and book what you need'}</p>
-            <div className="flex items-center space-x-6 text-sm">
+            <h1 className="text-3xl font-bold mb-1">{isProvider ? 'My Services' : 'Services'}</h1>
+            <p className="text-blue-100 text-base mb-3">{isProvider ? 'Manage your services and bookings' : 'Browse available services and book what you need'}</p>
+            <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center">
                 <Package className="h-4 w-4 mr-1" />
                 <span>Total: {stats.total} services</span>
@@ -316,9 +316,10 @@ export default function ServicesPage() {
               )}
             </div>
           </div>
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             <Button 
               variant="secondary"
+              size="sm"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
               onClick={refresh}
             >
@@ -328,8 +329,9 @@ export default function ServicesPage() {
             {isProvider && (
               <Button 
                 variant="secondary"
+                size="sm"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                onClick={() => router.push('/dashboard/services/create')}
+                onClick={() => router.push('/dashboard/provider/create-service')}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 New Service

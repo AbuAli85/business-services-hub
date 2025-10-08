@@ -772,7 +772,7 @@ export default function DashboardLayout({
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
-          <div className="p-6">
+          <div className="p-4 lg:p-6">
             <ErrorBoundary
               showDetails={process.env.NODE_ENV === 'development'}
               onError={(error, errorInfo) => {

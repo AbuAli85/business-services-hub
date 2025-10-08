@@ -309,7 +309,7 @@ export default function ManageServicesPage() {
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-              onClick={() => router.push('/dashboard/services/create')}
+              onClick={() => router.push('/dashboard/provider/create-service')}
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Service
