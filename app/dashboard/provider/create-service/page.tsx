@@ -42,6 +42,9 @@ import { DeliverablesSelector } from '@/components/dashboard/deliverables-select
 import { RequirementsSelector } from '@/components/dashboard/requirements-selector'
 import { EnhancedMilestonesEditor, MilestoneTemplate } from '@/components/dashboard/enhanced-milestones-editor'
 import { toast } from 'sonner'
+import { useRenderCount } from '@/hooks/useRenderCount'
+import { useEffectDebugger } from '@/hooks/useEffectDebugger'
+import { DashboardDebugPanel } from '@/components/DashboardDebugPanel'
 
 // UUID validation utility
 const isValidUUID = (uuid: string): boolean => {
@@ -103,6 +106,9 @@ export default function CreateServicePage() {
   const [loading, setLoading] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
+  
+  // Monitor page stability
+  const debugRenderCount = useRenderCount('CreateServicePage')
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [companies, setCompanies] = useState<Company[]>([])
   const [categories, setCategories] = useState<ServiceCategory[]>([])
@@ -176,6 +182,9 @@ export default function CreateServicePage() {
 
   // Fetch data on component mount
   useEffect(() => {
+    // Debug this effect
+    useEffectDebugger('CreateServiceDataFetch', [])
+    
     const fetchData = async () => {
       try {
         const supabase = await getSupabaseClient()
@@ -1194,6 +1203,12 @@ export default function CreateServicePage() {
           </div>
         </div>
       </div>
+      
+      {/* Debug Panel - Only in development */}
+      <DashboardDebugPanel 
+        componentName="CreateServicePage"
+        renderCount={debugRenderCount}
+      />
     </TooltipProvider>
   )
 }

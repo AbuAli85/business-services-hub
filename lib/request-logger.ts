@@ -3,6 +3,8 @@
  * Helps identify duplicate requests and performance issues
  */
 
+import { useRef, useEffect } from 'react'
+
 interface RequestLog {
   url: string
   method: string

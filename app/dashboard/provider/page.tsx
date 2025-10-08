@@ -29,6 +29,9 @@ import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
 import { usePageStability } from '@/hooks/usePageStability'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { useRenderCount } from '@/hooks/useRenderCount'
+import { useEffectDebugger } from '@/hooks/useEffectDebugger'
+import { DashboardDebugPanel } from '@/components/DashboardDebugPanel'
 
 export default function ProviderDashboard() {
   const router = useRouter()
@@ -37,6 +40,7 @@ export default function ProviderDashboard() {
   
   // Monitor page stability
   const renderCount = usePageStability('ProviderDashboard')
+  const debugRenderCount = useRenderCount('ProviderDashboard')
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -49,6 +53,9 @@ export default function ProviderDashboard() {
 
   // Register with auto-refresh system
   useRefreshCallback(async () => {
+    // Debug this callback
+    useEffectDebugger('ProviderRefreshCallback', [userId])
+    
     if (userId) {
       await loadDashboardData(userId)
     }
@@ -56,6 +63,9 @@ export default function ProviderDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
+    // Debug this effect
+    useEffectDebugger('ProviderAuthCheck', [])
+    
     // Check sessionStorage to prevent re-runs across component instances
     if (typeof window !== 'undefined' && sessionStorage.getItem('provider-dashboard-auth-checked') === 'true') {
       console.log('⏭️ Auth already checked, skipping auth but still need to load data')
@@ -193,6 +203,9 @@ export default function ProviderDashboard() {
 
   // Cleanup subscriptions on unmount
   useEffect(() => {
+    // Debug this effect
+    useEffectDebugger('ProviderCleanup', [userId])
+    
     return () => {
       // Cleanup will be handled by the subscription cleanup functions
     }
@@ -537,6 +550,12 @@ export default function ProviderDashboard() {
 
       </div>
     </main>
+    
+    {/* Debug Panel - Only in development */}
+    <DashboardDebugPanel 
+      componentName="ProviderDashboard"
+      renderCount={debugRenderCount}
+    />
     </ProviderDashboardErrorBoundary>
   )
 }
