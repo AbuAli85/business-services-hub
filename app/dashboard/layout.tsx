@@ -734,45 +734,20 @@ export default function DashboardLayout({
             </div>
           </div>
         )}
-        {/* Top Header */}
-        <header className="bg-white shadow-sm border-b px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600"
-                title="Open sidebar"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-              <h2 className="text-lg font-semibold text-gray-900">
-                {navigationItems.find(item => item.href === pathname)?.name || 'Dashboard'}
-              </h2>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Notification Bell */}
-              <NotificationBell userId={user.id} />
-              
-              {/* User Menu */}
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{user.full_name}</p>
-                  <p className="text-xs text-gray-500 capitalize">{user.role || 'No Role'}</p>
-                </div>
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-semibold text-sm">
-                    {user.full_name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </header>
+        {/* Mobile Menu Button - Only show on mobile when sidebar is closed */}
+        <div className="lg:hidden fixed top-4 left-4 z-50">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-md bg-white shadow-md text-gray-400 hover:text-gray-600"
+            title="Open sidebar"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50">
-          <div className="p-4 lg:p-6">
+          <div className="p-2 lg:p-4">
             <ErrorBoundary
               showDetails={process.env.NODE_ENV === 'development'}
               onError={(error, errorInfo) => {
