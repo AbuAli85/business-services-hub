@@ -27,11 +27,16 @@ import { ProviderDashboardErrorBoundary } from '@/components/dashboard/dashboard
 import { logger } from '@/lib/logger'
 import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
+import { usePageStability } from '@/hooks/usePageStability'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 export default function ProviderDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [redirecting, setRedirecting] = useState(false)
+  
+  // Monitor page stability
+  const renderCount = usePageStability('ProviderDashboard')
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
