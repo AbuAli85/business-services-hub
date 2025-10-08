@@ -97,7 +97,8 @@ export default function DashboardPage() {
               // Clear loading state before redirect
               if (isMounted) setLoading(false)
               
-              window.location.href = redirectUrl
+              // Use router.replace for client-side navigation (no page reload)
+              router.replace(redirectUrl)
               return
             }
             
@@ -173,9 +174,9 @@ export default function DashboardPage() {
         if (isMounted) {
           setLoading(false) // Clear loading state before redirect
           setRedirecting(true)
-          // Use window.location.href for immediate redirect to prevent any race conditions
+          // Use router.replace for client-side navigation (no page reload)
           const redirectUrl = `/dashboard/${role}`
-          window.location.href = redirectUrl
+          router.replace(redirectUrl)
         }
         return
       }

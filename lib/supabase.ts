@@ -110,7 +110,10 @@ For production deployments, ensure environment variables are set in your hosting
       try {
         // Set up auth state change listener
         supabaseClient!.auth.onAuthStateChange(async (event, session) => {
-          console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
+          // Only log in development mode to reduce console noise
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔐 Auth state changed:', event, session?.user?.id ? 'User logged in' : 'No user')
+          }
           try {
             const { authLogger } = await import('./auth-logger')
             const expiresAt = session?.expires_at || null
@@ -133,34 +136,46 @@ For production deployments, ensure environment variables are set in your hosting
                 if (nowMs - lastProactiveRefreshAt > 60_000) {
                   lastProactiveRefreshAt = nowMs
                   try {
-                    console.log('🔄 Proactive token refresh due to near expiry')
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('🔄 Proactive token refresh due to near expiry')
+                    }
                     const { error: refreshError } = await supabaseClient!.auth.refreshSession()
                     if (refreshError) {
-                      console.warn('⚠️ Proactive token refresh failed:', refreshError)
+                      if (process.env.NODE_ENV === 'development') {
+                        console.warn('⚠️ Proactive token refresh failed:', refreshError)
+                      }
                       
                       // Handle specific refresh token errors
                       if (refreshError.message.includes('Invalid Refresh Token') || 
                           refreshError.message.includes('Refresh Token Not Found') ||
                           refreshError.message.includes('refresh_token_not_found')) {
-                        console.log('🔄 Invalid refresh token during proactive refresh, signing out')
+                        if (process.env.NODE_ENV === 'development') {
+                          console.log('🔄 Invalid refresh token during proactive refresh, signing out')
+                        }
                         await supabaseClient!.auth.signOut()
                       }
                     } else {
                       authLogger.logLoginSuccess({ success: true, method: 'callback', userId: session?.user?.id, email: session?.user?.email, metadata: { action: 'proactive_refresh' } })
                     }
                   } catch (e) {
-                    console.warn('⚠️ Proactive refresh exception:', e)
+                    if (process.env.NODE_ENV === 'development') {
+                      console.warn('⚠️ Proactive refresh exception:', e)
+                    }
                     
                     // Handle refresh token errors in catch block too
                     if (e instanceof Error && (
                         e.message.includes('Invalid Refresh Token') || 
                         e.message.includes('Refresh Token Not Found') ||
                         e.message.includes('refresh_token_not_found'))) {
-                      console.log('🔄 Invalid refresh token in proactive refresh catch block, signing out')
+                      if (process.env.NODE_ENV === 'development') {
+                        console.log('🔄 Invalid refresh token in proactive refresh catch block, signing out')
+                      }
                       try {
                         await supabaseClient!.auth.signOut()
                       } catch (signOutError) {
-                        console.error('Error signing out:', signOutError)
+                        if (process.env.NODE_ENV === 'development') {
+                          console.error('Error signing out:', signOutError)
+                        }
                       }
                     }
                   }
@@ -169,10 +184,13 @@ For production deployments, ensure environment variables are set in your hosting
             }
           } catch (_) {}
           
-          if (event === 'TOKEN_REFRESHED') {
-            console.log('✅ Token refreshed successfully')
-          } else if (event === 'SIGNED_OUT') {
-            console.log('👋 User signed out')
+          // Only log in development
+          if (process.env.NODE_ENV === 'development') {
+            if (event === 'TOKEN_REFRESHED') {
+              console.log('✅ Token refreshed successfully')
+            } else if (event === 'SIGNED_OUT') {
+              console.log('👋 User signed out')
+            }
           }
         })
         
