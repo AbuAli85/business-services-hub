@@ -250,7 +250,7 @@ export async function generateProfessionalPDF(
   const billingY = 85
   
   // From section
-  drawBox(doc, 20, billingY, 80, 60, premiumColors.lightGray, colors.primary, 1)
+  drawBox(doc, 20, billingY, 75, 65, premiumColors.lightGray, colors.primary, 1)
   addText(doc, 'FROM', 25, billingY + 8, 'subheading', colors.primary)
   addText(doc, String(companyName), 25, billingY + 16, 'body', premiumColors.darkGray)
   addText(doc, String(companyAddress), 25, billingY + 22, 'body', premiumColors.darkGray)
@@ -259,36 +259,36 @@ export async function generateProfessionalPDF(
   addText(doc, String(companyWebsite), 25, billingY + 40, 'body', premiumColors.darkGray)
   
   // Bill To section - moved further right to prevent overlap
-  drawBox(doc, 110, billingY, 85, 60, premiumColors.lightGray, colors.primary, 1)
-  addText(doc, 'BILL TO', 115, billingY + 8, 'subheading', colors.primary)
+  drawBox(doc, 105, billingY, 85, 65, premiumColors.lightGray, colors.primary, 1)
+  addText(doc, 'BILL TO', 110, billingY + 8, 'subheading', colors.primary)
   
   let clientY = billingY + 16
   
   // Only display client company if it's a valid string and not empty
   if (clientCompany && clientCompany !== '' && clientCompany !== '[object Object]') {
-    addText(doc, clientCompany, 115, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientCompany, 110, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   
   // Always display client name
-  addText(doc, clientName, 115, clientY, 'body', premiumColors.darkGray)
+  addText(doc, clientName, 110, clientY, 'body', premiumColors.darkGray)
   clientY += 6
   
   // Only display other fields if they're valid strings and not empty
   if (clientAddress && clientAddress !== '' && clientAddress !== '[object Object]') {
-    addText(doc, clientAddress, 115, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientAddress, 110, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   if (clientPhone && clientPhone !== '' && clientPhone !== '[object Object]') {
-    addText(doc, clientPhone, 115, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientPhone, 110, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   if (clientEmail && clientEmail !== '' && clientEmail !== '[object Object]') {
-    addText(doc, clientEmail, 115, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientEmail, 110, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   if (clientWebsite && clientWebsite !== '' && clientWebsite !== '[object Object]') {
-    addText(doc, clientWebsite, 115, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientWebsite, 110, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   
@@ -298,18 +298,18 @@ export async function generateProfessionalPDF(
   }
 
   // === SERVICE TABLE ===
-  const tableY = billingY + 70
-  const tableWidth = 170
-  const colWidths = [15, 60, 20, 35, 40]
-  const colX = [20, 40, 105, 130, 170]
+  const tableY = billingY + 75
+  const tableWidth = 180
+  const colWidths = [15, 70, 20, 35, 40]
+  const colX = [20, 40, 115, 140, 180]
   
   // Table header
   drawBox(doc, 20, tableY, tableWidth, 12, colors.primary, colors.primary, 0)
-  addText(doc, 'No', colX[0], tableY + 8, 'subheading', premiumColors.white, 'center')
-  addText(doc, 'Item Description', colX[1], tableY + 8, 'subheading', premiumColors.white)
-  addText(doc, 'Qty', colX[2], tableY + 8, 'subheading', premiumColors.white, 'center')
-  addText(doc, 'Rate (OMR)', colX[3], tableY + 8, 'subheading', premiumColors.white, 'right')
-  addText(doc, 'Amount', colX[4], tableY + 8, 'subheading', premiumColors.white, 'right')
+  addText(doc, 'Item', colX[0], tableY + 8, 'subheading', premiumColors.white, 'center')
+  addText(doc, 'Description', colX[1], tableY + 8, 'subheading', premiumColors.white)
+  addText(doc, 'Qty/Hour', colX[2], tableY + 8, 'subheading', premiumColors.white, 'center')
+  addText(doc, 'Rate', colX[3], tableY + 8, 'subheading', premiumColors.white, 'right')
+  addText(doc, 'Total', colX[4], tableY + 8, 'subheading', premiumColors.white, 'right')
   
   // Table rows
   let currentY = tableY + 12
@@ -335,7 +335,7 @@ export async function generateProfessionalPDF(
 
   // === SUMMARY SECTION ===
   const summaryY = currentY + 10
-  const summaryWidth = 170
+  const summaryWidth = 180
   const summaryX = 20
   
   // Summary box
