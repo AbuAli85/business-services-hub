@@ -1,5 +1,4 @@
-import { makeServerClient } from '@/utils/supabase/makeServerClient'
-import { requireRole } from '@/lib/authz'
+import { createClient } from '@/utils/supabase/server'
 import { jsonError } from '@/lib/http'
 
 // CORS headers for cross-domain access
@@ -25,14 +24,18 @@ export async function GET(request: Request) {
     const timeoutId = setTimeout(() => controller.abort(), 12000) // 12 second timeout
     
     try {
-      // NextRequest is ideal, but Request gives headers; cast minimal where needed
-      const req = request as any
-      const supabase = await makeServerClient(req)
-      const gate = await requireRole(supabase, ['client', 'provider', 'admin'])
-      if (!gate.ok) return jsonError(gate.status, gate.status === 401 ? 'UNAUTHENTICATED' : 'FORBIDDEN', gate.message)
+      // Use standard SSR client for cookie-based authentication
+      const supabase = await createClient()
+      
+      // Get the current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('❌ Authentication error:', userError)
+        return jsonError(401, 'UNAUTHENTICATED', 'Authentication required')
+      }
 
-      const user = gate.user
       const userRole = user?.user_metadata?.role || 'client'
+      console.log('✅ Invoice API: User authenticated:', user.id, 'Role:', userRole)
       
       // Build query with role-based filtering - start simple and add joins gradually
       let query = supabase
