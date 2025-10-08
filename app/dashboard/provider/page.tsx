@@ -203,13 +203,22 @@ export default function ProviderDashboard() {
 
   const loadDashboardData = async (providerId: string) => {
     try {
+      console.log('🔄 Loading dashboard data for provider:', providerId)
       const data = await ProviderDashboardService.getAllDashboardData(providerId)
+      
+      console.log('📊 Dashboard data loaded:', {
+        stats: data.stats,
+        recentBookingsCount: data.recentBookings.length,
+        topServicesCount: data.topServices.length,
+        monthlyEarningsCount: data.monthlyEarnings.length
+      })
       
       setStats(data.stats)
       setRecentBookings(data.recentBookings)
       setTopServices(data.topServices)
       setMonthlyEarnings(data.monthlyEarnings)
     } catch (err) {
+      console.error('❌ Error loading dashboard data:', err)
       logger.error('Error loading dashboard data:', err)
       throw err
     }
@@ -394,7 +403,9 @@ export default function ProviderDashboard() {
                     {/* Enhanced Quick Stats Row */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mt-6 sm:mt-8">
                       <div className="group text-center p-4 sm:p-5 bg-gradient-to-br from-white/70 to-white/50 rounded-2xl border border-white/40 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                        <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">{stats?.total_earnings ? formatCurrency(stats.total_earnings) : 'OMR 0'}</div>
+                        <div className="text-xl sm:text-2xl font-bold text-blue-600 mb-1">
+                          {stats?.total_earnings ? formatCurrency(stats.total_earnings) : 'OMR 0'}
+                        </div>
                         <div className="text-sm font-medium text-gray-700">Total Earnings</div>
                         <div className="w-8 h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full mx-auto mt-2"></div>
                       </div>
