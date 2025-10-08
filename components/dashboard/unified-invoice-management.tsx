@@ -204,32 +204,70 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
             let providerCompany = null
 
             try {
-              // Fetch client profile
+              // Fetch client profile with timeout and proper error handling
               if (invoice.client_id) {
-                const clientResponse = await fetch(`/api/profiles/search?id=${invoice.client_id}`)
-                if (clientResponse.ok) {
-                  const clientData = await clientResponse.json()
-                  if (clientData.profiles && clientData.profiles.length > 0) {
-                    const client = clientData.profiles[0]
-                    clientName = client.full_name || 'Unknown Client'
-                    clientEmail = client.email
-                    clientPhone = client.phone
-                    clientCompany = client.company_name
+                const clientController = new AbortController()
+                const clientTimeoutId = setTimeout(() => clientController.abort(), 5000)
+                
+                try {
+                  const clientResponse = await fetch(`/api/profiles/search?id=${invoice.client_id}`, {
+                    signal: clientController.signal,
+                    headers: {
+                      'Cache-Control': 'no-cache',
+                    }
+                  })
+                  clearTimeout(clientTimeoutId)
+                  
+                  if (clientResponse.ok) {
+                    const clientData = await clientResponse.json()
+                    if (clientData.profiles && clientData.profiles.length > 0) {
+                      const client = clientData.profiles[0]
+                      clientName = client.full_name || 'Unknown Client'
+                      clientEmail = client.email
+                      clientPhone = client.phone
+                      clientCompany = client.company_name
+                    }
+                  } else if (clientResponse.status === 401) {
+                    logger.warn('⚠️ Unauthorized access to client profile API - skipping profile enrichment')
+                  }
+                } catch (fetchError: any) {
+                  clearTimeout(clientTimeoutId)
+                  if (fetchError.name !== 'AbortError') {
+                    logger.debug('Client profile fetch failed:', fetchError.message)
                   }
                 }
               }
 
-              // Fetch provider profile
+              // Fetch provider profile with timeout and proper error handling
               if (invoice.provider_id) {
-                const providerResponse = await fetch(`/api/profiles/search?id=${invoice.provider_id}`)
-                if (providerResponse.ok) {
-                  const providerData = await providerResponse.json()
-                  if (providerData.profiles && providerData.profiles.length > 0) {
-                    const provider = providerData.profiles[0]
-                    providerName = provider.full_name || 'Unknown Provider'
-                    providerEmail = provider.email
-                    providerPhone = provider.phone
-                    providerCompany = provider.company_name
+                const providerController = new AbortController()
+                const providerTimeoutId = setTimeout(() => providerController.abort(), 5000)
+                
+                try {
+                  const providerResponse = await fetch(`/api/profiles/search?id=${invoice.provider_id}`, {
+                    signal: providerController.signal,
+                    headers: {
+                      'Cache-Control': 'no-cache',
+                    }
+                  })
+                  clearTimeout(providerTimeoutId)
+                  
+                  if (providerResponse.ok) {
+                    const providerData = await providerResponse.json()
+                    if (providerData.profiles && providerData.profiles.length > 0) {
+                      const provider = providerData.profiles[0]
+                      providerName = provider.full_name || 'Unknown Provider'
+                      providerEmail = provider.email
+                      providerPhone = provider.phone
+                      providerCompany = provider.company_name
+                    }
+                  } else if (providerResponse.status === 401) {
+                    logger.warn('⚠️ Unauthorized access to provider profile API - skipping profile enrichment')
+                  }
+                } catch (fetchError: any) {
+                  clearTimeout(providerTimeoutId)
+                  if (fetchError.name !== 'AbortError') {
+                    logger.debug('Provider profile fetch failed:', fetchError.message)
                   }
                 }
               }
