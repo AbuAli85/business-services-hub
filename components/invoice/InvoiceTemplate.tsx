@@ -234,13 +234,13 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
                     {formatCurrency(invoice.subtotal, invoice.currency)}
                   </span>
                 </div>
-                {invoice.tax_rate > 0 && (
+                {invoice.vat_percent > 0 && (
                   <div className="flex justify-between items-center py-2">
                     <span className="text-sm font-semibold text-gray-700">
-                      Tax ({(invoice.tax_rate * 100).toFixed(1)}%)
+                      VAT ({(invoice.vat_percent * 100).toFixed(1)}%)
                     </span>
                     <span className="text-sm font-semibold text-gray-900">
-                      {formatCurrency(invoice.tax_amount, invoice.currency)}
+                      {formatCurrency(invoice.vat_amount, invoice.currency)}
                     </span>
                   </div>
                 )}

@@ -194,7 +194,97 @@ export default function InvoiceTemplatePage() {
       }
 
       console.log('✅ Invoice fetched successfully:', invoiceData.id)
-      setInvoice(invoiceData)
+      console.log('🔍 Invoice data structure:', {
+        invoice: invoiceData,
+        booking: invoiceData.booking,
+        service: invoiceData.booking?.service,
+        provider: invoiceData.booking?.service?.provider,
+        client: invoiceData.booking?.client,
+        hasProviderData: !!invoiceData.booking?.service?.provider,
+        hasClientData: !!invoiceData.booking?.client
+      })
+
+      // If provider or client data is missing, fetch it using the profiles API
+      let enrichedInvoiceData = { ...invoiceData }
+      
+      if (!invoiceData.booking?.service?.provider && invoiceData.provider_id) {
+        console.log('🔍 Fetching provider data for ID:', invoiceData.provider_id)
+        try {
+          const providerResponse = await fetch(`/api/profiles/search?id=${invoiceData.provider_id}`)
+          if (providerResponse.ok) {
+            const providerData = await providerResponse.json()
+            if (providerData.profiles && providerData.profiles.length > 0) {
+              const provider = providerData.profiles[0]
+              console.log('✅ Provider data fetched:', provider)
+              enrichedInvoiceData = {
+                ...enrichedInvoiceData,
+                booking: {
+                  ...enrichedInvoiceData.booking,
+                  service: {
+                    ...enrichedInvoiceData.booking?.service,
+                    provider: {
+                      id: provider.id,
+                      full_name: provider.full_name,
+                      email: provider.email,
+                      phone: provider.phone,
+                      company: {
+                        id: provider.company_id || '1',
+                        name: provider.company_name || 'Provider Company',
+                        address: provider.address || '123 Provider St.',
+                        phone: provider.phone || '123-456-7890',
+                        email: provider.email || 'provider@company.com',
+                        website: provider.website || 'providercompany.com',
+                        logo_url: provider.logo_url
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to fetch provider data:', error)
+        }
+      }
+
+      if (!invoiceData.booking?.client && invoiceData.client_id) {
+        console.log('🔍 Fetching client data for ID:', invoiceData.client_id)
+        try {
+          const clientResponse = await fetch(`/api/profiles/search?id=${invoiceData.client_id}`)
+          if (clientResponse.ok) {
+            const clientData = await clientResponse.json()
+            if (clientData.profiles && clientData.profiles.length > 0) {
+              const client = clientData.profiles[0]
+              console.log('✅ Client data fetched:', client)
+              enrichedInvoiceData = {
+                ...enrichedInvoiceData,
+                booking: {
+                  ...enrichedInvoiceData.booking,
+                  client: {
+                    id: client.id,
+                    full_name: client.full_name,
+                    email: client.email,
+                    phone: client.phone,
+                    company: {
+                      id: client.company_id || '2',
+                      name: client.company_name || 'Client Company',
+                      address: client.address || '123 Client St.',
+                      phone: client.phone || '123-456-7890',
+                      email: client.email || 'client@company.com',
+                      website: client.website || 'clientcompany.com',
+                      logo_url: client.logo_url
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to fetch client data:', error)
+        }
+      }
+
+      setInvoice(enrichedInvoiceData)
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
@@ -400,9 +490,9 @@ export default function InvoiceTemplatePage() {
               return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
             })(),
             subtotal: invoice.subtotal || invoice.amount,
-            tax_rate: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
-            tax_amount: invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05,
-            total: invoice.total_amount || (invoice.subtotal || invoice.amount) * 1.05,
+            vat_percent: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
+            vat_amount: invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05,
+            total: invoice.total_amount || (invoice.subtotal || invoice.amount) + (invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05),
             status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
             currency: invoice.currency || 'USD',
             notes: invoice.notes,

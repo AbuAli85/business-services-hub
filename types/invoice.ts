@@ -50,8 +50,8 @@ export interface Invoice {
   issued_date: string
   due_date?: string
   subtotal: number
-  tax_rate: number
-  tax_amount: number
+  vat_percent: number
+  vat_amount: number
   total: number
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled'
   currency: string
@@ -74,7 +74,7 @@ export interface InvoiceProps {
 
 export interface InvoiceSummary {
   subtotal: number
-  tax_amount: number
+  vat_amount: number
   total: number
   item_count: number
 }

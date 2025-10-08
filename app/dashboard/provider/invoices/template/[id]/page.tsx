@@ -196,7 +196,87 @@ export default function ProviderInvoiceTemplatePage() {
       console.log('🔍 Client company data:', (bookingData as any)?.client?.company)
       console.log('🔍 Provider data:', (bookingData as any)?.service?.provider)
 
-      setInvoice(invoiceData)
+      // If provider or client data is missing, fetch it using the profiles API
+      let enrichedInvoiceData = { ...invoiceData }
+      
+      if (!(bookingData as any)?.service?.provider && invoiceData.provider_id) {
+        console.log('🔍 Fetching provider data for ID:', invoiceData.provider_id)
+        try {
+          const providerResponse = await fetch(`/api/profiles/search?id=${invoiceData.provider_id}`)
+          if (providerResponse.ok) {
+            const providerData = await providerResponse.json()
+            if (providerData.profiles && providerData.profiles.length > 0) {
+              const provider = providerData.profiles[0]
+              console.log('✅ Provider data fetched:', provider)
+              enrichedInvoiceData = {
+                ...enrichedInvoiceData,
+                booking: {
+                  ...(enrichedInvoiceData.booking as any),
+                  service: {
+                    ...(enrichedInvoiceData.booking as any)?.service,
+                    provider: {
+                      id: provider.id,
+                      full_name: provider.full_name,
+                      email: provider.email,
+                      phone: provider.phone,
+                      company: {
+                        id: provider.company_id || '1',
+                        name: provider.company_name || 'Provider Company',
+                        address: provider.address || '123 Provider St.',
+                        phone: provider.phone || '123-456-7890',
+                        email: provider.email || 'provider@company.com',
+                        website: provider.website || 'providercompany.com',
+                        logo_url: provider.logo_url
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to fetch provider data:', error)
+        }
+      }
+
+      if (!(bookingData as any)?.client && invoiceData.client_id) {
+        console.log('🔍 Fetching client data for ID:', invoiceData.client_id)
+        try {
+          const clientResponse = await fetch(`/api/profiles/search?id=${invoiceData.client_id}`)
+          if (clientResponse.ok) {
+            const clientData = await clientResponse.json()
+            if (clientData.profiles && clientData.profiles.length > 0) {
+              const client = clientData.profiles[0]
+              console.log('✅ Client data fetched:', client)
+              enrichedInvoiceData = {
+                ...enrichedInvoiceData,
+                booking: {
+                  ...(enrichedInvoiceData.booking as any),
+                  client: {
+                    id: client.id,
+                    full_name: client.full_name,
+                    email: client.email,
+                    phone: client.phone,
+                    company: {
+                      id: client.company_id || '2',
+                      name: client.company_name || 'Client Company',
+                      address: client.address || '123 Client St.',
+                      phone: client.phone || '123-456-7890',
+                      email: client.email || 'client@company.com',
+                      website: client.website || 'clientcompany.com',
+                      logo_url: client.logo_url
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to fetch client data:', error)
+        }
+      }
+
+      setInvoice(enrichedInvoiceData)
       
       const booking = bookingData
       
@@ -208,7 +288,7 @@ export default function ProviderInvoiceTemplatePage() {
         subtotal: invoiceData.subtotal || invoiceData.amount,
         vat_percent: (invoiceData.tax_rate || 0) / 100, // Convert percentage to decimal
         vat_amount: invoiceData.tax_amount,
-        total_amount: invoiceData.total_amount || invoiceData.amount * 1.05
+        total_amount: invoiceData.total_amount || invoiceData.amount + (invoiceData.tax_amount || invoiceData.amount * 0.05)
       })
     } catch (error) {
       console.error('❌ Unexpected error:', error)
@@ -234,7 +314,7 @@ export default function ProviderInvoiceTemplatePage() {
       subtotal: invoice?.subtotal || invoice?.amount,
       vat_percent: invoice?.vat_percent,
       vat_amount: invoice?.vat_amount,
-      total_amount: invoice?.total_amount || (invoice?.amount || 0) * 1.05
+      total_amount: invoice?.total_amount || (invoice?.amount || 0) + (invoice?.vat_amount || (invoice?.amount || 0) * 0.05)
     })
   }
 
@@ -574,9 +654,9 @@ export default function ProviderInvoiceTemplatePage() {
               return new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
             })(),
             subtotal: editData.subtotal || invoice.subtotal || invoice.amount,
-            tax_rate: editData.vat_percent || (invoice.vat_percent ? invoice.vat_percent / 100 : 0.05),
-            tax_amount: editData.vat_amount || invoice.vat_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) * (editData.vat_percent || (invoice.vat_percent ? invoice.vat_percent / 100 : 0.05))),
-            total: editData.total_amount || invoice.total_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) * 1.05),
+            vat_percent: editData.vat_percent || (invoice.vat_percent ? invoice.vat_percent / 100 : 0.05),
+            vat_amount: editData.vat_amount || invoice.vat_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) * (editData.vat_percent || (invoice.vat_percent ? invoice.vat_percent / 100 : 0.05))),
+            total: editData.total_amount || invoice.total_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) + (editData.vat_amount || invoice.vat_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) * 0.05))),
             status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
             currency: invoice.currency || 'USD',
             notes: editData.notes || invoice.notes,
