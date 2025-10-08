@@ -28,10 +28,12 @@ export function AutoRefreshProvider({
   defaultInterval = 30000 
 }: AutoRefreshProviderProps) {
   const [isLiveMode, setIsLiveMode] = useState(() => {
+    // DISABLED by default to prevent constant reloading
     // Load from localStorage on mount
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('dashboard-live-mode')
-      return saved === 'true'
+      // Explicitly check for 'true' and default to false
+      return saved === 'true' ? false : false // Force disabled for now
     }
     return false
   })
@@ -71,6 +73,7 @@ export function AutoRefreshProvider({
   const triggerRefresh = useCallback(() => {
     if (isRefreshing) return // Prevent concurrent refreshes
     
+    console.log('🔄 Auto-refresh triggered, callbacks:', refreshCallbacks.size)
     setIsRefreshing(true)
     
     // Execute all registered refresh callbacks
