@@ -21,12 +21,14 @@ export async function GET(req: NextRequest) {
 
     // Use custom middleware client to avoid cookie parsing issues
     const supabase = createMiddlewareClient(req)
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-    if (authError || !user) {
-      console.warn('⚠️ Profile search auth error:', authError?.message)
+    const { data, error: authError } = await supabase.auth.getUser(token)
+    
+    if (authError || !data || !data.user) {
+      console.warn('⚠️ Profile search auth error:', authError?.message || 'No user found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    
+    const user = data.user
 
     const url = new URL(req.url)
     const id = (url.searchParams.get('id') || '').trim()
