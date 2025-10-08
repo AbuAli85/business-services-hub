@@ -52,11 +52,17 @@ export function SessionStatusIndicator({ className = '', showDetails = false }: 
       }
     }
 
+    // Combined check function that updates both session status and last seen
+    const combinedCheck = () => {
+      checkSessionStatus()
+      setLastSeen(new Date()) // Update timestamp with session check
+    }
+
     // Check immediately
-    checkSessionStatus()
+    combinedCheck()
     
-    // Check every 60 seconds to match SessionManager
-    const interval = setInterval(checkSessionStatus, 60000)
+    // Check every 60 seconds - combined session and timestamp update
+    const interval = setInterval(combinedCheck, 60000)
     
     return () => clearInterval(interval)
   }, [])
@@ -90,14 +96,8 @@ export function SessionStatusIndicator({ className = '', showDetails = false }: 
     }
   }, [])
 
-  // Update last seen timestamp
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastSeen(new Date())
-    }, 60000) // Update every minute
-
-    return () => clearInterval(interval)
-  }, [])
+  // Update last seen timestamp - COMBINED with session check to reduce intervals
+  // Removed duplicate interval - lastSeen now updates as part of session check
 
   const getStatusColor = () => {
     if (isExpired) return 'bg-red-100 text-red-800 border-red-200'

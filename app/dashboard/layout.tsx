@@ -112,10 +112,7 @@ export default function DashboardLayout({
     quickAuthCheck()
   }, [])
 
-  // Simplified loading state monitoring
-  useEffect(() => {
-    console.log('📊 Loading state changed:', { loading, hasUser: !!user })
-  }, [loading, user])
+  // Removed loading state monitoring useEffect to prevent unnecessary re-renders
 
   // Realtime notifications table stream (proper cleanup)
   useEffect(() => {

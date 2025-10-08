@@ -215,16 +215,30 @@ export default function ProviderDashboard() {
   const setupRealtimeSubscriptions = async (providerId: string) => {
     const supabase = await getSupabaseClient()
     
-    // Debounce to prevent rapid refreshes
+    // Debounce to prevent rapid refreshes - INCREASED from 1s to 5s for stability
     let refreshTimeout: NodeJS.Timeout | null = null
+    let lastRefreshTime = 0
+    const MIN_REFRESH_INTERVAL = 5000 // Minimum 5 seconds between refreshes
+    
     const debouncedRefresh = () => {
       if (refreshTimeout) clearTimeout(refreshTimeout)
+      
       refreshTimeout = setTimeout(() => {
+        const now = Date.now()
+        const timeSinceLastRefresh = now - lastRefreshTime
+        
+        // Throttle: ensure minimum interval between refreshes
+        if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+          console.log(`⏸️ Skipping refresh, only ${timeSinceLastRefresh}ms since last refresh`)
+          return
+        }
+        
         console.log('📡 Data change detected, refreshing...')
+        lastRefreshTime = now
         loadDashboardData(providerId).catch(err => 
           console.error('Failed to refresh data:', err)
         )
-      }, 1000) // Wait 1 second before refreshing
+      }, 5000) // Wait 5 seconds before refreshing (increased from 1s)
     }
     
     // Subscribe to booking changes
