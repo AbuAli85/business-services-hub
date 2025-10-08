@@ -183,7 +183,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
           logger.debug('📊 Fetched invoices:', invoicesData.length, 'invoices')
           
           // Enrich invoice data with additional calculations
-          const enrichedInvoices = invoicesData.map((invoice: any) => {
+          const enrichedInvoices = await Promise.all(invoicesData.map(async (invoice: any) => {
             // Calculate due date and overdue status
             const dueDate = invoice.due_date || (() => {
               const createdDate = new Date(invoice.created_at)
@@ -193,21 +193,66 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
 
             const isOverdue = invoice.status === 'issued' && new Date(dueDate) < new Date()
 
+            // Fetch client and provider names separately for reliability
+            let clientName = 'Unknown Client'
+            let clientEmail = null
+            let clientPhone = null
+            let clientCompany = null
+            let providerName = 'Unknown Provider'
+            let providerEmail = null
+            let providerPhone = null
+            let providerCompany = null
+
+            try {
+              // Fetch client profile
+              if (invoice.client_id) {
+                const clientResponse = await fetch(`/api/profiles/search?id=${invoice.client_id}`)
+                if (clientResponse.ok) {
+                  const clientData = await clientResponse.json()
+                  if (clientData.profiles && clientData.profiles.length > 0) {
+                    const client = clientData.profiles[0]
+                    clientName = client.full_name || 'Unknown Client'
+                    clientEmail = client.email
+                    clientPhone = client.phone
+                    clientCompany = client.company_name
+                  }
+                }
+              }
+
+              // Fetch provider profile
+              if (invoice.provider_id) {
+                const providerResponse = await fetch(`/api/profiles/search?id=${invoice.provider_id}`)
+                if (providerResponse.ok) {
+                  const providerData = await providerResponse.json()
+                  if (providerData.profiles && providerData.profiles.length > 0) {
+                    const provider = providerData.profiles[0]
+                    providerName = provider.full_name || 'Unknown Provider'
+                    providerEmail = provider.email
+                    providerPhone = provider.phone
+                    providerCompany = provider.company_name
+                  }
+                }
+              }
+            } catch (error) {
+              logger.warn('Error fetching profile data for invoice:', invoice.id, error)
+              // Keep default values if fetch fails
+            }
+
             return {
               ...invoice,
               serviceTitle: invoice.service_title || 'Service',
-              clientName: invoice.client_name || 'Unknown Client',
-              providerName: invoice.provider_name || 'Unknown Provider',
-          clientEmail: invoice.client_email,
-          providerEmail: invoice.provider_email,
-          clientPhone: invoice.client_phone,
-          providerPhone: invoice.provider_phone,
-          providerCompany: invoice.company_name,
-          due_date: dueDate,
-          isOverdue,
-          invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`
-          }
-          })
+              clientName,
+              providerName,
+              clientEmail,
+              providerEmail,
+              clientPhone,
+              providerPhone,
+              providerCompany,
+              due_date: dueDate,
+              isOverdue,
+              invoice_number: invoice.invoice_number || `INV-${invoice.id.slice(0, 8).toUpperCase()}`
+            }
+          }))
           
           setInvoices(enrichedInvoices)
           calculateStats(enrichedInvoices)
