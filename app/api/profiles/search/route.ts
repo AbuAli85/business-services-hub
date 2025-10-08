@@ -2,7 +2,7 @@
 
 import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
-import { createMiddlewareClient } from '@/lib/supabase-middleware'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,16 +19,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Use custom middleware client to avoid cookie parsing issues
-    const supabase = createMiddlewareClient(req)
-    const { data, error: authError } = await supabase.auth.getUser(token)
+    // Create Supabase client with service role for full query capabilities
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    })
+
+    // Verify user authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError || !data || !data.user) {
+    if (authError || !user) {
       console.warn('⚠️ Profile search auth error:', authError?.message || 'No user found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    
-    const user = data.user
 
     const url = new URL(req.url)
     const id = (url.searchParams.get('id') || '').trim()
@@ -38,21 +46,21 @@ export async function GET(req: NextRequest) {
 
     // If searching by ID, return that specific profile
     if (id) {
-      const { data, error } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, full_name, email, role, phone, company_name')
         .eq('id', id)
         .single()
 
-      if (error) {
-        if (error.code === 'PGRST116') {
+      if (profileError) {
+        if (profileError.code === 'PGRST116') {
           // No profile found
           return NextResponse.json({ profiles: [] })
         }
-        return NextResponse.json({ error: error.message }, { status: 500 })
+        return NextResponse.json({ error: profileError.message }, { status: 500 })
       }
 
-      return NextResponse.json({ profiles: data ? [data] : [] })
+      return NextResponse.json({ profiles: profileData ? [profileData] : [] })
     }
 
     // Otherwise, search by query string
@@ -70,10 +78,10 @@ export async function GET(req: NextRequest) {
       query = query.or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
     }
 
-    const { data, error } = await query
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const { data: searchData, error: searchError } = await query
+    if (searchError) return NextResponse.json({ error: searchError.message }, { status: 500 })
 
-    return NextResponse.json({ results: data || [] })
+    return NextResponse.json({ results: searchData || [] })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 })
   }
