@@ -423,7 +423,7 @@ export default function DashboardPage() {
                 className="text-white"
                 variant="outline"
               />
-              <Button className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => router.push('/dashboard/bookings/new')}>
+              <Button className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => router.push('/dashboard/bookings/create')}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Booking
               </Button>

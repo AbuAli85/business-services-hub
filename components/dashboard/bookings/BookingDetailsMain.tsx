@@ -20,6 +20,37 @@ export function BookingDetailsMain({ userRole }: BookingDetailsMainProps) {
   const router = useRouter()
   const bookingId = params.id as string
 
+  // Validate booking ID is a valid UUID
+  const isValidUUID = (str: string) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    return uuidRegex.test(str)
+  }
+
+  // Redirect if booking ID is invalid (like "new")
+  useEffect(() => {
+    if (bookingId && !isValidUUID(bookingId)) {
+      console.warn('Invalid booking ID detected:', bookingId)
+      if (bookingId === 'new') {
+        router.replace('/dashboard/bookings/create')
+      } else {
+        router.replace('/dashboard/bookings')
+      }
+      return
+    }
+  }, [bookingId, router])
+
+  // Don't render anything if booking ID is invalid
+  if (bookingId && !isValidUUID(bookingId)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mx-auto"></div>
+          <p className="mt-6 text-gray-600 text-xl font-medium">Redirecting...</p>
+        </div>
+      </div>
+    )
+  }
+
   const {
     booking,
     userRole: bookingUserRole,
