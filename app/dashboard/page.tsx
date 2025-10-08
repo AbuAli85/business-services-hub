@@ -240,8 +240,11 @@ export default function DashboardPage() {
     const newUrlParams = params.toString()
     
     // Update URL with current params
+    // NOTE: 'router' is intentionally NOT in dependencies to prevent infinite loop
+    // The router object is recreated on every render, causing the effect to run repeatedly
     router.replace(`?${newUrlParams}`, { scroll: false })
-  }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname, redirecting])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activityType, activityStatus, activityDateRange, activityQ, pathname, redirecting])
 
 
   // Calculate derived metrics
