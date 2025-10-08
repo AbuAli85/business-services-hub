@@ -102,6 +102,18 @@ export default function InvoiceTemplatePage() {
     checkUserAndFetchInvoice()
   }, [params.id])
 
+  // Debug logging for template data
+  useEffect(() => {
+    if (invoice) {
+      console.log('🔍 Template data being passed:', {
+        company: invoice.booking?.service?.provider?.company,
+        client: invoice.booking?.client,
+        hasProvider: !!invoice.booking?.service?.provider,
+        hasClient: !!invoice.booking?.client
+      })
+    }
+  }, [invoice])
+
   const checkUserAndFetchInvoice = async () => {
     try {
       setLoading(true)
@@ -203,6 +215,14 @@ export default function InvoiceTemplatePage() {
         hasProviderData: !!invoiceData.booking?.service?.provider,
         hasClientData: !!invoiceData.booking?.client
       })
+      
+      // Check if we need to fetch provider/client data
+      console.log('🔍 Checking if fallback fetch is needed:', {
+        needsProviderFetch: !invoiceData.booking?.service?.provider && invoiceData.provider_id,
+        needsClientFetch: !invoiceData.booking?.client && invoiceData.client_id,
+        providerId: invoiceData.provider_id,
+        clientId: invoiceData.client_id
+      })
 
       // If provider or client data is missing, fetch it using the profiles API
       let enrichedInvoiceData = { ...invoiceData }
@@ -286,6 +306,10 @@ export default function InvoiceTemplatePage() {
 
       setInvoice(enrichedInvoiceData)
       console.log('📊 Final enriched invoice data:', enrichedInvoiceData)
+      console.log('📊 Provider data in enriched:', enrichedInvoiceData.booking?.service?.provider)
+      console.log('📊 Client data in enriched:', enrichedInvoiceData.booking?.client)
+      console.log('📊 Provider company in enriched:', enrichedInvoiceData.booking?.service?.provider?.company)
+      console.log('📊 Client company in enriched:', enrichedInvoiceData.booking?.client?.company)
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
