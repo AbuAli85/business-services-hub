@@ -114,8 +114,8 @@ export default function ProviderDashboard() {
             const dashboardUrl = userRole === 'client' 
               ? '/dashboard/client'
               : '/dashboard'
-            // Use window.location.href for immediate redirect to prevent any race conditions
-            window.location.href = dashboardUrl
+            // Use router.replace for client-side navigation (no page reload)
+            router.replace(dashboardUrl)
           }
           return
         }

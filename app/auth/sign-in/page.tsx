@@ -141,19 +141,19 @@ function SignInForm() {
         // Reset loading state before redirect to prevent stuck state
         setLoading(false)
         
-        // Use window.location.href for more reliable redirect
+        // Use router.replace for client-side navigation
         try {
           router.replace(target)
-          // Fallback redirect if router.replace doesn't work
+          // Keep fallback for edge cases where router might fail
           setTimeout(() => {
             if (window.location.pathname === '/auth/sign-in') {
-              console.log('🔄 Router redirect failed, using window.location')
+              console.log('🔄 Router redirect failed, using window.location as fallback')
               window.location.href = target
             }
           }, 1000)
         } catch (redirectError) {
           console.error('❌ Router redirect failed:', redirectError)
-          // Fallback to window.location
+          // Fallback to window.location only if router fails
           window.location.href = target
         }
       }
