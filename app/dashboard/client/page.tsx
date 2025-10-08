@@ -90,12 +90,11 @@ export default function ClientDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    logger.debug('Client dashboard mounted')
+    // Removed excessive logging to reduce console noise
     let isMounted = true
 
     const init = async () => {
       try {
-        logger.debug('Checking authentication...')
         const supabase = await getSupabaseClient()
         
         // Add timeout safety (5s for auth)
@@ -111,11 +110,6 @@ export default function ClientDashboard() {
         if (!isMounted) return
 
         if (userError || !user) {
-          logger.debug('No user found, redirecting to sign-in')
-          // Clear stale auth flag
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('client-dashboard-auth-checked')
-          }
           if (isMounted) router.replace('/auth/sign-in')
           return
         }
@@ -133,29 +127,21 @@ export default function ClientDashboard() {
 
         if (!isMounted) return
 
-        logger.debug('User authenticated:', user.email, '| Role:', userRole)
-
-        // Handle redirect logic cleanly - use router.replace for better UX
+        // Handle redirect logic cleanly
         if (userRole !== 'client') {
-          logger.debug(`Redirecting ${userRole} to their dashboard`)
           if (isMounted) {
             setRedirecting(true)
             const dashboardUrl = userRole === 'provider' 
               ? '/dashboard/provider' 
               : '/dashboard'
-            router.replace(dashboardUrl)
+            window.location.href = dashboardUrl // Use window.location for clean redirect
           }
           return
         }
 
         // Client user - set user and load data
-        logger.debug('Client user confirmed, loading data...')
         if (isMounted) {
           setUser(user)
-          // Mark auth as checked for this session
-          if (typeof window !== 'undefined') {
-            sessionStorage.setItem('client-dashboard-auth-checked', 'true')
-          }
         }
 
         // Load data with timeout safety (8s for data)
@@ -165,10 +151,9 @@ export default function ClientDashboard() {
 
         try {
           await Promise.race([fetchAllClientData(user.id), dataTimeout])
-          if (isMounted) logger.debug('Data loaded successfully')
         } catch (dataError) {
           if (!isMounted) return
-          logger.warn('Error fetching client data:', dataError)
+          logger.error('Error fetching client data:', dataError)
           setStats(defaultStats())
           toast.error('Some data could not be loaded')
         }
@@ -185,38 +170,51 @@ export default function ClientDashboard() {
     init()
 
     return () => {
-      logger.debug('Client dashboard cleanup')
       isMounted = false
     }
-  }, [router])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // REMOVED 'router' from dependencies to prevent infinite loop
 
-  // Real-time updates (ONLY for critical updates, not continuous refresh)
+  // Real-time updates with debouncing to prevent excessive refreshes
   useEffect(() => {
     if (!user?.id) return
 
     let cleanup: (() => void) | undefined
+    let refreshTimeout: NodeJS.Timeout | null = null
+    let lastRefreshTime = 0
+
+    const debouncedRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
+      
+      refreshTimeout = setTimeout(() => {
+        const now = Date.now()
+        const timeSinceLastRefresh = now - lastRefreshTime
+        
+        // Throttle: minimum 5 seconds between refreshes
+        if (timeSinceLastRefresh < 5000) {
+          return
+        }
+        
+        lastRefreshTime = now
+        fetchAllClientData(user.id)
+      }, 3000) // 3-second debounce
+    }
 
     ;(async () => {
       try {
-        // Only subscribe to booking status changes, not all data refreshes
-        const subscription = await realtimeManager.subscribeToBookings(user.id, () => {
-          // Only refresh if there are actual changes, not on every update
-          logger.debug('Booking update received, refreshing data...')
-          fetchAllClientData(user.id)
-        })
+        // Only subscribe to booking status changes
+        const subscription = await realtimeManager.subscribeToBookings(user.id, debouncedRefresh)
         
-        // Store cleanup function if subscription returns one
+        // Store cleanup function
         cleanup = typeof subscription === 'function' ? subscription : 
                   subscription?.unsubscribe ? () => subscription.unsubscribe() : undefined
-
-        // Remove service suggestions subscription to reduce load
-        // Service suggestions can be loaded manually when needed
       } catch (error) {
-        logger.warn('Error setting up realtime subscriptions:', error)
+        logger.error('Error setting up realtime subscriptions:', error)
       }
     })()
 
     return () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout)
       if (cleanup) cleanup()
     }
   }, [user?.id])
@@ -278,33 +276,19 @@ export default function ClientDashboard() {
       const providers = providersResponse.status === 'fulfilled' ? (providersResponse.value as any).data || [] : []
       const reviews = reviewsResponse.status === 'fulfilled' ? (reviewsResponse.value as any).data || [] : []
       
-      // Handle query errors gracefully
-      if (servicesResponse.status === 'rejected') {
-        console.warn('⏰ Services query failed, continuing without service names:', servicesResponse.reason)
-      } else if (servicesResponse.status === 'fulfilled' && (servicesResponse.value as any).error) {
-        const error = (servicesResponse.value as any).error
-        if (error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('canceling statement')) {
-          console.warn('⏰ Services query timed out, continuing without service names')
-        } else {
-          console.warn('⚠️ Services query failed:', error)
-        }
+      // Handle query errors gracefully (reduced logging for cleaner console)
+      if (servicesResponse.status === 'rejected' || 
+          (servicesResponse.status === 'fulfilled' && (servicesResponse.value as any).error)) {
+        // Silently continue without service names - non-critical error
       }
       
-      if (providersResponse.status === 'rejected') {
-        console.warn('⏰ Profile enrichment query failed, continuing without provider names:', providersResponse.reason)
-      } else if (providersResponse.status === 'fulfilled' && (providersResponse.value as any).error) {
-        const error = (providersResponse.value as any).error
-        if (error.code === '57014' || error.message?.includes('timeout') || error.message?.includes('canceling statement')) {
-          console.warn('⏰ Profile enrichment query timed out, continuing without provider names')
-        } else if (error.code === '54001') {
-          console.warn('⏰ Stack depth limit exceeded in profile query, continuing without provider names')
-        } else {
-          console.warn('⚠️ Profile enrichment query failed:', error)
-        }
+      if (providersResponse.status === 'rejected' || 
+          (providersResponse.status === 'fulfilled' && (providersResponse.value as any).error)) {
+        // Silently continue without provider names - non-critical error
       }
       
       if (reviewsResponse.status === 'rejected') {
-        console.warn('⏰ Reviews query failed, continuing without reviews:', reviewsResponse.reason)
+        // Silently continue without reviews - non-critical error
       }
 
       // Compute stats from a single dataset
