@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { useDashboardData } from '@/hooks/useDashboardData'
@@ -42,8 +42,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [redirecting, setRedirecting] = useState(false)
-  
-  const lastUrlParams = useRef<string>('')
   
   // Only load dashboard data for admin role - others should be redirected
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole === 'admin' ? userRole : undefined, user?.id)
@@ -241,11 +239,8 @@ export default function DashboardPage() {
     
     const newUrlParams = params.toString()
     
-    // Only update URL if it actually changed
-    if (newUrlParams !== lastUrlParams.current) {
-      lastUrlParams.current = newUrlParams
-      router.replace(`?${newUrlParams}`, { scroll: false })
-    }
+    // Update URL with current params
+    router.replace(`?${newUrlParams}`, { scroll: false })
   }, [activityType, activityStatus, activityDateRange, activityQ, router, pathname, redirecting])
 
 
