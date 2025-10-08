@@ -55,7 +55,7 @@ export default function DashboardPage() {
 
   // Run auth check once on mount with mounted guard
   useEffect(() => {
-    // Only run on exact /dashboard path, not sub-paths like /dashboard/services
+    // Only run on exact /dashboard path, not sub-paths like /dashboard/services or provider/client pages
     if (pathname !== '/dashboard') return
     
     // Safety timeout to prevent infinite loading (10 seconds)

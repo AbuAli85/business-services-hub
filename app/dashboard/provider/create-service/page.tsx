@@ -101,6 +101,7 @@ interface CreateServiceFormData {
 export default function CreateServicePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [companies, setCompanies] = useState<Company[]>([])
@@ -181,7 +182,33 @@ export default function CreateServicePage() {
         
         // Fetch companies
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+          router.push('/auth/sign-in')
+          return
+        }
+        
+        // Verify user is a provider
+        let role = user.user_metadata?.role
+        if (!role) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+          role = profile?.role || 'client'
+        }
+        
+        // If not a provider, redirect to appropriate dashboard
+        if (role !== 'provider') {
+          if (role === 'client') {
+            router.push('/dashboard/client')
+          } else {
+            router.push('/dashboard')
+          }
+          return
+        }
+        
+        // User is authenticated as provider, continue with data loading
 
         const [companiesResult, categoriesResult] = await Promise.all([
           supabase
@@ -219,11 +246,12 @@ export default function CreateServicePage() {
       } finally {
         setLoadingCompanies(false)
         setLoadingCategories(false)
+        setAuthLoading(false)
       }
     }
 
     fetchData()
-  }, [])
+  }, [router])
 
   // Fetch service titles when category changes
   useEffect(() => {
@@ -1043,6 +1071,18 @@ export default function CreateServicePage() {
       </div>
     </div>
   )
+
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-sm text-gray-600">Verifying access...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <TooltipProvider>
