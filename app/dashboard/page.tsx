@@ -43,7 +43,7 @@ export default function DashboardPage() {
   const [redirecting, setRedirecting] = useState(false)
   const lastUrlParams = useRef<string>('')
   
-  // Only load dashboard data for admin role
+  // Only load dashboard data for admin role - others should be redirected
   const { metrics, bookings, invoices, users, services, milestoneEvents, systemEvents, loading: dataLoading, error: dataError, refresh } = useDashboardData(userRole === 'admin' ? userRole : undefined, user?.id)
   // Activity filters
   const [activityType, setActivityType] = useState<'all' | 'bookings' | 'payments' | 'milestones' | 'system'>('all')
@@ -141,7 +141,8 @@ export default function DashboardPage() {
         console.log(`🔄 Redirecting ${role} to their dashboard`)
         if (isMounted) {
           setRedirecting(true)
-          router.replace(`/dashboard/${role}`)
+          // Use window.location.href for immediate redirect to prevent any race conditions
+          window.location.href = `/dashboard/${role}`
         }
         return
       }

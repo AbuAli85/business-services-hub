@@ -163,9 +163,10 @@ export default function ClientDashboard() {
           if (isMounted) {
             setRedirecting(true)
             const dashboardUrl = userRole === 'provider' 
-              ? '/dashboard/provider'
+              ? '/dashboard/provider' 
               : '/dashboard'
-            router.replace(dashboardUrl)
+            // Use window.location.href for immediate redirect to prevent any race conditions
+            window.location.href = dashboardUrl
           }
           return
         }
