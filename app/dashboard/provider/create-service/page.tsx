@@ -182,9 +182,6 @@ export default function CreateServicePage() {
   // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
-      const startTime = Date.now()
-      const MIN_LOADING_TIME = 2000 // Minimum 2 seconds loading
-      
       try {
         const supabase = await getSupabaseClient()
         
@@ -276,15 +273,10 @@ export default function CreateServicePage() {
         console.error('Error fetching data:', error)
         toast.error('Failed to load service creation data')
       } finally {
-        // Ensure minimum loading time for better UX
-        const elapsedTime = Date.now() - startTime
-        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime)
-        
-        setTimeout(() => {
-          setLoadingCompanies(false)
-          setLoadingCategories(false)
-          setAuthLoading(false)
-        }, remainingTime)
+        // Load immediately without artificial delay
+        setLoadingCompanies(false)
+        setLoadingCategories(false)
+        setAuthLoading(false)
       }
     }
 

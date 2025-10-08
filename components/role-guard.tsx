@@ -6,9 +6,15 @@ import { getSupabaseClient } from '@/lib/supabase-client'
 
 type Role = 'admin' | 'manager' | 'provider' | 'client'
 
+// Cache role in memory for faster subsequent checks
+let cachedRole: Role | null = null
+let cachedUserId: string | null = null
+
 export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: Role[]; children: React.ReactNode; redirect?: string }) {
   const router = useRouter()
-  const [ok, setOk] = useState<boolean | null>(null)
+  // Initialize with cached role check if available
+  const initialOk = cachedRole && allow.includes(cachedRole) ? true : null
+  const [ok, setOk] = useState<boolean | null>(initialOk)
   const [timedOut, setTimedOut] = useState(false)
 
   useEffect(() => {
@@ -29,9 +35,18 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
         router.replace('/auth/sign-in')
         return
       }
+      
+      // Check cache first for instant verification
+      if (cachedUserId === session.user.id && cachedRole && allow.includes(cachedRole)) {
+        setOk(true)
+        return
+      }
+      
       // Fast path: trust metadata role if available
       const metaRole = (session.user.user_metadata as any)?.role as Role | undefined
       if (metaRole && allow.includes(metaRole)) {
+        cachedRole = metaRole
+        cachedUserId = session.user.id
         setOk(true)
         return
       }
@@ -41,18 +56,23 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
         .eq('id', session.user.id)
         .single()
       const role = (prof?.role || null) as Role | null
-      if (role && allow.includes(role)) setOk(true)
+      if (role && allow.includes(role)) {
+        cachedRole = role
+        cachedUserId = session.user.id
+        setOk(true)
+      }
       else { setOk(false); router.replace(redirect) }
     })()
     return () => { mounted = false; clearTimeout(timeoutId) }
   }, [allow, router, redirect])
 
   if (ok === null) {
+    // Show minimal loading - let the page render while we check in the background
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center space-y-3">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <p className="text-sm text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+          <p className="text-sm text-gray-600">Verifying access...</p>
         </div>
       </div>
     )
