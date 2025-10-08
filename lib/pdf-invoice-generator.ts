@@ -299,9 +299,9 @@ export async function generateProfessionalPDF(
 
   // === SERVICE TABLE ===
   const tableY = billingY + 75
-  const tableWidth = 180
-  const colWidths = [15, 70, 20, 35, 40]
-  const colX = [20, 40, 115, 140, 180]
+  const tableWidth = 190
+  const colWidths = [15, 70, 20, 35, 50]
+  const colX = [20, 40, 115, 140, 190]
   
   // Table header
   drawBox(doc, 20, tableY, tableWidth, 12, colors.primary, colors.primary, 0)
@@ -335,7 +335,7 @@ export async function generateProfessionalPDF(
 
   // === SUMMARY SECTION ===
   const summaryY = currentY + 10
-  const summaryWidth = 180
+  const summaryWidth = 190
   const summaryX = 20
   
   // Summary box

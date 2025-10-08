@@ -106,8 +106,99 @@ export async function POST(request: NextRequest) {
     console.log('🔍 PDF API - Client data:', invoice?.booking?.client)
     console.log('🔍 PDF API - Client company:', invoice?.booking?.client?.company)
 
-    // Generate template PDF directly (no invoice_items table exists)
-    const invoiceForPdf = { ...invoice }
+    // Enrich invoice data with provider and client details if missing
+    let enrichedInvoiceData = { ...invoice }
+    
+    // If provider data is missing, fetch it using the profiles API
+    if (!invoice.booking?.service?.provider && invoice.provider_id) {
+      console.log('🔍 PDF API - Fetching provider data for ID:', invoice.provider_id)
+      try {
+        const providerResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/profiles/search?id=${invoice.provider_id}`)
+        if (providerResponse.ok) {
+          const providerData = await providerResponse.json()
+          if (providerData.profiles && providerData.profiles.length > 0) {
+            const provider = providerData.profiles[0]
+            console.log('✅ PDF API - Provider data fetched:', provider)
+            enrichedInvoiceData = {
+              ...enrichedInvoiceData,
+              booking: {
+                ...enrichedInvoiceData.booking,
+                service: {
+                  ...enrichedInvoiceData.booking?.service,
+                  provider: {
+                    id: provider.id,
+                    full_name: provider.full_name,
+                    email: provider.email,
+                    phone: provider.phone,
+                    company: {
+                      id: provider.company_id || '1',
+                      name: provider.company_name || 'Provider Company',
+                      address: provider.address || '123 Provider St.',
+                      phone: provider.phone || '123-456-7890',
+                      email: provider.email || 'provider@company.com',
+                      website: provider.website || 'providercompany.com',
+                      logo_url: provider.logo_url
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ PDF API - Failed to fetch provider data:', error)
+      }
+    }
+
+    // If client data is missing, fetch it using the profiles API
+    if (!invoice.booking?.client && invoice.client_id) {
+      console.log('🔍 PDF API - Fetching client data for ID:', invoice.client_id)
+      try {
+        const clientResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/profiles/search?id=${invoice.client_id}`)
+        if (clientResponse.ok) {
+          const clientData = await clientResponse.json()
+          if (clientData.profiles && clientData.profiles.length > 0) {
+            const client = clientData.profiles[0]
+            console.log('✅ PDF API - Client data fetched:', client)
+            enrichedInvoiceData = {
+              ...enrichedInvoiceData,
+              booking: {
+                ...enrichedInvoiceData.booking,
+                client: {
+                  id: client.id,
+                  full_name: client.full_name,
+                  email: client.email,
+                  phone: client.phone,
+                  company: {
+                    id: client.company_id || '2',
+                    name: client.company_name || 'Client Company',
+                    address: client.address || '123 Client St.',
+                    phone: client.phone || '123-456-7890',
+                    email: client.email || 'client@company.com',
+                    website: client.website || 'clientcompany.com',
+                    logo_url: client.logo_url
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ PDF API - Failed to fetch client data:', error)
+      }
+    }
+
+    // Generate template PDF with enriched data
+    const invoiceForPdf = { ...enrichedInvoiceData }
+
+    // Debug VAT and calculation data
+    console.log('🔍 PDF API - VAT Data:', {
+      vat_percent: invoiceForPdf.vat_percent,
+      vat_amount: invoiceForPdf.vat_amount,
+      subtotal: invoiceForPdf.subtotal,
+      total: invoiceForPdf.total,
+      amount: invoiceForPdf.amount
+    })
 
     // Generate template PDF
     let pdfBuffer: Uint8Array
