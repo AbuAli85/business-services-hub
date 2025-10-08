@@ -58,6 +58,12 @@ export default function DashboardPage() {
     // Only run on exact /dashboard path, not sub-paths like /dashboard/services
     if (pathname !== '/dashboard') return
     
+    // Safety timeout to prevent infinite loading (10 seconds)
+    const safetyTimeout = setTimeout(() => {
+      console.log('⚠️ Safety timeout triggered - forcing loading to false')
+      setLoading(false)
+    }, 10000)
+    
     // Check sessionStorage to prevent re-runs across component instances
     if (typeof window !== 'undefined' && sessionStorage.getItem('main-dashboard-auth-checked') === 'true') {
       console.log('⏭️ Auth already checked, but still need to verify role and redirect if needed')
@@ -93,6 +99,10 @@ export default function DashboardPage() {
               console.log(`🔄 Role check: Redirecting ${role} to their dashboard`)
               const redirectUrl = `/dashboard/${role}`
               console.log(`🚀 SessionStorage redirect to: ${redirectUrl}`)
+              
+              // Clear loading state before redirect
+              if (isMounted) setLoading(false)
+              
               window.location.href = redirectUrl
               
               // Fallback redirect after a short delay if the first one doesn't work
@@ -107,6 +117,7 @@ export default function DashboardPage() {
             
             // Admin stays on main dashboard
             console.log('👑 Admin user confirmed on main dashboard')
+            if (isMounted) setLoading(false)
           }
         } catch (error) {
           console.error('Error loading user:', error)
@@ -118,6 +129,7 @@ export default function DashboardPage() {
       
       return () => {
         isMounted = false
+        clearTimeout(safetyTimeout)
       }
     }
     
@@ -180,6 +192,7 @@ export default function DashboardPage() {
       if (['provider', 'client'].includes(role)) {
         console.log(`🔄 Redirecting ${role} to their dashboard`)
         if (isMounted) {
+          setLoading(false) // Clear loading state before redirect
           setRedirecting(true)
           // Use window.location.href for immediate redirect to prevent any race conditions
           const redirectUrl = `/dashboard/${role}`
@@ -219,6 +232,7 @@ export default function DashboardPage() {
       console.log('🧹 Main dashboard cleanup')
       isMounted = false
       controller.abort()
+      clearTimeout(safetyTimeout)
     }
   }, [pathname])
 
@@ -415,11 +429,18 @@ export default function DashboardPage() {
 
   // Show loading state
   if (loading) {
+    console.log('🏠 MAIN DASHBOARD: Showing loading state - user:', user?.email, 'role:', userRole)
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-sm text-gray-600">Loading dashboard...</p>
+          <p className="text-xs text-gray-500 mt-2">
+            User: {user?.email || 'Unknown'} | Role: {userRole || 'Loading...'}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            If this takes too long, try refreshing the page
+          </p>
         </div>
       </div>
     )
