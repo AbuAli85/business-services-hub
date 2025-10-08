@@ -194,35 +194,23 @@ export default function ProviderDashboard() {
   }, [userId])
 
   // Register with centralized auto-refresh system
-  useRefreshCallback(() => {
-    if (userId && !refreshing) {
-      console.log('🔄 Provider dashboard: Auto-refresh triggered')
-      loadDashboardData(userId)
-    }
-  }, [userId, refreshing])
+  // Temporarily disabled to prevent constant reloads
+  // useRefreshCallback(() => {
+  //   if (userId && !refreshing) {
+  //     loadDashboardData(userId)
+  //   }
+  // }, [userId, refreshing])
 
 
   const loadDashboardData = async (providerId: string) => {
     try {
-      console.log('🔄 Loading dashboard data for provider:', providerId)
-      console.log('🏠 PROVIDER DASHBOARD: loadDashboardData called')
       const data = await ProviderDashboardService.getAllDashboardData(providerId)
-      
-      console.log('📊 Dashboard data loaded:', {
-        stats: data.stats,
-        recentBookingsCount: data.recentBookings.length,
-        topServicesCount: data.topServices.length,
-        monthlyEarningsCount: data.monthlyEarnings.length
-      })
-      
-      console.log('🏠 PROVIDER DASHBOARD: Setting state with data:', data.stats)
       setStats(data.stats)
       setRecentBookings(data.recentBookings)
       setTopServices(data.topServices)
       setMonthlyEarnings(data.monthlyEarnings)
-      console.log('🏠 PROVIDER DASHBOARD: State set successfully')
     } catch (err) {
-      console.error('❌ Error loading dashboard data:', err)
+      console.error('Error loading dashboard data:', err)
       logger.error('Error loading dashboard data:', err)
       throw err
     }
@@ -366,23 +354,6 @@ export default function ProviderDashboard() {
     <ProviderDashboardErrorBoundary>
       <main className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
-        {/* Debug Banner */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-green-800">✅ Provider Dashboard Active</h3>
-              <p className="text-green-700">
-                You're viewing the <strong>Provider Dashboard</strong> with real-time data.
-              </p>
-              <p className="text-sm text-green-600 mt-1">
-                Stats: {stats ? `Earnings: ${stats.total_earnings}, Bookings: ${stats.active_bookings}` : 'Loading...'}
-              </p>
-            </div>
-            <div className="text-green-600">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            </div>
-          </div>
-        </div>
         
         <div className="flex items-center justify-between">
           <div>
