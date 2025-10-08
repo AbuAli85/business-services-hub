@@ -27,19 +27,11 @@ import { ProviderDashboardErrorBoundary } from '@/components/dashboard/dashboard
 import { logger } from '@/lib/logger'
 import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
 import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
-import { usePageStability } from '@/hooks/usePageStability'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { useRenderCount } from '@/hooks/useRenderCount'
-import { DashboardDebugPanel } from '@/components/DashboardDebugPanel'
 
 export default function ProviderDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [redirecting, setRedirecting] = useState(false)
-  
-  // Monitor page stability
-  const renderCount = usePageStability('ProviderDashboard')
-  const debugRenderCount = useRenderCount('ProviderDashboard')
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -51,11 +43,12 @@ export default function ProviderDashboard() {
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarnings[]>([])
 
   // Register with auto-refresh system
-  useRefreshCallback(async () => {
-    if (userId) {
-      await loadDashboardData(userId)
-    }
-  }, [userId])
+  // Temporarily disabled to prevent excessive reloads
+  // useRefreshCallback(async () => {
+  //   if (userId) {
+  //     await loadDashboardData(userId)
+  //   }
+  // }, [userId])
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
@@ -178,14 +171,6 @@ export default function ProviderDashboard() {
       // Cleanup will be handled by the subscription cleanup functions
     }
   }, [userId])
-
-  // Register with centralized auto-refresh system
-  // Temporarily disabled to prevent constant reloads
-  // useRefreshCallback(() => {
-  //   if (userId && !refreshing) {
-  //     loadDashboardData(userId)
-  //   }
-  // }, [userId, refreshing])
 
 
   const loadDashboardData = async (providerId: string) => {
@@ -518,12 +503,6 @@ export default function ProviderDashboard() {
 
       </div>
     </main>
-    
-    {/* Debug Panel - Only in development */}
-    <DashboardDebugPanel 
-      componentName="ProviderDashboard"
-      renderCount={debugRenderCount}
-    />
     </ProviderDashboardErrorBoundary>
   )
 }
