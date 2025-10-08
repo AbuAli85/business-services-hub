@@ -59,28 +59,8 @@ export default function ProviderDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    // Check sessionStorage to prevent re-runs across component instances
-    if (typeof window !== 'undefined' && sessionStorage.getItem('provider-dashboard-auth-checked') === 'true') {
-      console.log('⏭️ Auth already checked, skipping auth but still need to load data')
-      // Still need to get user and load data even if auth was checked
-      const loadCachedData = async () => {
-        try {
-          const supabase = await getSupabaseClient()
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            setUserId(user.id)
-            await loadDashboardData(user.id)
-            console.log('✅ Data loaded from cached session')
-          }
-        } catch (error) {
-          logger.error('Error loading cached data:', error)
-        } finally {
-          setLoading(false)
-        }
-      }
-      loadCachedData()
-      return
-    }
+    // REMOVED: sessionStorage caching to prevent issues - always do full auth check
+    // This ensures proper authentication and data loading every time
     
     console.log('🏠 Provider dashboard mounted')
     let isMounted = true
@@ -142,8 +122,6 @@ export default function ProviderDashboard() {
       console.log('👤 Provider user confirmed, loading data...')
       if (isMounted) {
         setUserId(user.id)
-        // Mark auth as checked for this session
-        sessionStorage.setItem('provider-dashboard-auth-checked', 'true')
       }
 
         // Load data with timeout safety (8s for data)
