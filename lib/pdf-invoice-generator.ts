@@ -130,6 +130,7 @@ export async function generateProfessionalPDF(
   const companyAddress = invoice.provider?.company?.address || '123 Business Street, City'
   const companyPhone = invoice.provider?.company?.phone || '(555) 555-5555'
   const companyEmail = invoice.provider?.company?.email || 'info@businessservices.com'
+  const companyWebsite = invoice.provider?.company?.website || 'www.businessservices.com'
   const companyLogo = invoice.provider?.company?.logo_url
   
   // Client information - ensure all are strings with robust object handling
@@ -154,6 +155,7 @@ export async function generateProfessionalPDF(
   const clientAddress = safeString(client.address)
   const clientPhone = safeString(client.phone)
   const clientEmail = safeString(client.email)
+  const clientWebsite = safeString(client.website)
   
   // Debug logging to help identify the issue
   console.log('Client data debug:', {
@@ -179,9 +181,9 @@ export async function generateProfessionalPDF(
     safeSubtotal = 840 // Default value for demonstration
   }
   
-  const safeVatPercent = invoice.vat_percent || 5
-  const safeVatAmount = (safeSubtotal * safeVatPercent) / 100
-  const safeTotal = safeSubtotal + safeVatAmount
+  const safeVatPercent = invoice.vat_percent || 0.05
+  const safeVatAmount = invoice.vat_amount || (safeSubtotal * safeVatPercent)
+  const safeTotal = invoice.total || (safeSubtotal + safeVatAmount)
   
   // Payment information
   const paymentTerms = invoice.payment_terms || 'Due within 30 days'
@@ -248,40 +250,45 @@ export async function generateProfessionalPDF(
   const billingY = 85
   
   // From section
-  drawBox(doc, 20, billingY, 85, 50, premiumColors.lightGray, colors.primary, 1)
+  drawBox(doc, 20, billingY, 80, 60, premiumColors.lightGray, colors.primary, 1)
   addText(doc, 'FROM', 25, billingY + 8, 'subheading', colors.primary)
   addText(doc, String(companyName), 25, billingY + 16, 'body', premiumColors.darkGray)
   addText(doc, String(companyAddress), 25, billingY + 22, 'body', premiumColors.darkGray)
   addText(doc, String(companyPhone), 25, billingY + 28, 'body', premiumColors.darkGray)
   addText(doc, String(companyEmail), 25, billingY + 34, 'body', premiumColors.darkGray)
+  addText(doc, String(companyWebsite), 25, billingY + 40, 'body', premiumColors.darkGray)
   
-  // Bill To section
-  drawBox(doc, 115, billingY, 85, 50, premiumColors.lightGray, colors.primary, 1)
-  addText(doc, 'BILL TO', 120, billingY + 8, 'subheading', colors.primary)
+  // Bill To section - moved further right to prevent overlap
+  drawBox(doc, 110, billingY, 85, 60, premiumColors.lightGray, colors.primary, 1)
+  addText(doc, 'BILL TO', 115, billingY + 8, 'subheading', colors.primary)
   
   let clientY = billingY + 16
   
   // Only display client company if it's a valid string and not empty
   if (clientCompany && clientCompany !== '' && clientCompany !== '[object Object]') {
-    addText(doc, clientCompany, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientCompany, 115, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   
   // Always display client name
-  addText(doc, clientName, 120, clientY, 'body', premiumColors.darkGray)
+  addText(doc, clientName, 115, clientY, 'body', premiumColors.darkGray)
   clientY += 6
   
   // Only display other fields if they're valid strings and not empty
   if (clientAddress && clientAddress !== '' && clientAddress !== '[object Object]') {
-    addText(doc, clientAddress, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientAddress, 115, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   if (clientPhone && clientPhone !== '' && clientPhone !== '[object Object]') {
-    addText(doc, clientPhone, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientPhone, 115, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   if (clientEmail && clientEmail !== '' && clientEmail !== '[object Object]') {
-    addText(doc, clientEmail, 120, clientY, 'body', premiumColors.darkGray)
+    addText(doc, clientEmail, 115, clientY, 'body', premiumColors.darkGray)
+    clientY += 6
+  }
+  if (clientWebsite && clientWebsite !== '' && clientWebsite !== '[object Object]') {
+    addText(doc, clientWebsite, 115, clientY, 'body', premiumColors.darkGray)
     clientY += 6
   }
   
@@ -291,7 +298,7 @@ export async function generateProfessionalPDF(
   }
 
   // === SERVICE TABLE ===
-  const tableY = billingY + 80
+  const tableY = billingY + 70
   const tableWidth = 170
   const colWidths = [15, 60, 20, 35, 40]
   const colX = [20, 40, 105, 130, 170]
@@ -339,7 +346,7 @@ export async function generateProfessionalPDF(
   addText(doc, formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 10, summaryY + 12, 'body', premiumColors.darkGray, 'right')
   
   // VAT
-  addText(doc, `VAT (${safeVatPercent}%):`, summaryX + 10, summaryY + 20, 'body', premiumColors.darkGray)
+  addText(doc, `VAT (${(safeVatPercent * 100).toFixed(1)}%):`, summaryX + 10, summaryY + 20, 'body', premiumColors.darkGray)
   addText(doc, formatCurrency(safeVatAmount, 'OMR'), summaryX + summaryWidth - 10, summaryY + 20, 'body', premiumColors.darkGray, 'right')
   
   // Total with highlight
@@ -429,6 +436,7 @@ export interface InvoiceWithDetails {
       address?: string
       phone?: string
       email?: string
+      website?: string
       logo_url?: string
       vat_registration?: string
       bank_name?: string
@@ -442,6 +450,7 @@ export interface InvoiceWithDetails {
     address?: string
     phone?: string
     email?: string
+    website?: string
   }
   invoice_items?: Array<{
     description?: string
