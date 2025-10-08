@@ -1,22 +1,59 @@
 'use server'
 
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { NextRequest } from 'next/server'
+import { createMiddlewareClient } from '@/lib/supabase-middleware'
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+    // Get access token from cookies or Authorization header
+    let token = req.cookies.get('sb-access-token')?.value
+    const authHeader = req.headers.get('authorization')
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null
+    
+    if (bearerToken && (!token || token !== bearerToken)) {
+      token = bearerToken
+    }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Use custom middleware client to avoid cookie parsing issues
+    const supabase = createMiddlewareClient(req)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+
+    if (authError || !user) {
+      console.warn('⚠️ Profile search auth error:', authError?.message)
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const url = new URL(req.url)
+    const id = (url.searchParams.get('id') || '').trim()
     const q = (url.searchParams.get('q') || '').trim()
     const role = (url.searchParams.get('role') || '').trim() // 'client' | 'provider' | ''
     const limit = Math.min(20, Math.max(1, Number(url.searchParams.get('limit') || '10')))
 
+    // If searching by ID, return that specific profile
+    if (id) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role, phone, company_name')
+        .eq('id', id)
+        .single()
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No profile found
+          return NextResponse.json({ profiles: [] })
+        }
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      return NextResponse.json({ profiles: data ? [data] : [] })
+    }
+
+    // Otherwise, search by query string
     let query = supabase
       .from('profiles')
       .select('id, full_name, email, role', { count: 'exact' })
