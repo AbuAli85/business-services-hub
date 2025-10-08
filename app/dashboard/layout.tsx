@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
@@ -67,8 +67,18 @@ export default function DashboardLayout({
   const router = useRouter()
   const pathname = usePathname()
 
+  // Refs to prevent duplicate initialization (React Strict Mode protection)
+  const initializingRef = useRef(false)
+  const initializedRef = useRef(false)
+
   useEffect(() => {
-    console.log('🚀 Dashboard layout mounted, starting auth check...')
+    // Prevent duplicate initialization
+    if (initializingRef.current || initializedRef.current) {
+      console.log('⏭️ Layout already initialized, skipping')
+      return
+    }
+    
+    initializingRef.current = true
     
     // SIMPLIFIED: Just do a quick auth check without complex logic
     const quickAuthCheck = async () => {
@@ -77,7 +87,6 @@ export default function DashboardLayout({
         const { data: { user }, error } = await supabase.auth.getUser()
         
         if (error || !user) {
-          console.log('❌ No user, redirecting to sign-in')
           router.push('/auth/sign-in')
           return
         }
@@ -97,19 +106,25 @@ export default function DashboardLayout({
         
         setUser(minimalUser)
         setLoading(false)
+        initializedRef.current = true // Mark as initialized
         
-        // Fetch notifications in background
-        fetchNotifications().catch(err => {
-          console.warn('⚠️ Notification fetch failed (non-critical):', err)
+        // Fetch notifications in background (silently)
+        fetchNotifications().catch(() => {
+          // Silently fail - non-critical
         })
         
       } catch (error) {
-        console.error('❌ Auth check failed:', error)
+        logger.error('Auth check failed:', error)
         router.push('/auth/sign-in')
       }
     }
     
     quickAuthCheck()
+
+    return () => {
+      initializingRef.current = false
+      initializedRef.current = false
+    }
   }, [])
 
   // Removed loading state monitoring useEffect to prevent unnecessary re-renders
