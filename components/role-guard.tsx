@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 
-type Role = 'admin' | 'manager' | 'provider' | 'client'
+type Role = 'admin' | 'manager' | 'provider' | 'client' | 'staff' | 'moderator' | 'support'
 
 // Cache role in memory for faster subsequent checks
 let cachedRole: Role | null = null
