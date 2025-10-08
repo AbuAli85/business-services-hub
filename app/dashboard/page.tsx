@@ -60,19 +60,53 @@ export default function DashboardPage() {
     
     // Check sessionStorage to prevent re-runs across component instances
     if (typeof window !== 'undefined' && sessionStorage.getItem('main-dashboard-auth-checked') === 'true') {
-      console.log('⏭️ Auth already checked, skipping but fetching user for render')
+      console.log('⏭️ Auth already checked, but still need to verify role and redirect if needed')
       // Keep loading=true while fetching user
       let isMounted = true
       
-      // Still need to get user for rendering, but skip role verification and redirects
-      const loadUserQuick = async () => {
+      // Still need to get user and check role for potential redirect
+      const loadUserAndCheckRole = async () => {
         try {
           const supabase = await getSupabaseClient()
           const { data: { user } } = await supabase.auth.getUser()
           if (user && isMounted) {
             setUser(user)
-            const role = user.user_metadata?.role || 'admin'
+            
+            // Determine role
+            let role = user.user_metadata?.role
+            if (!role) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single()
+              role = profile?.role || 'client'
+            }
+            
             setUserRole(role)
+            
+            console.log('✅ SessionStorage user authenticated:', user.email, '| Role:', role, '| User ID:', user.id)
+            console.log('🔍 SessionStorage role check result:', { role, needsRedirect: ['provider', 'client'].includes(role) })
+            
+            // Still need to check if redirect is needed even if auth was checked
+            if (['provider', 'client'].includes(role)) {
+              console.log(`🔄 Role check: Redirecting ${role} to their dashboard`)
+              const redirectUrl = `/dashboard/${role}`
+              console.log(`🚀 SessionStorage redirect to: ${redirectUrl}`)
+              window.location.href = redirectUrl
+              
+              // Fallback redirect after a short delay if the first one doesn't work
+              setTimeout(() => {
+                if (window.location.pathname === '/dashboard') {
+                  console.log(`⚠️ SessionStorage fallback redirect triggered for ${role}`)
+                  window.location.replace(redirectUrl)
+                }
+              }, 1000)
+              return
+            }
+            
+            // Admin stays on main dashboard
+            console.log('👑 Admin user confirmed on main dashboard')
           }
         } catch (error) {
           console.error('Error loading user:', error)
@@ -80,7 +114,7 @@ export default function DashboardPage() {
           if (isMounted) setLoading(false)
         }
       }
-      loadUserQuick()
+      loadUserAndCheckRole()
       
       return () => {
         isMounted = false
@@ -130,11 +164,17 @@ export default function DashboardPage() {
 
         if (!isMounted) return
         
-        console.log('✅ User authenticated:', user.email, '| Role:', role)
+        console.log('✅ User authenticated:', user.email, '| Role:', role, '| User ID:', user.id)
+        console.log('🔍 Role check result:', { role, needsRedirect: ['provider', 'client'].includes(role) })
         setUserRole(role)
 
-      // Mark auth as checked BEFORE any redirect
-      sessionStorage.setItem('main-dashboard-auth-checked', 'true')
+      // Mark auth as checked BEFORE any redirect (but clear it if user needs to be redirected)
+      if (!['provider', 'client'].includes(role)) {
+        sessionStorage.setItem('main-dashboard-auth-checked', 'true')
+      } else {
+        // Clear the flag if user needs to be redirected to prevent getting stuck
+        sessionStorage.removeItem('main-dashboard-auth-checked')
+      }
 
       // Handle redirect logic cleanly
       if (['provider', 'client'].includes(role)) {
@@ -142,7 +182,17 @@ export default function DashboardPage() {
         if (isMounted) {
           setRedirecting(true)
           // Use window.location.href for immediate redirect to prevent any race conditions
-          window.location.href = `/dashboard/${role}`
+          const redirectUrl = `/dashboard/${role}`
+          console.log(`🚀 Executing redirect to: ${redirectUrl}`)
+          window.location.href = redirectUrl
+          
+          // Fallback redirect after a short delay if the first one doesn't work
+          setTimeout(() => {
+            if (window.location.pathname === '/dashboard') {
+              console.log(`⚠️ Fallback redirect triggered for ${role}`)
+              window.location.replace(redirectUrl)
+            }
+          }, 1000)
         }
         return
       }
@@ -450,6 +500,45 @@ export default function DashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Debug Section - Temporary */}
+        {userRole && ['provider', 'client'].includes(userRole) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-yellow-800">Dashboard Redirect Issue Detected</h3>
+                <p className="text-yellow-700">
+                  You're a <strong>{userRole}</strong> but you're seeing the main dashboard. 
+                  This should have been redirected automatically.
+                </p>
+                <p className="text-sm text-yellow-600 mt-1">
+                  User: {user?.email} | Role: {userRole} | ID: {user?.id}
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={() => {
+                    console.log('🔧 Manual redirect triggered')
+                    window.location.href = `/dashboard/${userRole}`
+                  }}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                >
+                  Go to {userRole.charAt(0).toUpperCase() + userRole.slice(1)} Dashboard
+                </Button>
+                <Button 
+                  onClick={() => {
+                    sessionStorage.removeItem('main-dashboard-auth-checked')
+                    window.location.reload()
+                  }}
+                  variant="outline"
+                  className="border-yellow-600 text-yellow-600 hover:bg-yellow-50"
+                >
+                  Clear Cache & Reload
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* KPI Cards with trends */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
