@@ -106,6 +106,9 @@ export default function CreateServicePage() {
   const [authLoading, setAuthLoading] = useState(true)
   const [currentStep, setCurrentStep] = useState(1)
   
+  // Log page mount
+  console.log('🎨 CreateServicePage component mounted')
+  
   // Monitor page stability
   const debugRenderCount = useRenderCount('CreateServicePage')
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})

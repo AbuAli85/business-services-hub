@@ -17,10 +17,13 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
   const [ok, setOk] = useState<boolean | null>(initialOk)
   const [timedOut, setTimedOut] = useState(false)
 
+  console.log('🛡️ RoleGuard checking access', { allow, cachedRole, initialOk })
+
   useEffect(() => {
     let mounted = true
     const timeoutId = setTimeout(() => {
       if (mounted && ok === null) {
+        console.log('⏰ RoleGuard timeout - redirecting to', redirect)
         setTimedOut(true)
         setOk(false)
         router.replace(redirect)
@@ -38,13 +41,16 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
       
       // Check cache first for instant verification
       if (cachedUserId === session.user.id && cachedRole && allow.includes(cachedRole)) {
+        console.log('✅ RoleGuard: Using cached role', { cachedRole, allow })
         setOk(true)
         return
       }
       
       // Fast path: trust metadata role if available
       const metaRole = (session.user.user_metadata as any)?.role as Role | undefined
+      console.log('🔍 RoleGuard: Checking metadata role', { metaRole, allow })
       if (metaRole && allow.includes(metaRole)) {
+        console.log('✅ RoleGuard: Metadata role allowed', { metaRole })
         cachedRole = metaRole
         cachedUserId = session.user.id
         setOk(true)
@@ -56,12 +62,18 @@ export function RoleGuard({ allow, children, redirect = '/dashboard' }:{ allow: 
         .eq('id', session.user.id)
         .single()
       const role = (prof?.role || null) as Role | null
+      console.log('🔍 RoleGuard: Checked profile role', { role, allow })
       if (role && allow.includes(role)) {
+        console.log('✅ RoleGuard: Profile role allowed', { role })
         cachedRole = role
         cachedUserId = session.user.id
         setOk(true)
       }
-      else { setOk(false); router.replace(redirect) }
+      else { 
+        console.log('❌ RoleGuard: Access denied, redirecting to', redirect, { role, allow })
+        setOk(false)
+        router.replace(redirect)
+      }
     })()
     return () => { mounted = false; clearTimeout(timeoutId) }
   }, [allow, router, redirect])
