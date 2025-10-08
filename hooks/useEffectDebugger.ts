@@ -2,6 +2,14 @@
 
 import { useRef, useEffect } from 'react'
 
+interface DependencyChange {
+  index: number
+  name: string
+  previous: any
+  current: any
+  changed: boolean
+}
+
 /**
  * Hook to debug useEffect dependencies and track changes
  * Helps identify what's causing effects to re-run
@@ -33,19 +41,13 @@ export function useEffectDebugger(effectName: string, dependencies: any[]) {
       }
       
       return acc
-    }, [] as Array<{
-      index: number
-      name: string
-      previous: any
-      current: any
-      changed: boolean
-    }>)
+    }, [] as DependencyChange[])
     
     if (changedDeps.length > 0 && process.env.NODE_ENV === 'development') {
       console.log(`[${effectName}] Dependencies changed:`, changedDeps)
       
       // Warn about common issues
-      changedDeps.forEach(change => {
+      changedDeps.forEach((change: DependencyChange) => {
         if (typeof change.current === 'function') {
           console.warn(`⚠️ ${effectName}: Function dependency at index ${change.index} changed - consider useCallback`)
         }
