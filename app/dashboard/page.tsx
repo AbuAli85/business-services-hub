@@ -443,6 +443,8 @@ export default function DashboardPage() {
   }
 
   // Show dashboard even if some data is missing - provide fallback data
+  console.log('🏠 MAIN DASHBOARD: Rendering with metrics:', metrics)
+  console.log('🏠 MAIN DASHBOARD: User role:', userRole, 'User:', user?.email)
   const safeMetrics = metrics || {
     totalUsers: 0,
     totalServices: 0,
@@ -500,6 +502,24 @@ export default function DashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Main Dashboard Debug Banner */}
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-red-800">⚠️ Main Dashboard Active</h3>
+              <p className="text-red-700">
+                You're viewing the <strong>Main Dashboard</strong> with mock/simulated data.
+              </p>
+              <p className="text-sm text-red-600 mt-1">
+                User Role: {userRole} | User: {user?.email}
+              </p>
+            </div>
+            <div className="text-red-600">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+            </div>
+          </div>
+        </div>
+        
         {/* Debug Section - Temporary */}
         {userRole && ['provider', 'client'].includes(userRole) && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
