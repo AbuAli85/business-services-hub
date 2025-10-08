@@ -80,10 +80,11 @@ export class ProviderDashboardService {
       .select('total_amount, created_at, status')
       .eq('provider_id', providerId)
     
-    // Get services data
+    // Get services data for this provider
     const { data: services } = await supabase
       .from('services')
       .select('id, status')
+      .eq('provider_id', providerId)
     
     // Get reviews data
     const { data: reviews } = await supabase
@@ -176,24 +177,56 @@ export class ProviderDashboardService {
     
     if (!bookings) return []
     
-    return bookings.map(booking => ({
-      id: booking.id,
-      title: booking.title || 'Untitled Booking',
-      description: booking.description || '',
-      status: booking.status || 'pending',
-      scheduled_date: booking.start_time ? new Date(booking.start_time).toISOString() : '',
-      end_date: booking.end_time ? new Date(booking.end_time).toISOString() : '',
-      total_amount: booking.total_amount || 0,
-      currency: booking.currency || 'OMR',
-      created_at: booking.created_at,
-      client_name: 'Client', // Simplified for now
-      client_email: 'client@example.com',
-      client_id: booking.client_id || '',
-      provider_id: booking.provider_id || '',
-      service_title: 'Service', // Simplified for now
-      milestone_count: 0, // Will be populated separately if needed
-      completed_milestones: 0
+    // Get client and service details for each booking
+    const enrichedBookings = await Promise.all(bookings.map(async (booking) => {
+      // Get client details
+      const { data: clientData } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', booking.client_id)
+        .single()
+
+      // Get service details
+      const { data: serviceData } = await supabase
+        .from('services')
+        .select('title')
+        .eq('id', booking.service_id)
+        .single()
+
+      // Get milestone count
+      const { count: milestoneCount } = await supabase
+        .from('milestones')
+        .select('*', { count: 'exact', head: true })
+        .eq('booking_id', booking.id)
+
+      // Get completed milestone count
+      const { count: completedMilestoneCount } = await supabase
+        .from('milestones')
+        .select('*', { count: 'exact', head: true })
+        .eq('booking_id', booking.id)
+        .eq('status', 'completed')
+
+      return {
+        id: booking.id,
+        title: booking.title || 'Untitled Booking',
+        description: booking.description || '',
+        status: booking.status || 'pending',
+        scheduled_date: booking.start_time ? new Date(booking.start_time).toISOString() : '',
+        end_date: booking.end_time ? new Date(booking.end_time).toISOString() : '',
+        total_amount: booking.total_amount || 0,
+        currency: booking.currency || 'OMR',
+        created_at: booking.created_at,
+        client_name: clientData?.full_name || 'Unknown Client',
+        client_email: clientData?.email || '',
+        client_id: booking.client_id || '',
+        provider_id: booking.provider_id || '',
+        service_title: serviceData?.title || 'Unknown Service',
+        milestone_count: milestoneCount || 0,
+        completed_milestones: completedMilestoneCount || 0
+      }
     }))
+
+    return enrichedBookings
   }
 
   static async getTopServices(providerId: string, limit: number = 5): Promise<TopService[]> {
@@ -231,22 +264,62 @@ export class ProviderDashboardService {
         currency,
         status
       `)
+      .eq('provider_id', providerId)
       .limit(limit)
     
     if (!services) return []
     
-    return services.map(service => ({
-      id: service.id,
-      title: service.title || 'Untitled Service',
-      description: service.description || '',
-      price: service.price || 0,
-      currency: service.currency || 'OMR',
-      status: service.status || 'inactive',
-      booking_count: 0, // Will be populated separately if needed
-      total_earnings: 0,
-      avg_rating: 0,
-      completion_rate: 0
+    // Enrich services with real booking and earnings data
+    const enrichedServices = await Promise.all(services.map(async (service) => {
+      // Get booking count for this service
+      const { count: bookingCount } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('service_id', service.id)
+
+      // Get total earnings from bookings
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('total_amount')
+        .eq('service_id', service.id)
+        .in('status', ['completed', 'delivered'])
+
+      const totalEarnings = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0
+
+      // Get average rating from reviews
+      const { data: reviews } = await supabase
+        .from('reviews')
+        .select('rating')
+        .eq('service_id', service.id)
+
+      const avgRating = reviews?.length ? 
+        reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length : 0
+
+      // Calculate completion rate
+      const { count: completedBookings } = await supabase
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .eq('service_id', service.id)
+        .in('status', ['completed', 'delivered'])
+
+      const completionRate = bookingCount && bookingCount > 0 ? 
+        (completedBookings || 0) / bookingCount : 0
+
+      return {
+        id: service.id,
+        title: service.title || 'Untitled Service',
+        description: service.description || '',
+        price: service.price || 0,
+        currency: service.currency || 'OMR',
+        status: service.status || 'inactive',
+        booking_count: bookingCount || 0,
+        total_earnings: totalEarnings,
+        avg_rating: avgRating,
+        completion_rate: completionRate
+      }
     }))
+
+    return enrichedServices
   }
 
   static async getMonthlyEarnings(providerId: string, monthsBack: number = 12): Promise<MonthlyEarnings[]> {

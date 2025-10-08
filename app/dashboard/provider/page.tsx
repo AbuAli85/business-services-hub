@@ -42,6 +42,13 @@ export default function ProviderDashboard() {
   const [topServices, setTopServices] = useState<TopService[]>([])
   const [monthlyEarnings, setMonthlyEarnings] = useState<MonthlyEarnings[]>([])
 
+  // Register with auto-refresh system
+  useRefreshCallback(async () => {
+    if (userId) {
+      await loadDashboardData(userId)
+    }
+  }, [userId])
+
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
     // Check sessionStorage to prevent re-runs across component instances
@@ -137,7 +144,13 @@ export default function ProviderDashboard() {
 
         try {
           await Promise.race([loadDashboardData(user.id), dataTimeout])
-          if (isMounted) console.log('✅ Data loaded successfully')
+          if (isMounted) {
+            console.log('✅ Data loaded successfully')
+            // Set up real-time subscriptions
+            setupRealtimeSubscriptions(user.id).catch(err => 
+              console.warn('Failed to setup real-time subscriptions:', err)
+            )
+          }
         } catch (dataError) {
           if (!isMounted) return
           logger.warn('⚠️ Error fetching provider data:', dataError)
@@ -171,6 +184,13 @@ export default function ProviderDashboard() {
       controller.abort()
     }
   }, [])
+
+  // Cleanup subscriptions on unmount
+  useEffect(() => {
+    return () => {
+      // Cleanup will be handled by the subscription cleanup functions
+    }
+  }, [userId])
 
   // Register with centralized auto-refresh system
   useRefreshCallback(() => {
@@ -207,6 +227,74 @@ export default function ProviderDashboard() {
       toast.error('Failed to refresh dashboard')
     } finally {
       setRefreshing(false)
+    }
+  }
+
+  // Set up real-time subscriptions for live data updates
+  const setupRealtimeSubscriptions = async (providerId: string) => {
+    const supabase = await getSupabaseClient()
+    
+    // Subscribe to booking changes
+    const bookingsSubscription = supabase
+      .channel('provider-bookings')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `provider_id=eq.${providerId}`
+        },
+        () => {
+          console.log('📡 Booking change detected, refreshing data...')
+          loadDashboardData(providerId)
+        }
+      )
+      .subscribe()
+
+    // Subscribe to service changes
+    const servicesSubscription = supabase
+      .channel('provider-services')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'services',
+          filter: `provider_id=eq.${providerId}`
+        },
+        () => {
+          console.log('📡 Service change detected, refreshing data...')
+          loadDashboardData(providerId)
+        }
+      )
+      .subscribe()
+
+    // Subscribe to milestone changes (affects booking progress)
+    const milestonesSubscription = supabase
+      .channel('provider-milestones')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'milestones'
+        },
+        (payload: any) => {
+          // Only refresh if milestone belongs to provider's booking
+          if (payload.new?.booking_id) {
+            console.log('📡 Milestone change detected, refreshing data...')
+            loadDashboardData(providerId)
+          }
+        }
+      )
+      .subscribe()
+
+    // Cleanup function
+    return () => {
+      supabase.removeChannel(bookingsSubscription)
+      supabase.removeChannel(servicesSubscription)
+      supabase.removeChannel(milestonesSubscription)
     }
   }
 
