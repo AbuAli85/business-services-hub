@@ -11,7 +11,5 @@
   "buildCommand": "npm run build:optimized",
   "installCommand": "npm ci",
   "devCommand": "npm run dev",
-  "outputDirectory": ".next",
-  "analytics": false,
-  "speedInsights": false
+  "outputDirectory": ".next"
 }
