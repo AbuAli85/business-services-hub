@@ -789,7 +789,7 @@ export default function CreateServicePage() {
           )}
         </div>
 
-        <div>
+        <div className="space-y-3">
           <Label htmlFor="price" className="text-sm font-medium text-slate-700 mb-2 block">
             Price (OMR) *
             <TooltipProvider>
@@ -805,18 +805,27 @@ export default function CreateServicePage() {
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.price}
+                value={formData.price_type === 'custom_quotation' ? '' : formData.price}
                 onChange={(e) => handleInputChange('price', e.target.value)}
-                placeholder="0.00"
+                placeholder={formData.price_type === 'custom_quotation' ? 'Contact for quote' : '0.00'}
+                disabled={formData.price_type === 'custom_quotation'}
                 className={`h-12 text-base border-2 transition-all duration-200 pl-12 ${
-                  validationErrors.price ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+                  formData.price_type === 'custom_quotation' 
+                    ? 'bg-slate-50 text-slate-500 cursor-not-allowed border-slate-200'
+                    : validationErrors.price 
+                      ? 'border-red-500 focus:border-red-500' 
+                      : 'border-slate-200 focus:border-blue-500'
                 }`}
               />
-              <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 font-medium">OMR</span>
+              <span className={`absolute left-4 top-1/2 transform -translate-y-1/2 font-medium ${
+                formData.price_type === 'custom_quotation' ? 'text-slate-400' : 'text-slate-400'
+              }`}>
+                OMR
+              </span>
             </div>
             
             {/* Price Type Toggle */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               <div className="flex items-center space-x-2">
                 <Switch
                   id="price-type"
@@ -828,6 +837,11 @@ export default function CreateServicePage() {
                 <Label htmlFor="price-type" className="text-sm text-slate-600">
                   Starting from
                 </Label>
+                <TooltipProvider>
+                  <Tooltip content="Price shown as 'Starting from' to indicate minimum cost">
+                    <HelpCircle className="h-3 w-3 text-slate-400" />
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               <div className="flex items-center space-x-2">
                 <Switch
@@ -840,6 +854,11 @@ export default function CreateServicePage() {
                 <Label htmlFor="custom-quotation" className="text-sm text-slate-600">
                   Custom quotation
                 </Label>
+                <TooltipProvider>
+                  <Tooltip content="Client will contact you for a personalized quote">
+                    <HelpCircle className="h-3 w-3 text-slate-400" />
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </div>
@@ -850,7 +869,7 @@ export default function CreateServicePage() {
       </div>
 
       {/* Description */}
-      <div>
+      <div className="space-y-2">
         <Label htmlFor="description" className="text-sm font-medium text-slate-700 mb-2 block">
           Description *
           <TooltipProvider>
@@ -863,19 +882,24 @@ export default function CreateServicePage() {
           id="description"
           value={formData.description}
           onChange={(e) => handleInputChange('description', e.target.value)}
-          placeholder="Describe your service in detail, including scope, value, and compliance notes..."
+          placeholder="Describe your service in detail, including scope, value, and compliance notes... (Minimum 50 characters)"
           rows={4}
+          maxLength={500}
           className={`border-2 transition-all duration-200 resize-none ${
             validationErrors.description ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
           }`}
         />
-        <div className="flex justify-between items-center mt-1">
+        <div className="flex justify-between items-center mt-2">
           {validationErrors.description ? (
             <p className="text-red-500 text-sm">{validationErrors.description}</p>
           ) : (
-            <p className="text-slate-500 text-sm">Minimum 50 characters</p>
+            <p className={`text-sm ${formData.description.length >= 50 ? 'text-green-600' : 'text-amber-600'}`}>
+              {formData.description.length >= 50 ? '✓ Minimum requirement met' : `Need ${50 - formData.description.length} more characters`}
+            </p>
           )}
-          <p className="text-slate-400 text-sm">{formData.description.length}/500</p>
+          <p className={`text-sm ${formData.description.length >= 50 ? 'text-green-600' : 'text-slate-400'}`}>
+            {formData.description.length}/500 characters
+          </p>
         </div>
       </div>
 
