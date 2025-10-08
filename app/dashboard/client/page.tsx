@@ -1,22 +1,20 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
 // Uses shared dashboard layout (sidebar/header) from app/dashboard/layout.tsx
-import { EnhancedClientKPIGrid, EnhancedClientPerformanceMetrics } from '@/components/dashboard/enhanced-client-kpi-cards'
+import { EnhancedClientKPIGrid } from '@/components/dashboard/enhanced-client-kpi-cards'
 import { PremiumClientBookings } from '@/components/dashboard/premium-client-bookings'
 import { EliteServiceSuggestions } from '@/components/dashboard/elite-service-suggestions'
 import { getSupabaseClient } from '@/lib/supabase'
 import { realtimeManager } from '@/lib/realtime'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { 
   RefreshCw, 
-  AlertCircle,
   Star,
   Target
 } from 'lucide-react'
-import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
 import { ClientDashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
 import { logger } from '@/lib/logger'
@@ -82,7 +80,7 @@ export default function ClientDashboard() {
   const [redirecting, setRedirecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   
   // Dashboard data
   const [stats, setStats] = useState<ClientStats | null>(null)
@@ -92,36 +90,12 @@ export default function ClientDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    // Check sessionStorage to prevent re-runs across component instances
-    if (typeof window !== 'undefined' && sessionStorage.getItem('client-dashboard-auth-checked') === 'true') {
-      console.log('⏭️ Auth already checked, skipping auth but still need to load data')
-      // Still need to get user and load data even if auth was checked
-      const loadCachedData = async () => {
-        try {
-          const supabase = await getSupabaseClient()
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            setUser(user)
-            await fetchAllClientData(user.id)
-            console.log('✅ Data loaded from cached session')
-          }
-        } catch (error) {
-          logger.error('Error loading cached data:', error)
-        } finally {
-          setLoading(false)
-        }
-      }
-      loadCachedData()
-      return
-    }
-    
-    console.log('🏠 Client dashboard mounted')
+    logger.debug('Client dashboard mounted')
     let isMounted = true
-    const controller = new AbortController()
 
     const init = async () => {
       try {
-        console.log('🔐 Checking authentication...')
+        logger.debug('Checking authentication...')
         const supabase = await getSupabaseClient()
         
         // Add timeout safety (5s for auth)
@@ -137,7 +111,11 @@ export default function ClientDashboard() {
         if (!isMounted) return
 
         if (userError || !user) {
-          console.log('❌ No user found, redirecting to sign-in')
+          logger.debug('No user found, redirecting to sign-in')
+          // Clear stale auth flag
+          if (typeof window !== 'undefined') {
+            sessionStorage.removeItem('client-dashboard-auth-checked')
+          }
           if (isMounted) router.replace('/auth/sign-in')
           return
         }
@@ -155,29 +133,30 @@ export default function ClientDashboard() {
 
         if (!isMounted) return
 
-        console.log('✅ User authenticated:', user.email, '| Role:', userRole)
+        logger.debug('User authenticated:', user.email, '| Role:', userRole)
 
-        // Handle redirect logic cleanly
+        // Handle redirect logic cleanly - use router.replace for better UX
         if (userRole !== 'client') {
-          console.log(`🔄 Redirecting ${userRole} to their dashboard`)
+          logger.debug(`Redirecting ${userRole} to their dashboard`)
           if (isMounted) {
             setRedirecting(true)
             const dashboardUrl = userRole === 'provider' 
               ? '/dashboard/provider' 
               : '/dashboard'
-            // Use window.location.href for immediate redirect to prevent any race conditions
-            window.location.href = dashboardUrl
+            router.replace(dashboardUrl)
           }
           return
         }
 
-      // Client user - set user and load data
-      console.log('👤 Client user confirmed, loading data...')
-      if (isMounted) {
-        setUser(user)
-        // Mark auth as checked for this session
-        sessionStorage.setItem('client-dashboard-auth-checked', 'true')
-      }
+        // Client user - set user and load data
+        logger.debug('Client user confirmed, loading data...')
+        if (isMounted) {
+          setUser(user)
+          // Mark auth as checked for this session
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('client-dashboard-auth-checked', 'true')
+          }
+        }
 
         // Load data with timeout safety (8s for data)
         const dataTimeout = new Promise((_, reject) =>
@@ -186,51 +165,49 @@ export default function ClientDashboard() {
 
         try {
           await Promise.race([fetchAllClientData(user.id), dataTimeout])
-          if (isMounted) console.log('✅ Data loaded successfully')
+          if (isMounted) logger.debug('Data loaded successfully')
         } catch (dataError) {
           if (!isMounted) return
-          logger.warn('⚠️ Error fetching client data:', dataError)
+          logger.warn('Error fetching client data:', dataError)
           setStats(defaultStats())
           toast.error('Some data could not be loaded')
-        } finally {
-          if (isMounted) setLoading(false)
         }
       } catch (error) {
         if (!isMounted) return
-        logger.error('❌ Auth check failed:', error)
+        logger.error('Auth check failed:', error)
         setError('Failed to load dashboard')
         toast.error('Failed to load dashboard')
-        setLoading(false)
       } finally {
         if (isMounted) setLoading(false)
-        controller.abort()
       }
     }
 
     init()
 
     return () => {
-      console.log('🧹 Client dashboard cleanup')
+      logger.debug('Client dashboard cleanup')
       isMounted = false
-      controller.abort()
     }
-  }, [])
+  }, [router])
 
   // Real-time updates (ONLY for critical updates, not continuous refresh)
   useEffect(() => {
     if (!user?.id) return
 
-    let subscriptionKeys: string[] = []
+    let cleanup: (() => void) | undefined
 
     ;(async () => {
       try {
         // Only subscribe to booking status changes, not all data refreshes
-        const bookingSubscription = await realtimeManager.subscribeToBookings(user.id, () => {
+        const subscription = await realtimeManager.subscribeToBookings(user.id, () => {
           // Only refresh if there are actual changes, not on every update
-          console.log('📡 Booking update received, refreshing data...')
+          logger.debug('Booking update received, refreshing data...')
           fetchAllClientData(user.id)
         })
-        subscriptionKeys.push(`bookings:${user.id}`)
+        
+        // Store cleanup function if subscription returns one
+        cleanup = typeof subscription === 'function' ? subscription : 
+                  subscription?.unsubscribe ? () => subscription.unsubscribe() : undefined
 
         // Remove service suggestions subscription to reduce load
         // Service suggestions can be loaded manually when needed
@@ -240,7 +217,7 @@ export default function ClientDashboard() {
     })()
 
     return () => {
-      subscriptionKeys.forEach(key => realtimeManager.unsubscribe(key))
+      if (cleanup) cleanup()
     }
   }, [user?.id])
 
@@ -335,13 +312,10 @@ export default function ClientDashboard() {
       const activeBookings = bookings?.filter(b => ['paid', 'in_progress'].includes(b.status)).length || 0
       const completedBookings = bookings?.filter(b => b.status === 'completed').length || 0
 
+      // Use total_amount as canonical field (already includes VAT if applicable)
       const totalSpent = (bookings || [])
         .filter(b => ['completed', 'in_progress'].includes(b.status))
-        .reduce((sum, b: any) => {
-          const subtotal = b.subtotal || b.total_amount || 0
-          const vatAmount = subtotal * 0.05
-          return sum + subtotal + vatAmount
-        }, 0)
+        .reduce((sum, b: any) => sum + (b.total_amount || b.subtotal || 0), 0)
 
       const now = new Date()
       const currentMonth = now.getMonth()
@@ -351,12 +325,9 @@ export default function ClientDashboard() {
           const d = new Date(b.created_at)
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear && ['completed', 'in_progress'].includes(b.status)
         })
-        .reduce((sum, b: any) => {
-          const subtotal = b.subtotal || b.total_amount || 0
-          const vatAmount = subtotal * 0.05
-          return sum + subtotal + vatAmount
-        }, 0)
+        .reduce((sum, b: any) => sum + (b.total_amount || b.subtotal || 0), 0)
 
+      // Calculate average rating from reviews (consider moving to SQL aggregate for better performance)
       const totalReviews = reviews.length || 0
       const averageRating = totalReviews > 0 ? (reviews.reduce((s: number, r: any) => s + (r.rating || 0), 0) / totalReviews) : 0
 
@@ -391,7 +362,7 @@ export default function ClientDashboard() {
         .slice(0, 3)
         .map((b: any) => ({
           ...enrich(b),
-          scheduled_time: b.start_time ? new Date(b.start_time).toLocaleTimeString() : 'TBD',
+          scheduled_time: b.start_time ? new Date(b.start_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'TBD',
           location: 'TBD'
         }))
 
@@ -465,7 +436,7 @@ export default function ClientDashboard() {
     favoriteProviders: 0
   })
 
-  const userFullName = useMemo(() => user?.user_metadata?.full_name || '', [user?.user_metadata?.full_name])
+  const userFullName = user?.user_metadata?.full_name || ''
 
   // Show redirecting state
   if (redirecting) {
