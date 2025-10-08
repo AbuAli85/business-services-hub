@@ -1,9 +1,12 @@
 /**
  * Centralized Auto-Refresh Control Context
  * Manages global auto-refresh state and provides controls for Live Mode
+ * 
+ * NOTE: Live Mode is currently FORCE DISABLED to prevent reloading issues.
+ * See LIVE_MODE_AUTO_REFRESH_FIX.md for details.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 
 interface AutoRefreshContextType {
   isLiveMode: boolean
@@ -14,6 +17,7 @@ interface AutoRefreshContextType {
   refreshCallbacks: Set<() => void>
   registerRefreshCallback: (callback: () => void) => () => void
   triggerRefresh: () => void
+  lastRefreshTime: number | null
 }
 
 const AutoRefreshContext = createContext<AutoRefreshContextType | undefined>(undefined)
@@ -27,19 +31,18 @@ export function AutoRefreshProvider({
   children, 
   defaultInterval = 30000 
 }: AutoRefreshProviderProps) {
+  // CRITICAL: Force disabled to prevent reloading - DO NOT CHANGE without thorough testing
   const [isLiveMode, setIsLiveMode] = useState(() => {
-    // DISABLED by default to prevent constant reloading
-    // Load from localStorage on mount
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('dashboard-live-mode')
-      // Explicitly check for 'true' and default to false
-      return saved === 'true' ? false : false // Force disabled for now
-    }
+    // Always return false regardless of localStorage value
+    // This prevents auto-refresh from causing constant page reloads
     return false
   })
   
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [refreshCallbacks, setRefreshCallbacks] = useState<Set<() => void>>(new Set())
+  const [lastRefreshTime, setLastRefreshTime] = useState<number | null>(null)
+  
+  // Use useRef to avoid recreating Set on every render (performance optimization)
+  const refreshCallbacksRef = useRef<Set<() => void>>(new Set())
   const refreshInterval = defaultInterval
 
   // Save to localStorage when live mode changes
@@ -58,38 +61,44 @@ export function AutoRefreshProvider({
   }, [])
 
   const registerRefreshCallback = useCallback((callback: () => void) => {
-    setRefreshCallbacks(prev => new Set(prev).add(callback))
+    refreshCallbacksRef.current.add(callback)
     
     // Return cleanup function
     return () => {
-      setRefreshCallbacks(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(callback)
-        return newSet
-      })
+      refreshCallbacksRef.current.delete(callback)
     }
   }, [])
 
   const triggerRefresh = useCallback(() => {
-    if (isRefreshing) return // Prevent concurrent refreshes
+    if (isRefreshing) {
+      console.warn('⚠️ Refresh already in progress, skipping...')
+      return
+    }
     
-    console.log('🔄 Auto-refresh triggered, callbacks:', refreshCallbacks.size)
+    const callbacks = refreshCallbacksRef.current
+    if (callbacks.size === 0) {
+      console.log('ℹ️ No refresh callbacks registered')
+      return
+    }
+    
+    console.log('🔄 Auto-refresh triggered, callbacks:', callbacks.size)
     setIsRefreshing(true)
     
     // Execute all registered refresh callbacks
-    const promises = Array.from(refreshCallbacks).map(callback => {
+    const promises = Array.from(callbacks).map(callback => {
       try {
         return Promise.resolve(callback())
       } catch (error) {
-        console.error('Refresh callback error:', error)
+        console.error('❌ Refresh callback error:', error)
         return Promise.resolve()
       }
     })
     
     Promise.all(promises).finally(() => {
       setIsRefreshing(false)
+      setLastRefreshTime(Date.now())
     })
-  }, [refreshCallbacks, isRefreshing])
+  }, [isRefreshing])
 
   // Set up auto-refresh interval when live mode is enabled
   useEffect(() => {
@@ -108,9 +117,10 @@ export function AutoRefreshProvider({
     refreshInterval,
     isRefreshing,
     setRefreshing,
-    refreshCallbacks,
+    refreshCallbacks: refreshCallbacksRef.current,
     registerRefreshCallback,
-    triggerRefresh
+    triggerRefresh,
+    lastRefreshTime
   }
 
   return (
