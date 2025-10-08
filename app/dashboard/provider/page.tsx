@@ -30,7 +30,6 @@ import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
 import { usePageStability } from '@/hooks/usePageStability'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { useRenderCount } from '@/hooks/useRenderCount'
-import { useEffectDebugger } from '@/hooks/useEffectDebugger'
 import { DashboardDebugPanel } from '@/components/DashboardDebugPanel'
 
 export default function ProviderDashboard() {
@@ -60,9 +59,6 @@ export default function ProviderDashboard() {
 
   // Check auth and load data on mount with mounted guard
   useEffect(() => {
-    // Debug this effect
-    useEffectDebugger('ProviderAuthCheck', [])
-    
     // Check sessionStorage to prevent re-runs across component instances
     if (typeof window !== 'undefined' && sessionStorage.getItem('provider-dashboard-auth-checked') === 'true') {
       console.log('⏭️ Auth already checked, skipping auth but still need to load data')
@@ -200,9 +196,6 @@ export default function ProviderDashboard() {
 
   // Cleanup subscriptions on unmount
   useEffect(() => {
-    // Debug this effect
-    useEffectDebugger('ProviderCleanup', [userId])
-    
     return () => {
       // Cleanup will be handled by the subscription cleanup functions
     }

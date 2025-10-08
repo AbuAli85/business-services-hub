@@ -43,7 +43,6 @@ import { RequirementsSelector } from '@/components/dashboard/requirements-select
 import { EnhancedMilestonesEditor, MilestoneTemplate } from '@/components/dashboard/enhanced-milestones-editor'
 import { toast } from 'sonner'
 import { useRenderCount } from '@/hooks/useRenderCount'
-import { useEffectDebugger } from '@/hooks/useEffectDebugger'
 import { DashboardDebugPanel } from '@/components/DashboardDebugPanel'
 
 // UUID validation utility
@@ -179,9 +178,6 @@ export default function CreateServicePage() {
     '30+ days',
     'Custom timeframe'
   ]
-
-  // Debug this effect
-  useEffectDebugger('CreateServiceDataFetch', [])
 
   // Fetch data on component mount
   useEffect(() => {
