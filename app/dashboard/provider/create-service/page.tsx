@@ -182,29 +182,52 @@ export default function CreateServicePage() {
   // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
+      const startTime = Date.now()
+      const MIN_LOADING_TIME = 2000 // Minimum 2 seconds loading
+      
       try {
         const supabase = await getSupabaseClient()
         
         // Fetch companies
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
+          console.log('❌ No authenticated user')
+          toast.error('Please sign in to create a service')
           router.push('/auth/sign-in')
           return
         }
         
+        console.log('✅ User authenticated:', user.email)
+        
         // Verify user is a provider
         let role = user.user_metadata?.role
+        console.log('🔍 User metadata role:', role)
+        
         if (!role) {
-          const { data: profile } = await supabase
+          console.log('🔍 No role in metadata, checking database...')
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
+          
+          if (profileError) {
+            console.error('❌ Error fetching profile:', profileError)
+            toast.error('Failed to verify user role. Please sign in again.')
+            router.push('/auth/sign-in')
+            return
+          }
+          
           role = profile?.role || 'client'
+          console.log('🔍 Database role:', role)
         }
+        
+        console.log('🔍 Final role check:', role)
         
         // If not a provider, redirect to appropriate dashboard
         if (role !== 'provider') {
+          console.log('❌ User is not a provider, redirecting...')
+          toast.error('Access denied. Only providers can create services.')
           if (role === 'client') {
             router.push('/dashboard/client')
           } else {
@@ -212,6 +235,8 @@ export default function CreateServicePage() {
           }
           return
         }
+        
+        console.log('✅ User confirmed as provider, continuing...')
         
         // User is authenticated as provider, continue with data loading
 
@@ -248,10 +273,17 @@ export default function CreateServicePage() {
 
       } catch (error) {
         console.error('Error fetching data:', error)
+        toast.error('Failed to load service creation data')
       } finally {
-        setLoadingCompanies(false)
-        setLoadingCategories(false)
-        setAuthLoading(false)
+        // Ensure minimum loading time for better UX
+        const elapsedTime = Date.now() - startTime
+        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime)
+        
+        setTimeout(() => {
+          setLoadingCompanies(false)
+          setLoadingCategories(false)
+          setAuthLoading(false)
+        }, remainingTime)
       }
     }
 
@@ -1083,7 +1115,8 @@ export default function CreateServicePage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Verifying access...</p>
+          <p className="text-sm text-gray-600">Verifying provider access...</p>
+          <p className="text-xs text-gray-500 mt-2">Checking your role and permissions</p>
         </div>
       </div>
     )
