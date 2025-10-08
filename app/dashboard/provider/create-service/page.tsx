@@ -202,43 +202,44 @@ export default function CreateServicePage() {
         // Verify user is a provider
         let role = user.user_metadata?.role
         console.log('🔍 User metadata role:', role)
+        console.log('🔍 Full user metadata:', user.user_metadata)
         
         if (!role) {
           console.log('🔍 No role in metadata, checking database...')
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, full_name, email')
             .eq('id', user.id)
             .single()
           
           if (profileError) {
             console.error('❌ Error fetching profile:', profileError)
-            toast.error('Failed to verify user role. Please sign in again.')
-            router.push('/auth/sign-in')
+            toast.error('Failed to verify user role. Please contact support.')
+            // Don't redirect immediately, let user see the error
+            setAuthLoading(false)
             return
           }
           
           role = profile?.role || 'client'
+          console.log('🔍 Database profile:', profile)
           console.log('🔍 Database role:', role)
         }
         
         console.log('🔍 Final role check:', role)
+        console.log('🔍 User ID:', user.id)
         
-        // If not a provider, redirect to appropriate dashboard
+        // If not a provider, show error but don't redirect immediately
         if (role !== 'provider') {
-          console.log('❌ User is not a provider, redirecting...')
-          toast.error('Access denied. Only providers can create services.')
-          if (role === 'client') {
-            router.push('/dashboard/client')
-          } else {
-            router.push('/dashboard')
-          }
+          console.log('❌ User is not a provider, role is:', role)
+          toast.error(`Access denied. Your current role is '${role}'. Only providers can create services. Please contact support to update your role.`)
+          setAuthLoading(false)
           return
         }
         
         console.log('✅ User confirmed as provider, continuing...')
         
         // User is authenticated as provider, continue with data loading
+        console.log('✅ Starting data loading for provider:', user.id)
 
         const [companiesResult, categoriesResult] = await Promise.all([
           supabase
@@ -1117,6 +1118,39 @@ export default function CreateServicePage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-sm text-gray-600">Verifying provider access...</p>
           <p className="text-xs text-gray-500 mt-2">Checking your role and permissions</p>
+          <p className="text-xs text-gray-400 mt-1">This may take a few seconds</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state if user is not a provider
+  if (!authLoading && companies.length === 0 && categories.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
+            <p className="text-gray-600 mb-4">
+              Only providers can create services. If you believe this is an error, please contact support.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/dashboard/services')}
+              >
+                Back to Services
+              </Button>
+              <Button 
+                onClick={() => window.location.reload()}
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     )
