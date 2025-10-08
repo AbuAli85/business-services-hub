@@ -10,17 +10,20 @@ export function useRenderCount(componentName: string, warnThreshold = 10) {
   const renders = useRef(0)
   const mountTime = useRef(Date.now())
   
+  // Only track renders in development mode
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      return
+    }
+    
     renders.current++
     const elapsed = Date.now() - mountTime.current
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[${componentName}] Render #${renders.current} (${elapsed}ms since mount)`)
-      
-      if (renders.current > warnThreshold) {
-        console.error(`⚠️ ${componentName} rendered ${renders.current} times! This might indicate an infinite loop.`)
-        console.trace() // Show call stack
-      }
+    console.log(`[${componentName}] Render #${renders.current} (${elapsed}ms since mount)`)
+    
+    if (renders.current > warnThreshold) {
+      console.error(`⚠️ ${componentName} rendered ${renders.current} times! This might indicate an infinite loop.`)
+      console.trace() // Show call stack
     }
   })
   

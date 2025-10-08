@@ -5,11 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { getSupabaseClient } from '@/lib/supabase-client'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
-import { usePageStability } from '@/hooks/usePageStability'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
-import { useRenderCount } from '@/hooks/useRenderCount'
-import { useEffectDebugger } from '@/hooks/useEffectDebugger'
-import { DashboardDebugPanel } from '@/components/DashboardDebugPanel'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -47,9 +43,6 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [redirecting, setRedirecting] = useState(false)
   
-  // Monitor page stability
-  const renderCount = usePageStability('MainDashboard')
-  const debugRenderCount = useRenderCount('MainDashboard')
   const lastUrlParams = useRef<string>('')
   
   // Only load dashboard data for admin role - others should be redirected
@@ -744,12 +737,6 @@ export default function DashboardPage() {
         </Tabs>
         </div>
       </ErrorBoundary>
-      
-      {/* Debug Panel - Only in development */}
-      <DashboardDebugPanel 
-        componentName="MainDashboard"
-        renderCount={debugRenderCount}
-      />
     </div>
   )
 }

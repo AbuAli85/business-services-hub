@@ -19,11 +19,14 @@ export function useEffectDebugger(effectName: string, dependencies: any[]) {
   const isFirstRender = useRef(true)
   
   useEffect(() => {
+    // Only debug in development mode
+    if (process.env.NODE_ENV !== 'development') {
+      return
+    }
+    
     if (isFirstRender.current) {
       isFirstRender.current = false
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[${effectName}] First render - dependencies:`, dependencies)
-      }
+      console.log(`[${effectName}] First render - dependencies:`, dependencies)
       return
     }
     
@@ -43,7 +46,7 @@ export function useEffectDebugger(effectName: string, dependencies: any[]) {
       return acc
     }, [] as DependencyChange[])
     
-    if (changedDeps.length > 0 && process.env.NODE_ENV === 'development') {
+    if (changedDeps.length > 0) {
       console.log(`[${effectName}] Dependencies changed:`, changedDeps)
       
       // Warn about common issues
@@ -69,14 +72,17 @@ export function useEffectTracker(effectName: string) {
   const lastRunTime = useRef<number>()
   
   useEffect(() => {
+    // Only track in development mode
+    if (process.env.NODE_ENV !== 'development') {
+      return
+    }
+    
     runCount.current++
     const now = Date.now()
     const timeSinceLastRun = lastRunTime.current ? now - lastRunTime.current : 0
     lastRunTime.current = now
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[${effectName}] Effect ran #${runCount.current}${timeSinceLastRun > 0 ? ` (${timeSinceLastRun}ms since last run)` : ''}`)
-    }
+    console.log(`[${effectName}] Effect ran #${runCount.current}${timeSinceLastRun > 0 ? ` (${timeSinceLastRun}ms since last run)` : ''}`)
   })
   
   return runCount.current

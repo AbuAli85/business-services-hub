@@ -53,9 +53,6 @@ export default function ProviderDashboard() {
 
   // Register with auto-refresh system
   useRefreshCallback(async () => {
-    // Debug this callback
-    useEffectDebugger('ProviderRefreshCallback', [userId])
-    
     if (userId) {
       await loadDashboardData(userId)
     }

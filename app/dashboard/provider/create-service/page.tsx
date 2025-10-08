@@ -180,11 +180,11 @@ export default function CreateServicePage() {
     'Custom timeframe'
   ]
 
+  // Debug this effect
+  useEffectDebugger('CreateServiceDataFetch', [])
+
   // Fetch data on component mount
   useEffect(() => {
-    // Debug this effect
-    useEffectDebugger('CreateServiceDataFetch', [])
-    
     const fetchData = async () => {
       try {
         const supabase = await getSupabaseClient()
