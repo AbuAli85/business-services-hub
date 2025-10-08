@@ -319,6 +319,7 @@ export default function ClientInvoiceTemplatePage() {
       }
 
       setInvoice(enrichedInvoiceData as any)
+      console.log('📊 Final enriched invoice data:', enrichedInvoiceData)
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
@@ -553,7 +554,7 @@ export default function ClientInvoiceTemplatePage() {
             subtotal: invoice.subtotal || invoice.amount,
             vat_percent: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
             vat_amount: invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05,
-            total: invoice.total_amount || (invoice.subtotal || invoice.amount) + (invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05),
+            total: (invoice.subtotal || invoice.amount) + (invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05),
             status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
             currency: invoice.currency || 'USD',
             notes: invoice.notes,

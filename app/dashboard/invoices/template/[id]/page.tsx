@@ -285,6 +285,7 @@ export default function InvoiceTemplatePage() {
       }
 
       setInvoice(enrichedInvoiceData)
+      console.log('📊 Final enriched invoice data:', enrichedInvoiceData)
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
@@ -492,7 +493,7 @@ export default function InvoiceTemplatePage() {
             subtotal: invoice.subtotal || invoice.amount,
             vat_percent: invoice.vat_percent ? invoice.vat_percent / 100 : 0.05,
             vat_amount: invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05,
-            total: invoice.total_amount || (invoice.subtotal || invoice.amount) + (invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05),
+            total: (invoice.subtotal || invoice.amount) + (invoice.vat_amount || (invoice.subtotal || invoice.amount) * 0.05),
             status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
             currency: invoice.currency || 'USD',
             notes: invoice.notes,
@@ -502,7 +503,7 @@ export default function InvoiceTemplatePage() {
             updated_at: invoice.updated_at,
             company: {
               id: invoice.booking?.service?.provider?.company?.id || '1',
-              name: invoice.booking?.service?.provider?.company?.name || invoice.company_name || 'Your Company Name',
+              name: invoice.booking?.service?.provider?.company?.name || 'Your Company Name',
               address: invoice.booking?.service?.provider?.company?.address || '123 Anywhere St., Any City, ST 12345',
               phone: invoice.booking?.service?.provider?.company?.phone || '123-456-7890',
               email: invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
@@ -513,15 +514,15 @@ export default function InvoiceTemplatePage() {
             },
             client: {
               id: invoice.client_id,
-              full_name: invoice.booking?.client?.full_name || invoice.client_name || 'Client Information',
-              email: invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
+              full_name: invoice.booking?.client?.full_name || 'Client Information',
+              email: invoice.booking?.client?.email || 'client@company.com',
               phone: invoice.booking?.client?.phone || '123-456-7890',
               company: {
                 id: invoice.booking?.client?.company?.id || '2',
-                name: invoice.booking?.client?.company?.name || invoice.client_name || 'Client Company',
+                name: invoice.booking?.client?.company?.name || 'Client Company',
                 address: invoice.booking?.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
                 phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || '123-456-7890',
-                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || invoice.client_email || 'client@company.com',
+                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || 'client@company.com',
                 website: invoice.booking?.client?.company?.website || 'clientcompany.com',
                 logo_url: invoice.booking?.client?.company?.logo_url || undefined,
                 created_at: invoice.created_at,

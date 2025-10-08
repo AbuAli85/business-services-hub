@@ -277,6 +277,7 @@ export default function ProviderInvoiceTemplatePage() {
       }
 
       setInvoice(enrichedInvoiceData)
+      console.log('📊 Final enriched invoice data:', enrichedInvoiceData)
       
       const booking = bookingData
       
@@ -656,7 +657,7 @@ export default function ProviderInvoiceTemplatePage() {
             subtotal: editData.subtotal || invoice.subtotal || invoice.amount,
             vat_percent: editData.vat_percent || (invoice.vat_percent ? invoice.vat_percent / 100 : 0.05),
             vat_amount: editData.vat_amount || invoice.vat_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) * (editData.vat_percent || (invoice.vat_percent ? invoice.vat_percent / 100 : 0.05))),
-            total: editData.total_amount || invoice.total_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) + (editData.vat_amount || invoice.vat_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) * 0.05))),
+            total: ((editData.subtotal || invoice.subtotal || invoice.amount) + (editData.vat_amount || invoice.vat_amount || ((editData.subtotal || invoice.subtotal || invoice.amount) * 0.05))),
             status: invoice.status as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled',
             currency: invoice.currency || 'USD',
             notes: editData.notes || invoice.notes,
