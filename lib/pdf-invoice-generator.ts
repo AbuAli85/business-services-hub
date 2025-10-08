@@ -179,9 +179,9 @@ export async function generateProfessionalPDF(
     safeSubtotal = 840 // Default value for demonstration
   }
   
-  const safeTaxRate = invoice.tax_rate || 5
-  const safeTaxAmount = (safeSubtotal * safeTaxRate) / 100
-  const safeTotal = safeSubtotal + safeTaxAmount
+  const safeVatPercent = invoice.vat_percent || 5
+  const safeVatAmount = (safeSubtotal * safeVatPercent) / 100
+  const safeTotal = safeSubtotal + safeVatAmount
   
   // Payment information
   const paymentTerms = invoice.payment_terms || 'Due within 30 days'
@@ -339,8 +339,8 @@ export async function generateProfessionalPDF(
   addText(doc, formatCurrency(safeSubtotal, 'OMR'), summaryX + summaryWidth - 10, summaryY + 12, 'body', premiumColors.darkGray, 'right')
   
   // VAT
-  addText(doc, `VAT (${safeTaxRate}%):`, summaryX + 10, summaryY + 20, 'body', premiumColors.darkGray)
-  addText(doc, formatCurrency(safeTaxAmount, 'OMR'), summaryX + summaryWidth - 10, summaryY + 20, 'body', premiumColors.darkGray, 'right')
+  addText(doc, `VAT (${safeVatPercent}%):`, summaryX + 10, summaryY + 20, 'body', premiumColors.darkGray)
+  addText(doc, formatCurrency(safeVatAmount, 'OMR'), summaryX + summaryWidth - 10, summaryY + 20, 'body', premiumColors.darkGray, 'right')
   
   // Total with highlight
   drawBox(doc, summaryX + 5, summaryY + 26, summaryWidth - 10, 12, colors.primary, colors.primary, 0)
@@ -414,7 +414,8 @@ export interface InvoiceWithDetails {
   id: number
   invoice_number?: string
   subtotal?: number
-  tax_rate?: number
+  vat_percent?: number
+  vat_amount?: number
   total?: number
   status?: string
   payment_terms?: string

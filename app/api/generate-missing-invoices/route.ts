@@ -135,8 +135,8 @@ export async function POST(request: NextRequest) {
               status: 'issued',
               due_date: dueDate.toISOString(),
               subtotal,
-              tax_rate: vatPercent,
-              tax_amount: vatAmount,
+              vat_percent: vatPercent,
+              vat_amount: vatAmount,
               total_amount: totalAmount
             })
             .select()

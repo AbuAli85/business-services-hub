@@ -127,8 +127,8 @@ export const fetchInvoiceData = async (invoiceId: string): Promise<Invoice | nul
         return dueDate.toISOString()
       })(),
       subtotal: invoice.amount || 0,
-      tax_rate: 0, // Default to 0% tax - you can add this to your invoices table
-      tax_amount: 0,
+      vat_percent: 0, // Default to 0% VAT - you can add this to your invoices table
+      vat_amount: 0,
       total: invoice.amount || 0,
       status: invoice.status as any,
       currency: invoice.currency || 'USD',

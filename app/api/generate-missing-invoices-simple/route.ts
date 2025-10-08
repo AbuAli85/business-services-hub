@@ -109,8 +109,8 @@ export async function POST(request: NextRequest) {
             invoice_number: invoiceNumber,
             due_date: dueDate.toISOString(),
             subtotal: subtotal,
-            tax_rate: vatPercent,
-            tax_amount: vatAmount,
+            vat_percent: vatPercent,
+            vat_amount: vatAmount,
             total_amount: totalAmount,
             payment_terms: 'Payment due within 30 days',
             notes: `Invoice for ${booking.title} - Booking #${booking.id.slice(0, 8)}`

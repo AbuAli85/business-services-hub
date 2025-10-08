@@ -5,6 +5,15 @@
   transition: width 0.3s ease-in-out;
 }
 
+/* Booking progress bar with data attribute */
+.booking-progress-bar {
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+  height: 0.75rem;
+  border-radius: 9999px;
+  transition: all 0.5s ease-out;
+  width: attr(data-width, 0%);
+}
+
 /* Calendar day cells */
 .calendar-day {
   transition: all 0.2s ease-in-out;

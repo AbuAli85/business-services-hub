@@ -74,14 +74,24 @@ export function ActivityFeed(props: ActivityFeedProps) {
       <CardContent>
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <select className="form-input w-40" value={activityType} onChange={(e) => setActivityType(e.target.value as ActivityType)}>
+            <select 
+              className="form-input w-40" 
+              value={activityType} 
+              onChange={(e) => setActivityType(e.target.value as ActivityType)}
+              aria-label="Filter by activity type"
+            >
               <option value="all">All Types</option>
               <option value="bookings">Bookings</option>
               <option value="payments">Payments</option>
               <option value="milestones">Milestones</option>
               <option value="system">System</option>
             </select>
-            <select className="form-input w-36" value={activityStatus} onChange={(e) => setActivityStatus(e.target.value as ActivityStatus)}>
+            <select 
+              className="form-input w-36" 
+              value={activityStatus} 
+              onChange={(e) => setActivityStatus(e.target.value as ActivityStatus)}
+              aria-label="Filter by activity status"
+            >
               <option value="all">All Statuses</option>
               <option value="completed">Completed</option>
               <option value="pending">Pending</option>
@@ -89,7 +99,12 @@ export function ActivityFeed(props: ActivityFeedProps) {
               <option value="approved">Approved</option>
               <option value="info">Info</option>
             </select>
-            <select className="form-input w-32" value={activityDateRange} onChange={(e) => setActivityDateRange(e.target.value as any)}>
+            <select 
+              className="form-input w-32" 
+              value={activityDateRange} 
+              onChange={(e) => setActivityDateRange(e.target.value as any)}
+              aria-label="Filter by date range"
+            >
               <option value="today">Today</option>
               <option value="week">This Week</option>
               <option value="month">This Month</option>

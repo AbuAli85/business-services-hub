@@ -1,5 +1,6 @@
 'use client'
 
+import './kpi-cards-styles.css'
 import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -280,8 +281,12 @@ export function EnhancedPerformanceMetrics({ data, breakdown, insights }: KPIGri
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
-                style={{ width: `${Math.min(data.response_rate * 100, 100)}%` }}
+                ref={(node) => {
+                  if (node) {
+                    node.style.setProperty('--progress-width', `${Math.min(data.response_rate * 100, 100)}%`)
+                  }
+                }}
+                className="kpi-progress-bar kpi-progress-bar--blue"
               />
             </div>
             <div className="flex items-center justify-between text-xs">
@@ -310,8 +315,12 @@ export function EnhancedPerformanceMetrics({ data, breakdown, insights }: KPIGri
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
-                style={{ width: `${Math.min(data.completion_rate * 100, 100)}%` }}
+                ref={(node) => {
+                  if (node) {
+                    node.style.setProperty('--progress-width', `${Math.min(data.completion_rate * 100, 100)}%`)
+                  }
+                }}
+                className="kpi-progress-bar kpi-progress-bar--green"
               />
             </div>
             <div className="flex items-center justify-between text-xs">
@@ -340,12 +349,16 @@ export function EnhancedPerformanceMetrics({ data, breakdown, insights }: KPIGri
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className={`h-3 rounded-full transition-all duration-700 ease-out shadow-sm ${
+                ref={(node) => {
+                  if (node) {
+                    node.style.setProperty('--progress-width', `${Math.min(Math.abs(data.monthly_growth), 100)}%`)
+                  }
+                }}
+                className={`kpi-progress-bar ${
                   data.monthly_growth >= 0 
-                    ? 'bg-gradient-to-r from-green-500 to-green-600' 
-                    : 'bg-gradient-to-r from-red-500 to-red-600'
+                    ? 'kpi-progress-bar--green' 
+                    : 'kpi-progress-bar--red'
                 }`}
-                style={{ width: `${Math.min(Math.abs(data.monthly_growth), 100)}%` }}
               />
             </div>
             <div className="flex items-center justify-between text-xs">
@@ -375,14 +388,28 @@ export function EnhancedPerformanceMetrics({ data, breakdown, insights }: KPIGri
                       <span className="font-semibold text-gray-900">{Math.round((b.completion_rate || 0) * 100)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-gradient-to-r from-green-500 to-green-600" style={{ width: `${Math.min((b.completion_rate || 0) * 100, 100)}%` }} />
+                      <div 
+                        ref={(node) => {
+                          if (node) {
+                            node.style.setProperty('--progress-width', `${Math.min((b.completion_rate || 0) * 100, 100)}%`)
+                          }
+                        }}
+                        className="service-progress-bar service-progress-bar--green" 
+                      />
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Response</span>
                       <span className="font-semibold text-gray-900">{b.response_rate != null ? `${Math.round(b.response_rate * 100)}%` : '—'}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600" style={{ width: `${Math.min(((b.response_rate || 0) * 100), 100)}%` }} />
+                      <div 
+                        ref={(node) => {
+                          if (node) {
+                            node.style.setProperty('--progress-width', `${Math.min(((b.response_rate || 0) * 100), 100)}%`)
+                          }
+                        }}
+                        className="service-progress-bar service-progress-bar--blue" 
+                      />
                     </div>
                   </div>
                 </div>

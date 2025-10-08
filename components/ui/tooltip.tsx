@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import "./tooltip-styles.css"
 
 interface TooltipProps {
   children: React.ReactNode
@@ -155,13 +156,20 @@ const Tooltip = ({ children, content, side, className }: TooltipProps) => {
         {children}
         {isOpen && (
           <div
-            ref={contentRef}
+            ref={(node) => {
+              if (node) {
+                node.style.setProperty('--tooltip-top', `${position.top}px`)
+                node.style.setProperty('--tooltip-left', `${position.left}px`)
+                if (contentRef) {
+                  (contentRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+                }
+              }
+            }}
             className={cn(
-              "fixed z-50 overflow-hidden rounded-md bg-slate-900 px-3 py-1.5 text-xs text-slate-50 shadow-lg animate-in fade-in-0 zoom-in-95",
+              "tooltip-content",
               defaultClassName,
               className
             )}
-            style={{ top: position.top, left: position.left }}
           >
             {content}
           </div>
@@ -238,14 +246,25 @@ const TooltipContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTM
   }
   return (
     <div
-      ref={mergedRef}
+      ref={(node) => {
+        if (node) {
+          node.style.setProperty('--tooltip-top', `${ctx.position.top}px`)
+          node.style.setProperty('--tooltip-left', `${ctx.position.left}px`)
+        }
+        if (mergedRef) {
+          if (typeof mergedRef === 'function') {
+            mergedRef(node)
+          } else {
+            (mergedRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+          }
+        }
+      }}
       className={cn(
-        "fixed z-50 overflow-hidden rounded-md bg-slate-900 px-3 py-1.5 text-xs text-slate-50 shadow-lg animate-in fade-in-0 zoom-in-95",
+        "tooltip-content",
         provider.defaultClassName,
         ctx.className,
         className
       )}
-      style={{ top: ctx.position.top, left: ctx.position.left }}
       {...props}
     >
       {children}

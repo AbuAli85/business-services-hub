@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import './progress-styles.css'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -240,8 +241,8 @@ export function PremiumRecentBookings({ bookings, className }: PremiumRecentBook
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
                               <div 
-                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500 ease-out"
-                                style={{ width: `${progressPercentage}%` }}
+                                className="booking-progress-bar"
+                                data-width={`${progressPercentage}%`}
                               />
                             </div>
                             <div className="flex items-center justify-between text-xs text-gray-500 mt-2">

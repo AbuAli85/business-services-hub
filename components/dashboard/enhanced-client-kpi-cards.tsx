@@ -1,5 +1,6 @@
 'use client'
 
+import './kpi-cards-styles.css'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -245,8 +246,12 @@ export function EnhancedClientPerformanceMetrics({ data }: KPIGridProps) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
-                style={{ width: `${Math.min(calculateSuccessRate(), 100)}%` }}
+                ref={(node) => {
+                  if (node) {
+                    node.style.setProperty('--progress-width', `${Math.min(calculateSuccessRate(), 100)}%`)
+                  }
+                }}
+                className="kpi-progress-bar kpi-progress-bar--green"
               />
             </div>
             <div className="flex items-center justify-between text-xs">
@@ -275,8 +280,12 @@ export function EnhancedClientPerformanceMetrics({ data }: KPIGridProps) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
-                style={{ width: `${Math.min(calculateMonthlyGrowth(), 100)}%` }}
+                ref={(node) => {
+                  if (node) {
+                    node.style.setProperty('--progress-width', `${Math.min(calculateMonthlyGrowth(), 100)}%`)
+                  }
+                }}
+                className="kpi-progress-bar kpi-progress-bar--blue"
               />
             </div>
             <div className="flex items-center justify-between text-xs">
@@ -305,8 +314,12 @@ export function EnhancedClientPerformanceMetrics({ data }: KPIGridProps) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-700 ease-out shadow-sm"
-                style={{ width: `${Math.min((data.totalReviews / Math.max(data.totalBookings, 1)) * 100, 100)}%` }}
+                ref={(node) => {
+                  if (node) {
+                    node.style.setProperty('--progress-width', `${Math.min((data.totalReviews / Math.max(data.totalBookings, 1)) * 100, 100)}%`)
+                  }
+                }}
+                className="kpi-progress-bar kpi-progress-bar--purple"
               />
             </div>
             <div className="flex items-center justify-between text-xs">

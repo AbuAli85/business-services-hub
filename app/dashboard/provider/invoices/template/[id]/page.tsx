@@ -120,8 +120,8 @@ export default function ProviderInvoiceTemplatePage() {
           invoice_number,
           due_date,
           subtotal,
-          tax_rate,
-          tax_amount,
+          vat_percent,
+          vat_amount,
           total_amount,
           notes,
           payment_terms,
@@ -286,9 +286,9 @@ export default function ProviderInvoiceTemplatePage() {
         notes: invoiceData.notes,
         payment_terms: invoiceData.payment_terms,
         subtotal: invoiceData.subtotal || invoiceData.amount,
-        vat_percent: (invoiceData.tax_rate || 0) / 100, // Convert percentage to decimal
-        vat_amount: invoiceData.tax_amount,
-        total_amount: invoiceData.total_amount || invoiceData.amount + (invoiceData.tax_amount || invoiceData.amount * 0.05)
+        vat_percent: (invoiceData.vat_percent || 0) / 100, // Convert percentage to decimal
+        vat_amount: invoiceData.vat_amount,
+        total_amount: invoiceData.total_amount || invoiceData.amount + (invoiceData.vat_amount || invoiceData.amount * 0.05)
       })
     } catch (error) {
       console.error('❌ Unexpected error:', error)

@@ -1,0 +1,39 @@
+/* KPI Cards Progress Bar Styles */
+.kpi-progress-bar {
+  height: 0.75rem;
+  border-radius: 9999px;
+  transition: all 0.7s ease-out;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  width: var(--progress-width, 0%);
+}
+
+.kpi-progress-bar--blue {
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+}
+
+.kpi-progress-bar--green {
+  background: linear-gradient(to right, #10b981, #059669);
+}
+
+.kpi-progress-bar--red {
+  background: linear-gradient(to right, #ef4444, #dc2626);
+}
+
+.kpi-progress-bar--purple {
+  background: linear-gradient(to right, #a855f7, #9333ea);
+}
+
+/* Service breakdown progress bars */
+.service-progress-bar {
+  height: 0.5rem;
+  border-radius: 9999px;
+  width: var(--progress-width, 0%);
+}
+
+.service-progress-bar--green {
+  background: linear-gradient(to right, #10b981, #059669);
+}
+
+.service-progress-bar--blue {
+  background: linear-gradient(to right, #3b82f6, #2563eb);
+}
