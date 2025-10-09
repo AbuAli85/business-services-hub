@@ -38,6 +38,24 @@ export async function POST(request: NextRequest) {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    // First try to get the basic invoice data
+    const { data: basicInvoice, error: basicError } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('id', invoiceId)
+      .single()
+
+    if (basicError) {
+      console.error('❌ Failed to fetch basic invoice:', basicError)
+      return NextResponse.json({ 
+        error: 'Failed to fetch invoice', 
+        details: basicError.message 
+      }, { status: 500 })
+    }
+
+    console.log('✅ Basic invoice data fetched:', basicInvoice)
+
+    // Then try to get the full invoice with relationships
     const { data: invoice, error: invoiceError } = await supabase
       .from('invoices')
       .select(`
@@ -46,11 +64,19 @@ export async function POST(request: NextRequest) {
           id,
           status,
           requirements,
+          client_id,
+          provider_id,
+          service_id,
           client:profiles!bookings_client_id_fkey(
             id,
             full_name,
             email,
             phone,
+            company_name,
+            address,
+            website,
+            logo_url,
+            company_id,
             company:companies(
               id,
               name,
@@ -65,11 +91,17 @@ export async function POST(request: NextRequest) {
             id,
             title,
             description,
+            provider_id,
             provider:profiles!services_provider_id_fkey(
               id,
               full_name,
               email,
               phone,
+              company_name,
+              address,
+              website,
+              logo_url,
+              company_id,
               company:companies(
                 id,
                 name,
@@ -86,36 +118,36 @@ export async function POST(request: NextRequest) {
       .eq('id', invoiceId)
       .single()
 
+    let finalInvoice = invoice
     if (invoiceError) {
-      console.error('❌ Database error:', invoiceError)
-      return NextResponse.json({ 
-        error: 'Database error', 
-        details: invoiceError.message 
-      }, { status: 500 })
+      console.error('❌ Relationship query error:', invoiceError)
+      console.log('⚠️ Falling back to basic invoice data')
+      // Use basic invoice data if relationship query fails
+      finalInvoice = basicInvoice
     }
 
-    if (!invoice) {
+    if (!finalInvoice) {
       console.error('❌ Invoice not found')
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     }
 
     console.log('✅ Invoice data fetched successfully for template PDF')
-    console.log('🔍 PDF API - Full invoice structure:', JSON.stringify(invoice, null, 2))
-    console.log('🔍 PDF API - Booking data:', invoice?.booking)
-    console.log('🔍 PDF API - Provider data:', invoice?.booking?.service?.provider)
-    console.log('🔍 PDF API - Provider company:', invoice?.booking?.service?.provider?.company)
-    console.log('🔍 PDF API - Client data:', invoice?.booking?.client)
-    console.log('🔍 PDF API - Client company:', invoice?.booking?.client?.company)
+    console.log('🔍 PDF API - Full invoice structure:', JSON.stringify(finalInvoice, null, 2))
+    console.log('🔍 PDF API - Booking data:', finalInvoice?.booking)
+    console.log('🔍 PDF API - Provider data:', finalInvoice?.booking?.service?.provider)
+    console.log('🔍 PDF API - Provider company:', finalInvoice?.booking?.service?.provider?.company)
+    console.log('🔍 PDF API - Client data:', finalInvoice?.booking?.client)
+    console.log('🔍 PDF API - Client company:', finalInvoice?.booking?.client?.company)
 
     // Enrich invoice data with provider and client details if missing
-    let enrichedInvoiceData = { ...invoice }
+    let enrichedInvoiceData = { ...finalInvoice }
     
     // Always fetch fresh provider and client data to ensure we have the latest information
     console.log('🔍 PDF API - Fetching fresh provider and client data...')
     
     // Fetch provider data directly from database
-    if (invoice.provider_id) {
-      console.log('🔍 PDF API - Fetching provider data for ID:', invoice.provider_id)
+    if (finalInvoice.provider_id) {
+      console.log('🔍 PDF API - Fetching provider data for ID:', finalInvoice.provider_id)
       try {
         const { data: providerProfile, error: providerError } = await supabase
           .from('profiles')
@@ -139,7 +171,7 @@ export async function POST(request: NextRequest) {
               logo_url
             )
           `)
-          .eq('id', invoice.provider_id)
+          .eq('id', finalInvoice.provider_id)
           .single()
 
         if (!providerError && providerProfile) {
@@ -184,8 +216,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch client data directly from database
-    if (invoice.client_id) {
-      console.log('🔍 PDF API - Fetching client data for ID:', invoice.client_id)
+    if (finalInvoice.client_id) {
+      console.log('🔍 PDF API - Fetching client data for ID:', finalInvoice.client_id)
       try {
         const { data: clientProfile, error: clientError } = await supabase
           .from('profiles')
@@ -209,7 +241,7 @@ export async function POST(request: NextRequest) {
               logo_url
             )
           `)
-          .eq('id', invoice.client_id)
+          .eq('id', finalInvoice.client_id)
           .single()
 
         if (!clientError && clientProfile) {
@@ -257,6 +289,9 @@ export async function POST(request: NextRequest) {
     console.log('🔍 PDF API - Final enriched invoice data:', JSON.stringify(invoiceForPdf, null, 2))
     console.log('🔍 PDF API - Final provider data:', invoiceForPdf.booking?.service?.provider)
     console.log('🔍 PDF API - Final client data:', invoiceForPdf.booking?.client)
+    console.log('🔍 PDF API - Provider ID:', finalInvoice.provider_id)
+    console.log('🔍 PDF API - Client ID:', finalInvoice.client_id)
+    console.log('🔍 PDF API - Invoice ID:', finalInvoice.id)
 
     // Debug VAT and calculation data
     console.log('🔍 PDF API - VAT Data:', {
@@ -303,7 +338,7 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Template PDF generated successfully, size:', pdfBuffer.length, 'bytes')
 
-    const invoiceNumber = invoice.invoice_number || `INV-${invoice.id.slice(-8).toUpperCase()}`
+    const invoiceNumber = finalInvoice.invoice_number || `INV-${finalInvoice.id.slice(-8).toUpperCase()}`
 
     return new NextResponse(pdfBuffer as any, {
       status: 200,

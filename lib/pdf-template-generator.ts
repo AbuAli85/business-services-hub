@@ -119,9 +119,20 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-GB')
   const dueDate = new Date(invoice.due_date || Date.now() + 30 * 86400000).toLocaleDateString('en-GB')
   
-  // Company information (Provider)
+  // Company information (Provider) - Try multiple sources
   const providerCompany = invoice.booking?.service?.provider?.company || {}
   const provider = invoice.booking?.service?.provider || {}
+  
+  // Fallback to direct invoice data if nested structure is missing
+  const directProviderId = invoice.provider_id
+  const directClientId = invoice.client_id
+  
+  console.log('🔍 PDF Generator - Provider ID sources:', {
+    nested: invoice.booking?.service?.provider?.id,
+    direct: directProviderId,
+    hasNestedData: !!invoice.booking?.service?.provider
+  })
+  
   const companyName = providerCompany.name || provider.company_name || 'Your Company Name'
   const companyAddress = providerCompany.address || provider.address || '123 Anywhere St., Any City, ST 12345'
   const companyPhone = providerCompany.phone || provider.phone || '123-456-7890'
@@ -140,12 +151,15 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   const clientWebsite = clientCompany.website || client.website || 'clientcompany.com'
   
   // Debug logging for extracted data
+  console.log('🔍 PDF Generator - Raw provider data:', invoice.booking?.service?.provider)
+  console.log('🔍 PDF Generator - Raw client data:', invoice.booking?.client)
   console.log('🔍 PDF Generator - Extracted company data:', {
     companyName,
     companyAddress,
     companyPhone,
     companyEmail,
-    companyWebsite
+    companyWebsite,
+    companyLogo
   })
   
   console.log('🔍 PDF Generator - Extracted client data:', {
@@ -229,7 +243,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
 
   // Invoice Details (Top Right) - Proper positioning
-  const rightColumnX = contentStartX + contentWidth - 20
+  const rightColumnX = contentStartX + contentWidth - 15
   addText(doc, 'Invoice', rightColumnX, 20, 'title', templateColors.accent, 'right')
   addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 30, 'subheading', templateColors.primary, 'right')
 
@@ -243,19 +257,21 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   // Bill To (Right) - Properly aligned with better spacing
   const billToY = 55
-  const billToRightX = contentStartX + contentWidth - 10 // Give more margin from right edge
+  const billToRightX = contentStartX + contentWidth - 15 // Give more margin from right edge
+  const billToMaxWidth = 80 // Limit width to prevent cramping
+  
   addText(doc, 'Bill To:', billToRightX, billToY, 'heading', templateColors.accent, 'right')
-  let billToCurrentY = billToY + 6
+  let billToCurrentY = billToY + 7
   addText(doc, clientName, billToRightX, billToCurrentY, 'subheading', templateColors.primary, 'right')
-  billToCurrentY += 5
+  billToCurrentY += 6
   addText(doc, clientCompanyName, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 5
+  billToCurrentY += 6
   addText(doc, clientAddress, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 5
+  billToCurrentY += 6
   addText(doc, clientEmail, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 5
+  billToCurrentY += 6
   addText(doc, clientPhone, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 5
+  billToCurrentY += 6
   addText(doc, clientWebsite, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
 
   // === ITEMS TABLE (Full-width bordered table matching template) ===
@@ -264,9 +280,9 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   // Define table structure - adjusted widths for better proportions
   const tableX = contentStartX
-  const tableWidth = contentWidth
+  const tableWidth = contentWidth - 5 // Leave some margin from right edge
   const rowHeight = 12
-  const colWidths = [15, 65, 20, 30, 35] // Item, Description, Qty/Hour, Rate, Total
+  const colWidths = [15, 60, 20, 30, 35] // Item, Description, Qty/Hour, Rate, Total
   
   // Draw header row with gray background
   drawBox(doc, tableX, tableStartY, tableWidth, rowHeight, templateColors.lightGray, templateColors.borderGray, 0.5)
