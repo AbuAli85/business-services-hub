@@ -165,126 +165,223 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
 
   // === MAIN CONTENT AREA ===
   
-  // Add subtle border around main content area
-  drawBox(doc, contentStartX - 2, 15, contentWidth + 4, pageHeight - 30, undefined, templateColors.borderGray, 0.5)
+  // === HEADER SECTION (Two-column layout) ===
+  let currentY = 25
   
-  // Company Information (Top Left) - Better spacing
-  addText(doc, companyName, contentStartX, 25, 'title', templateColors.primary, 'left')
+  // Company Information (Top Left)
+  addText(doc, companyName, contentStartX, currentY, 'title', templateColors.primary, 'left')
+  currentY += 10
   
-  // Company contact details with better spacing
-  let currentY = 40
-  addText(doc, companyAddress, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 7
-  addText(doc, companyPhone, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 7
-  addText(doc, companyEmail, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 7
-  addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  // Company contact details with icons represented by symbols
+  addText(doc, `📍 ${companyAddress}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  currentY += 6
+  addText(doc, `📞 ${companyPhone}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  currentY += 6
+  addText(doc, `✉ ${companyEmail}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  currentY += 6
+  addText(doc, `🌐 ${companyWebsite}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
 
-  // === INVOICE DETAILS (Top Right) - Better layout and spacing
-  const invoiceDetailsX = contentStartX + contentWidth - 90
-  addText(doc, 'Invoice', invoiceDetailsX, 25, 'title', templateColors.accent, 'right')
-  addText(doc, `Invoice Number: #${invoiceNumber}`, invoiceDetailsX, 35, 'body', templateColors.darkGray, 'right')
-  addText(doc, `Invoice Date: ${createdDate}`, invoiceDetailsX, 42, 'body', templateColors.darkGray, 'right')
-  addText(doc, `Due Date: ${dueDate}`, invoiceDetailsX, 49, 'body', templateColors.darkGray, 'right')
+  // Invoice Details (Top Right) - Matching template exactly
+  const rightColumnX = contentStartX + contentWidth - 50
+  addText(doc, 'Invoice', rightColumnX, 25, 'title', templateColors.accent, 'right')
+  addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 35, 'subheading', templateColors.primary, 'right')
 
-  // === PROMINENT INVOICE NUMBER ===
-  currentY = 70
-  addText(doc, `Invoice #${invoiceNumber}`, contentStartX, currentY, 'subtitle', templateColors.accent, 'left')
-  currentY += 15
+  // === DATES AND BILL TO SECTION (Two-column layout) ===
+  currentY = 75
+  
+  // Dates (Left)
+  addText(doc, `Date: ${createdDate}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  currentY += 6
+  addText(doc, `Due Date: ${dueDate}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  
+  // Bill To (Right)
+  const billToY = 75
+  addText(doc, 'Bill To:', rightColumnX, billToY, 'heading', templateColors.accent, 'right')
+  let billToCurrentY = billToY + 8
+  addText(doc, clientName, rightColumnX, billToCurrentY, 'subheading', templateColors.primary, 'right')
+  billToCurrentY += 6
+  addText(doc, clientCompany, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  billToCurrentY += 6
+  addText(doc, clientAddress, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  billToCurrentY += 6
+  addText(doc, clientEmail, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  billToCurrentY += 6
+  addText(doc, `📞 ${clientPhone}`, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  billToCurrentY += 6
+  addText(doc, `🌐 ${clientWebsite}`, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
 
-  // === BILL TO SECTION ===
-  addText(doc, 'Bill To:', contentStartX, currentY, 'heading', templateColors.accent, 'left')
-  currentY += 8
-  addText(doc, clientName, contentStartX, currentY, 'subheading', templateColors.primary, 'left')
-  currentY += 6
-  addText(doc, clientCompany, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
-  addText(doc, clientAddress, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
-  addText(doc, clientEmail, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
-  addText(doc, clientPhone, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
-  addText(doc, clientWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-
-  // === ITEMS TABLE ===
-  currentY += 20
+  // === ITEMS TABLE (Full-width bordered table matching template) ===
+  currentY = 115
   const tableStartY = currentY
   
-  // Table headers with better spacing
-  const colWidths = [15, 60, 15, 25, 25] // Item, Description, Qty, Rate, Total
-  const colX = [contentStartX, contentStartX + 15, contentStartX + 75, contentStartX + 90, contentStartX + 115]
+  // Define table structure
+  const tableX = contentStartX
+  const tableWidth = contentWidth
+  const rowHeight = 10
+  const colWidths = [20, 60, 25, 30, 30] // Item, Description, Qty/Hour, Rate, Total
   
-  // Header background with better height
-  drawBox(doc, contentStartX, currentY - 6, contentWidth, 10, templateColors.lightGray)
+  // Draw header row with gray background
+  drawBox(doc, tableX, tableStartY, tableWidth, rowHeight, templateColors.lightGray, templateColors.borderGray, 0.5)
   
-  addText(doc, 'Item', colX[0], currentY, 'subheading', templateColors.primary, 'left')
-  addText(doc, 'Description', colX[1], currentY, 'subheading', templateColors.primary, 'left')
-  addText(doc, 'Qty', colX[2], currentY, 'subheading', templateColors.primary, 'left')
-  addText(doc, 'Rate', colX[3], currentY, 'subheading', templateColors.primary, 'left')
-  addText(doc, 'Total', colX[4], currentY, 'subheading', templateColors.primary, 'left')
-  
-  currentY += 10
-  
-  // Table data with better spacing
-  if (invoice.invoice_items && invoice.invoice_items.length > 0) {
-    invoice.invoice_items.forEach((item: any, index: number) => {
-      addText(doc, String(index + 1).padStart(2, '0'), colX[0], currentY, 'body', templateColors.darkGray, 'left')
-      addText(doc, item.description || 'Content Creation', colX[1], currentY, 'body', templateColors.darkGray, 'left')
-      addText(doc, String(item.quantity || 1), colX[2], currentY, 'body', templateColors.darkGray, 'left')
-      addText(doc, formatCurrency(item.unit_price || safeSubtotal, 'OMR'), colX[3], currentY, 'body', templateColors.darkGray, 'left')
-      addText(doc, formatCurrency((item.unit_price || safeSubtotal) * (item.quantity || 1), 'OMR'), colX[4], currentY, 'body', templateColors.darkGray, 'left')
-      currentY += 8
-    })
-  } else {
-    // Default item if no items
-    addText(doc, '01', colX[0], currentY, 'body', templateColors.darkGray, 'left')
-    addText(doc, 'Content Creation', colX[1], currentY, 'body', templateColors.darkGray, 'left')
-    addText(doc, '1', colX[2], currentY, 'body', templateColors.darkGray, 'left')
-    addText(doc, formatCurrency(safeSubtotal, 'OMR'), colX[3], currentY, 'body', templateColors.darkGray, 'left')
-    addText(doc, formatCurrency(safeSubtotal, 'OMR'), colX[4], currentY, 'body', templateColors.darkGray, 'left')
-    currentY += 8
+  // Add column borders for header
+  let colX = tableX
+  for (let i = 0; i < colWidths.length; i++) {
+    doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
+    doc.setLineWidth(0.5)
+    doc.line(colX, tableStartY, colX, tableStartY + rowHeight)
+    colX += colWidths[i]
   }
-
-  // === FINANCIAL SUMMARY ===
-  currentY += 15
-  const summaryX = contentStartX + contentWidth - 60
+  doc.line(colX, tableStartY, colX, tableStartY + rowHeight) // Right border
   
-  // Add a subtle line above the summary
+  // Header text
+  addText(doc, 'Item', tableX + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'left')
+  addText(doc, 'Description', tableX + colWidths[0] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'left')
+  addText(doc, 'Qty/Hour', tableX + colWidths[0] + colWidths[1] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'center')
+  addText(doc, 'Rate', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'right')
+  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'right')
+  
+  currentY = tableStartY + rowHeight
+  
+  // Table rows with borders
+  const items = invoice.items || (invoice.invoice_items && invoice.invoice_items.length > 0 ? invoice.invoice_items : [{
+    product: invoice.booking?.service?.title || 'Professional Service',
+    description: invoice.booking?.service?.description || 'High-quality professional service',
+    qty: 1,
+    unit_price: safeSubtotal,
+    total: safeSubtotal
+  }])
+  
+  items.forEach((item: any, index: number) => {
+    // Draw row background (alternating for better readability)
+    if (index % 2 === 1) {
+      drawBox(doc, tableX, currentY, tableWidth, rowHeight, [250, 250, 250])
+    }
+    
+    // Draw borders
+    drawBox(doc, tableX, currentY, tableWidth, rowHeight, undefined, templateColors.borderGray, 0.5)
+    
+    // Column separators
+    colX = tableX
+    for (let i = 0; i < colWidths.length; i++) {
+      doc.line(colX, currentY, colX, currentY + rowHeight)
+      colX += colWidths[i]
+    }
+    doc.line(colX, currentY, colX, currentY + rowHeight) // Right border
+    
+    // Row data
+    addText(doc, String(index + 1).padStart(2, '0'), tableX + 2, currentY + 6.5, 'body', templateColors.darkGray, 'left')
+    addText(doc, item.product || item.description || 'Service', tableX + colWidths[0] + 2, currentY + 6.5, 'body', templateColors.darkGray, 'left')
+    addText(doc, String(item.qty || item.quantity || 1), tableX + colWidths[0] + colWidths[1] + 12, currentY + 6.5, 'body', templateColors.darkGray, 'center')
+    addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, currentY + 6.5, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, currentY + 6.5, 'body', templateColors.darkGray, 'right')
+    
+    currentY += rowHeight
+  })
+
+  // === FINANCIAL SUMMARY (Right-aligned matching template) ===
+  currentY += 10
+  const summaryBoxX = contentStartX + contentWidth - 80
+  const summaryBoxWidth = 80
+  
+  // Draw summary box with border
+  const summaryStartY = currentY
+  drawBox(doc, summaryBoxX, summaryStartY, summaryBoxWidth, 30, templateColors.white, templateColors.borderGray, 0.5)
+  
+  currentY += 8
+  
+  // Subtotal row
+  addText(doc, 'Subtotal', summaryBoxX + 5, currentY, 'subheading', templateColors.darkGray, 'left')
+  addText(doc, formatCurrency(safeSubtotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'subheading', templateColors.primary, 'right')
+  currentY += 7
+  
+  // VAT row
+  addText(doc, `VAT (${(displayVatPercent * 100).toFixed(1)}%)`, summaryBoxX + 5, currentY, 'subheading', templateColors.darkGray, 'left')
+  addText(doc, formatCurrency(displayVatAmount, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'subheading', templateColors.primary, 'right')
+  
+  // Separator line
+  currentY += 5
   doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
   doc.setLineWidth(0.5)
-  doc.line(summaryX - 40, currentY - 5, summaryX, currentY - 5)
+  doc.line(summaryBoxX + 5, currentY, summaryBoxX + summaryBoxWidth - 5, currentY)
+  currentY += 5
   
-  addText(doc, `Subtotal: ${formatCurrency(safeSubtotal, 'OMR')}`, summaryX, currentY, 'body', templateColors.darkGray, 'right')
-  currentY += 7
-  addText(doc, `VAT (${(displayVatPercent * 100).toFixed(1)}%): ${formatCurrency(displayVatAmount, 'OMR')}`, summaryX, currentY, 'body', templateColors.darkGray, 'right')
-  currentY += 10
-  addText(doc, `Total Amount Due: ${formatCurrency(displayTotal, 'OMR')}`, summaryX, currentY, 'heading', templateColors.primary, 'right')
+  // Total row (bold)
+  addText(doc, 'Total Amount Due', summaryBoxX + 5, currentY, 'heading', templateColors.primary, 'left')
+  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'heading', templateColors.primary, 'right')
 
-  // === SIGNATURE AREA ===
-  currentY += 25
-  const signatureBoxY = currentY
-  drawBox(doc, contentStartX, signatureBoxY, 45, 18, templateColors.lightGray, templateColors.borderGray)
-  addText(doc, 'Name and Signature', contentStartX + 5, signatureBoxY + 10, 'body', templateColors.darkGray, 'left')
+  // === FOOTER SECTION (Two-column: Signature left, Terms right) ===
+  currentY += 20
+  const footerStartY = currentY
+  
+  // Signature Area (Left) - Dashed border box
+  const signatureBoxWidth = 65
+  const signatureBoxHeight = 25
+  
+  // Draw dashed border for signature (using multiple small lines)
+  doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
+  doc.setLineWidth(0.5)
+  
+  // Draw dashed rectangle manually
+  const dashLength = 2
+  const gapLength = 2
+  const totalDashGap = dashLength + gapLength
+  
+  // Top border (dashed)
+  for (let x = contentStartX; x < contentStartX + signatureBoxWidth; x += totalDashGap) {
+    doc.line(x, footerStartY, Math.min(x + dashLength, contentStartX + signatureBoxWidth), footerStartY)
+  }
+  // Bottom border (dashed)
+  for (let x = contentStartX; x < contentStartX + signatureBoxWidth; x += totalDashGap) {
+    doc.line(x, footerStartY + signatureBoxHeight, Math.min(x + dashLength, contentStartX + signatureBoxWidth), footerStartY + signatureBoxHeight)
+  }
+  // Left border (dashed)
+  for (let y = footerStartY; y < footerStartY + signatureBoxHeight; y += totalDashGap) {
+    doc.line(contentStartX, y, contentStartX, Math.min(y + dashLength, footerStartY + signatureBoxHeight))
+  }
+  // Right border (dashed)
+  for (let y = footerStartY; y < footerStartY + signatureBoxHeight; y += totalDashGap) {
+    doc.line(contentStartX + signatureBoxWidth, y, contentStartX + signatureBoxWidth, Math.min(y + dashLength, footerStartY + signatureBoxHeight))
+  }
+  
+  addText(doc, 'Name and Signature', contentStartX + signatureBoxWidth / 2, footerStartY + signatureBoxHeight / 2 + 2, 'body', templateColors.darkGray, 'center')
 
-  // === TERMS & CONDITIONS ===
-  const termsX = contentStartX + 55
-  const termsY = signatureBoxY
-  const termsWidth = contentWidth - 55
+  // === TERMS & CONDITIONS (Right) ===
+  const termsX = contentStartX + signatureBoxWidth + 10
+  const termsWidth = contentWidth - signatureBoxWidth - 10
   
-  addText(doc, 'Payment Terms:', termsX, termsY, 'subheading', templateColors.primary, 'left')
-  addText(doc, 'Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge.', termsX, termsY + 6, 'caption', templateColors.darkGray, 'left', termsWidth)
+  addText(doc, 'Terms & Conditions', termsX, footerStartY + 5, 'subheading', templateColors.accent, 'left')
   
-  addText(doc, 'Service Agreement:', termsX, termsY + 18, 'subheading', templateColors.primary, 'left')
-  addText(doc, 'All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days.', termsX, termsY + 24, 'caption', templateColors.darkGray, 'left', termsWidth)
+  let termsY = footerStartY + 12
+  const lineSpacing = 5
   
-  addText(doc, 'Disputes:', termsX, termsY + 36, 'subheading', templateColors.primary, 'left')
-  addText(doc, 'Any disputes must be submitted in writing within 15 days of invoice date. Contact us for questions.', termsX, termsY + 42, 'caption', templateColors.darkGray, 'left', termsWidth)
+  // Payment Terms
+  addText(doc, 'Payment Terms:', termsX, termsY, 'small', templateColors.primary, 'left')
+  termsY += 4
+  doc.setFontSize(7)
+  doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
+  const paymentTermsText = 'Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in OMR unless otherwise specified.'
+  const paymentLines = doc.splitTextToSize(paymentTermsText, termsWidth)
+  doc.text(paymentLines, termsX, termsY)
+  termsY += paymentLines.length * 3 + 3
+  
+  // Service Agreement
+  addText(doc, 'Service Agreement:', termsX, termsY, 'small', templateColors.primary, 'left')
+  termsY += 4
+  const serviceTermsText = 'All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.'
+  const serviceLines = doc.splitTextToSize(serviceTermsText, termsWidth)
+  doc.text(serviceLines, termsX, termsY)
+  termsY += serviceLines.length * 3 + 3
+  
+  // Disputes
+  addText(doc, 'Disputes:', termsX, termsY, 'small', templateColors.primary, 'left')
+  termsY += 4
+  const disputesText = 'Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
+  const disputesLines = doc.splitTextToSize(disputesText, termsWidth)
+  doc.text(disputesLines, termsX, termsY)
 
   // === FOOTER ===
-  const footerY = pageHeight - 15
-  addText(doc, 'Thank you for your business!', contentStartX, footerY, 'body', templateColors.accent, 'center')
+  const footerY = pageHeight - 10
+  addText(doc, 'Thank you for your business!', contentStartX + contentWidth / 2, footerY, 'subheading', templateColors.accent, 'center')
 
   return new Uint8Array(doc.output('arraybuffer'))
 }
