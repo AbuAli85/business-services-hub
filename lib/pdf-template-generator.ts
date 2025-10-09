@@ -140,7 +140,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   const safeTotal = invoice.total || (safeSubtotal + safeVatAmount)
   
   // Ensure VAT percentage is reasonable (max 25%)
-  const displayVatPercent = Math.min(safeVatPercent, 0.25)
+  const displayVatPercent = Math.min(safeVatPercent, 0.05)
   const displayVatAmount = safeSubtotal * displayVatPercent
   const displayTotal = safeSubtotal + displayVatAmount
 
