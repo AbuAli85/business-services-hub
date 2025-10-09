@@ -309,12 +309,12 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   currentY += 6
   addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
 
-  // Invoice Details (Top Right) - Tightened spacing for perfect alignment
+  // Invoice Details (Top Right) - Moved up for top alignment with company name
   const rightColumnX = pageWidth - 20
-  addText(doc, 'Invoice', rightColumnX, 24, 'title', templateColors.accent, 'right')
-  addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 31, 'body', templateColors.primary, 'right')
-  addText(doc, `Date: ${createdDate}`, rightColumnX, 37, 'body', templateColors.darkGray, 'right')
-  addText(doc, `Due Date: ${dueDate}`, rightColumnX, 42, 'body', templateColors.darkGray, 'right')
+  addText(doc, 'Invoice', rightColumnX, 22, 'title', templateColors.accent, 'right')
+  addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 29, 'body', templateColors.primary, 'right')
+  addText(doc, `Date: ${createdDate}`, rightColumnX, 35, 'body', templateColors.darkGray, 'right')
+  addText(doc, `Due Date: ${dueDate}`, rightColumnX, 40, 'body', templateColors.darkGray, 'right')
   
   // Add blue underline under "Invoice"
   doc.setDrawColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
@@ -322,7 +322,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   doc.line(rightColumnX - 35, 27, rightColumnX, 27)
 
   // === BILL TO SECTION (Right-aligned matching template) ===
-  const billToY = 50 // Reduced spacing to align under invoice details
+  const billToY = 43 // Moved up ~10mm closer to invoice header for compact layout
   const billToRightX = pageWidth - 20
   
   addText(doc, 'Bill To:', billToRightX, billToY, 'heading', templateColors.accent, 'right')
@@ -340,7 +340,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, clientWebsite, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
 
   // === ITEMS TABLE (Full-width bordered table matching template) ===
-  currentY = 95 // Added gap for better spacing like web preview
+  currentY = 82 // Moved up to start directly under Bill To for compact layout
   const tableStartY = currentY
   
   // Define table structure - Match template column widths exactly
@@ -416,15 +416,15 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   })
 
   // === FINANCIAL SUMMARY (Right-aligned matching template) ===
-  currentY += 25 // Increased spacing to match web gap
+  currentY += 15 // Reduced spacing for compact layout
   
   // Add subtle gray line above totals for separation
   doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
   doc.setLineWidth(0.3)
   doc.line(contentStartX, currentY - 2, contentStartX + contentWidth, currentY - 2)
   
-  const summaryBoxX = contentStartX + contentWidth - 85
-  const summaryBoxWidth = 75
+  const summaryBoxX = contentStartX + contentWidth - 90
+  const summaryBoxWidth = 85 // Increased width for cleaner right alignment
   
   // Draw summary box with border
   const summaryStartY = currentY
@@ -450,10 +450,10 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   // Total row (bold blue to match web emphasis)
   addText(doc, 'Total Amount Due', summaryBoxX + 3, currentY, 'heading', templateColors.primary, 'left')
-  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 3, currentY, 'heading', templateColors.accent, 'right')
+  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'heading', templateColors.accent, 'right')
 
   // === FOOTER SECTION (Side-by-side: Signature left, Terms right) ===
-  const footerStartY = pageHeight - 70
+  const footerStartY = pageHeight - 60 // Lifted higher for balanced layout
   const signatureWidth = 60
   const signatureHeight = 20
   
@@ -520,7 +520,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   doc.text(disputesLines, termsX, termsY)
 
   // === FOOTER ===
-  const footerY = pageHeight - 8
+  const footerY = pageHeight - 10 // Slightly higher for clean bottom margin
   
   // Add light separator line above thank you note
   doc.setDrawColor(230, 230, 230)
