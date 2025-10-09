@@ -322,7 +322,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   doc.line(rightColumnX - 35, 24, rightColumnX, 24)
 
   // === BILL TO SECTION (Right-aligned matching template) ===
-  const billToY = 38 // Raised higher for tighter spacing
+  const billToY = 41 // Slightly lower for proper breathing room below Due Date
   const billToRightX = pageWidth - 20
   
   addText(doc, 'Bill To:', billToRightX, billToY, 'heading', templateColors.accent, 'right')
@@ -375,8 +375,8 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, 'Item', tableX + 2, tableStartY + 8, 'subheading', templateColors.accent, 'left')
   addText(doc, 'Description', tableX + colWidths[0] + 2, tableStartY + 8, 'subheading', templateColors.accent, 'left')
   addText(doc, 'Qty/Hour', tableX + colWidths[0] + colWidths[1] + 12, tableStartY + 8, 'subheading', templateColors.accent, 'center')
-  addText(doc, 'Rate', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, tableStartY + 8, 'subheading', templateColors.accent, 'right')
-  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, tableStartY + 8, 'subheading', templateColors.accent, 'right')
+  addText(doc, 'Rate', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 26, tableStartY + 8, 'subheading', templateColors.accent, 'right')
+  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 26, tableStartY + 8, 'subheading', templateColors.accent, 'right')
   
   // Reset font for data rows
   doc.setFont('helvetica', 'normal')
@@ -414,14 +414,14 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     addText(doc, String(index + 1).padStart(2, '0'), tableX + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
     addText(doc, item.product || item.description || 'Service', tableX + colWidths[0] + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
     addText(doc, String(item.qty || item.quantity || 1), tableX + colWidths[0] + colWidths[1] + 12, currentY + 8, 'body', templateColors.darkGray, 'center')
-    addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, currentY + 8, 'body', templateColors.darkGray, 'right')
-    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, currentY + 8, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 26, currentY + 8, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 26, currentY + 8, 'body', templateColors.darkGray, 'right')
     
     currentY += rowHeight
   })
 
   // === FINANCIAL SUMMARY (Right-aligned matching template) ===
-  currentY += 10 // Further reduced spacing for optimal layout
+  currentY += 6 // Totals box closer to table for compact layout
   
   // Add subtle gray line above totals for separation
   doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
@@ -455,10 +455,10 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   // Total row (bold blue to match web emphasis)
   addText(doc, 'Total Amount Due', summaryBoxX + 3, currentY, 'heading', templateColors.primary, 'left')
-  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'heading', templateColors.accent, 'right')
+  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 7, currentY, 'heading', templateColors.accent, 'right')
 
   // === FOOTER SECTION (Side-by-side: Signature left, Terms right) ===
-  const footerStartY = pageHeight - 65 // Adjusted for better balance
+  const footerStartY = pageHeight - 110 // Moved up for proper visibility on one page
   const signatureWidth = 60
   const signatureHeight = 20
   
