@@ -27,6 +27,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import { BookingReportDetail } from '@/components/reports/BookingReportDetail'
+import { apiRequest } from '@/lib/api-utils'
 
 interface BookingSummary {
   id: string
@@ -101,7 +102,7 @@ export default function BookingReportsPage() {
       if (dateTo) params.append('date_to', dateTo.toISOString())
       if (statusFilter !== 'all') params.append('status', statusFilter)
 
-      const response = await fetch(`/api/reports/bookings?${params}`)
+      const response = await apiRequest(`/api/reports/bookings?${params}`)
       const data = await response.json()
 
       if (data.success) {
@@ -120,7 +121,7 @@ export default function BookingReportsPage() {
   const loadDetailedReport = async (bookingId: string) => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/reports/bookings?booking_id=${bookingId}&type=detailed`)
+      const response = await apiRequest(`/api/reports/bookings?booking_id=${bookingId}&type=detailed`)
       const data = await response.json()
 
       if (data.success) {
@@ -145,7 +146,7 @@ export default function BookingReportsPage() {
       if (statusFilter !== 'all') params.append('status', statusFilter)
       params.append('format', format)
 
-      const response = await fetch(`/api/reports/bookings?${params}`)
+      const response = await apiRequest(`/api/reports/bookings?${params}`)
       const blob = await response.blob()
       
       const url = window.URL.createObjectURL(blob)

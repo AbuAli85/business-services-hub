@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { makeServerClient } from '@/utils/supabase/makeServerClient'
 import { z } from 'zod'
 import { rateLimit, handleOptions, badRequest, unauthorized, forbidden, ok } from '@/lib/api-helpers'
 
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const limited = rateLimit(request, { key: 'reports', windowMs: 60_000, max: 60 })
     if (!limited.allowed) return limited.response!
 
-    const supabase = await getSupabaseClient()
+    const supabase = await makeServerClient(request)
     const { searchParams } = new URL(request.url)
     
     // Get authenticated user

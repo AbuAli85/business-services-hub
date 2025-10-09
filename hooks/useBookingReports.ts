@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useAuth } from './useAuth'
 import { toast } from 'sonner'
+import { apiRequest } from '@/lib/api-utils'
 
 interface ReportFilters {
   dateFrom?: Date
@@ -161,7 +162,7 @@ export function useBookingReports() {
       if (filters.dateTo) params.append('date_to', filters.dateTo.toISOString())
       if (filters.status) params.append('status', filters.status)
 
-      const response = await fetch(`/api/reports/bookings?${params}`)
+      const response = await apiRequest(`/api/reports/bookings?${params}`)
       const data = await response.json()
 
       if (data.success) {
@@ -185,7 +186,7 @@ export function useBookingReports() {
 
     setLoading(true)
     try {
-      const response = await fetch(`/api/reports/bookings?booking_id=${bookingId}&type=detailed`)
+      const response = await apiRequest(`/api/reports/bookings?booking_id=${bookingId}&type=detailed`)
       const data = await response.json()
 
       if (data.success) {
@@ -260,7 +261,7 @@ export function useBookingReports() {
       if (filters.dateTo) params.append('date_to', filters.dateTo.toISOString())
       if (filters.status) params.append('status', filters.status)
 
-      const response = await fetch(`/api/reports/bookings?${params}`)
+      const response = await apiRequest(`/api/reports/bookings?${params}`)
       const data = await response.json()
 
       if (data.success) {
