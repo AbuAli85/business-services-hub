@@ -166,59 +166,59 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   // === MAIN CONTENT AREA ===
   
   // === HEADER SECTION (Two-column layout) ===
-  let currentY = 25
+  let currentY = 20
   
-  // Company Information (Top Left)
+  // Company Information (Top Left) - Larger, bold company name
   addText(doc, companyName, contentStartX, currentY, 'title', templateColors.primary, 'left')
-  currentY += 10
+  currentY += 8
   
-  // Company contact details with icons represented by symbols
-  addText(doc, `📍 ${companyAddress}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
-  addText(doc, `📞 ${companyPhone}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
-  addText(doc, `✉ ${companyEmail}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
-  addText(doc, `🌐 ${companyWebsite}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  // Company contact details without icons for cleaner look
+  addText(doc, companyAddress, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  currentY += 5
+  addText(doc, companyPhone, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  currentY += 5
+  addText(doc, companyEmail, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  currentY += 5
+  addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
 
-  // Invoice Details (Top Right) - Matching template exactly
-  const rightColumnX = contentStartX + contentWidth - 50
-  addText(doc, 'Invoice', rightColumnX, 25, 'title', templateColors.accent, 'right')
-  addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 35, 'subheading', templateColors.primary, 'right')
+  // Invoice Details (Top Right) - Proper positioning
+  const rightColumnX = contentStartX + contentWidth - 20
+  addText(doc, 'Invoice', rightColumnX, 20, 'title', templateColors.accent, 'right')
+  addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 30, 'subheading', templateColors.primary, 'right')
 
   // === DATES AND BILL TO SECTION (Two-column layout) ===
-  currentY = 75
+  currentY = 55
   
   // Dates (Left)
   addText(doc, `Date: ${createdDate}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 6
+  currentY += 5
   addText(doc, `Due Date: ${dueDate}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
   
-  // Bill To (Right)
-  const billToY = 75
+  // Bill To (Right) - Properly aligned
+  const billToY = 55
   addText(doc, 'Bill To:', rightColumnX, billToY, 'heading', templateColors.accent, 'right')
-  let billToCurrentY = billToY + 8
+  let billToCurrentY = billToY + 6
   addText(doc, clientName, rightColumnX, billToCurrentY, 'subheading', templateColors.primary, 'right')
-  billToCurrentY += 6
+  billToCurrentY += 5
   addText(doc, clientCompany, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 6
+  billToCurrentY += 5
   addText(doc, clientAddress, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 6
+  billToCurrentY += 5
   addText(doc, clientEmail, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 6
-  addText(doc, `📞 ${clientPhone}`, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 6
-  addText(doc, `🌐 ${clientWebsite}`, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  billToCurrentY += 5
+  addText(doc, clientPhone, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  billToCurrentY += 5
+  addText(doc, clientWebsite, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
 
   // === ITEMS TABLE (Full-width bordered table matching template) ===
-  currentY = 115
+  currentY = 85
   const tableStartY = currentY
   
-  // Define table structure
+  // Define table structure - adjusted widths for better proportions
   const tableX = contentStartX
   const tableWidth = contentWidth
-  const rowHeight = 10
-  const colWidths = [20, 60, 25, 30, 30] // Item, Description, Qty/Hour, Rate, Total
+  const rowHeight = 12
+  const colWidths = [15, 70, 20, 30, 30] // Item, Description, Qty/Hour, Rate, Total
   
   // Draw header row with gray background
   drawBox(doc, tableX, tableStartY, tableWidth, rowHeight, templateColors.lightGray, templateColors.borderGray, 0.5)
@@ -234,11 +234,11 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   doc.line(colX, tableStartY, colX, tableStartY + rowHeight) // Right border
   
   // Header text
-  addText(doc, 'Item', tableX + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'left')
-  addText(doc, 'Description', tableX + colWidths[0] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'left')
-  addText(doc, 'Qty/Hour', tableX + colWidths[0] + colWidths[1] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'center')
-  addText(doc, 'Rate', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'right')
-  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, tableStartY + 6.5, 'subheading', templateColors.accent, 'right')
+  addText(doc, 'Item', tableX + 2, tableStartY + 8, 'subheading', templateColors.accent, 'left')
+  addText(doc, 'Description', tableX + colWidths[0] + 2, tableStartY + 8, 'subheading', templateColors.accent, 'left')
+  addText(doc, 'Qty/Hour', tableX + colWidths[0] + colWidths[1] + 10, tableStartY + 8, 'subheading', templateColors.accent, 'center')
+  addText(doc, 'Rate', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, tableStartY + 8, 'subheading', templateColors.accent, 'right')
+  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, tableStartY + 8, 'subheading', templateColors.accent, 'right')
   
   currentY = tableStartY + rowHeight
   
@@ -269,53 +269,53 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     doc.line(colX, currentY, colX, currentY + rowHeight) // Right border
     
     // Row data
-    addText(doc, String(index + 1).padStart(2, '0'), tableX + 2, currentY + 6.5, 'body', templateColors.darkGray, 'left')
-    addText(doc, item.product || item.description || 'Service', tableX + colWidths[0] + 2, currentY + 6.5, 'body', templateColors.darkGray, 'left')
-    addText(doc, String(item.qty || item.quantity || 1), tableX + colWidths[0] + colWidths[1] + 12, currentY + 6.5, 'body', templateColors.darkGray, 'center')
-    addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, currentY + 6.5, 'body', templateColors.darkGray, 'right')
-    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, currentY + 6.5, 'body', templateColors.darkGray, 'right')
+    addText(doc, String(index + 1).padStart(2, '0'), tableX + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
+    addText(doc, item.product || item.description || 'Service', tableX + colWidths[0] + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
+    addText(doc, String(item.qty || item.quantity || 1), tableX + colWidths[0] + colWidths[1] + 10, currentY + 8, 'body', templateColors.darkGray, 'center')
+    addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, currentY + 8, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, currentY + 8, 'body', templateColors.darkGray, 'right')
     
     currentY += rowHeight
   })
 
   // === FINANCIAL SUMMARY (Right-aligned matching template) ===
-  currentY += 10
-  const summaryBoxX = contentStartX + contentWidth - 80
-  const summaryBoxWidth = 80
+  currentY += 8
+  const summaryBoxX = contentStartX + contentWidth - 75
+  const summaryBoxWidth = 75
   
   // Draw summary box with border
   const summaryStartY = currentY
-  drawBox(doc, summaryBoxX, summaryStartY, summaryBoxWidth, 30, templateColors.white, templateColors.borderGray, 0.5)
+  drawBox(doc, summaryBoxX, summaryStartY, summaryBoxWidth, 25, templateColors.white, templateColors.borderGray, 0.5)
   
-  currentY += 8
+  currentY += 6
   
   // Subtotal row
-  addText(doc, 'Subtotal', summaryBoxX + 5, currentY, 'subheading', templateColors.darkGray, 'left')
-  addText(doc, formatCurrency(safeSubtotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'subheading', templateColors.primary, 'right')
-  currentY += 7
+  addText(doc, 'Subtotal', summaryBoxX + 3, currentY, 'subheading', templateColors.darkGray, 'left')
+  addText(doc, formatCurrency(safeSubtotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 3, currentY, 'subheading', templateColors.primary, 'right')
+  currentY += 5
   
   // VAT row
-  addText(doc, `VAT (${(displayVatPercent * 100).toFixed(1)}%)`, summaryBoxX + 5, currentY, 'subheading', templateColors.darkGray, 'left')
-  addText(doc, formatCurrency(displayVatAmount, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'subheading', templateColors.primary, 'right')
+  addText(doc, `VAT (${(displayVatPercent * 100).toFixed(1)}%)`, summaryBoxX + 3, currentY, 'subheading', templateColors.darkGray, 'left')
+  addText(doc, formatCurrency(displayVatAmount, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 3, currentY, 'subheading', templateColors.primary, 'right')
   
   // Separator line
-  currentY += 5
+  currentY += 4
   doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
   doc.setLineWidth(0.5)
-  doc.line(summaryBoxX + 5, currentY, summaryBoxX + summaryBoxWidth - 5, currentY)
-  currentY += 5
+  doc.line(summaryBoxX + 3, currentY, summaryBoxX + summaryBoxWidth - 3, currentY)
+  currentY += 4
   
   // Total row (bold)
-  addText(doc, 'Total Amount Due', summaryBoxX + 5, currentY, 'heading', templateColors.primary, 'left')
-  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'heading', templateColors.primary, 'right')
+  addText(doc, 'Total Amount Due', summaryBoxX + 3, currentY, 'heading', templateColors.primary, 'left')
+  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 3, currentY, 'heading', templateColors.primary, 'right')
 
   // === FOOTER SECTION (Two-column: Signature left, Terms right) ===
-  currentY += 20
+  currentY += 15
   const footerStartY = currentY
   
   // Signature Area (Left) - Dashed border box
-  const signatureBoxWidth = 65
-  const signatureBoxHeight = 25
+  const signatureBoxWidth = 60
+  const signatureBoxHeight = 20
   
   // Draw dashed border for signature (using multiple small lines)
   doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
@@ -343,44 +343,44 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     doc.line(contentStartX + signatureBoxWidth, y, contentStartX + signatureBoxWidth, Math.min(y + dashLength, footerStartY + signatureBoxHeight))
   }
   
-  addText(doc, 'Name and Signature', contentStartX + signatureBoxWidth / 2, footerStartY + signatureBoxHeight / 2 + 2, 'body', templateColors.darkGray, 'center')
+  addText(doc, 'Name and Signature', contentStartX + signatureBoxWidth / 2, footerStartY + signatureBoxHeight / 2 + 1, 'body', templateColors.darkGray, 'center')
 
   // === TERMS & CONDITIONS (Right) ===
-  const termsX = contentStartX + signatureBoxWidth + 10
-  const termsWidth = contentWidth - signatureBoxWidth - 10
+  const termsX = contentStartX + signatureBoxWidth + 8
+  const termsWidth = contentWidth - signatureBoxWidth - 8
   
-  addText(doc, 'Terms & Conditions', termsX, footerStartY + 5, 'subheading', templateColors.accent, 'left')
+  addText(doc, 'Terms & Conditions', termsX, footerStartY + 3, 'subheading', templateColors.accent, 'left')
   
-  let termsY = footerStartY + 12
-  const lineSpacing = 5
+  let termsY = footerStartY + 8
+  const lineSpacing = 3
   
   // Payment Terms
   addText(doc, 'Payment Terms:', termsX, termsY, 'small', templateColors.primary, 'left')
-  termsY += 4
+  termsY += 3
   doc.setFontSize(7)
   doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
   const paymentTermsText = 'Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in OMR unless otherwise specified.'
   const paymentLines = doc.splitTextToSize(paymentTermsText, termsWidth)
   doc.text(paymentLines, termsX, termsY)
-  termsY += paymentLines.length * 3 + 3
+  termsY += paymentLines.length * 2.5 + 2
   
   // Service Agreement
   addText(doc, 'Service Agreement:', termsX, termsY, 'small', templateColors.primary, 'left')
-  termsY += 4
+  termsY += 3
   const serviceTermsText = 'All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.'
   const serviceLines = doc.splitTextToSize(serviceTermsText, termsWidth)
   doc.text(serviceLines, termsX, termsY)
-  termsY += serviceLines.length * 3 + 3
+  termsY += serviceLines.length * 2.5 + 2
   
   // Disputes
   addText(doc, 'Disputes:', termsX, termsY, 'small', templateColors.primary, 'left')
-  termsY += 4
+  termsY += 3
   const disputesText = 'Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
   const disputesLines = doc.splitTextToSize(disputesText, termsWidth)
   doc.text(disputesLines, termsX, termsY)
 
   // === FOOTER ===
-  const footerY = pageHeight - 10
+  const footerY = pageHeight - 8
   addText(doc, 'Thank you for your business!', contentStartX + contentWidth / 2, footerY, 'subheading', templateColors.accent, 'center')
 
   return new Uint8Array(doc.output('arraybuffer'))
