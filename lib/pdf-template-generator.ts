@@ -108,10 +108,10 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     clientData: invoice.booking?.client
   })
   
-  // Layout dimensions
+  // Layout dimensions - Increased margins to prevent cutoff
   const sidebarWidth = 50 // Dark blue sidebar width
-  const contentStartX = sidebarWidth + 5
-  const contentWidth = pageWidth - sidebarWidth - 10
+  const contentStartX = sidebarWidth + 8
+  const contentWidth = pageWidth - sidebarWidth - 20 // Increased right margin
   const margin = 15
 
   // Invoice data
@@ -136,11 +136,10 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   })
   
   // Try multiple fallback approaches for company data
-  // TEMPORARY: Add test data to verify extraction is working
   const companyName = providerCompany.name || 
                      provider.company_name || 
                      provider.full_name || 
-                     (directProviderId ? `Provider ID: ${directProviderId}` : 'Your Company Name')
+                     'Your Company Name'
   const companyAddress = providerCompany.address || 
                         provider.address || 
                         '123 Anywhere St., Any City, ST 12345'
@@ -167,8 +166,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     clientCompanyName: clientCompany.name || client.company_name
   })
   
-  const clientName = client.full_name || 
-                    (directClientId ? `Client ID: ${directClientId}` : 'Client Name')
+  const clientName = client.full_name || 'Client Name'
   const clientCompanyName = clientCompany.name || 
                            client.company_name || 
                            'Client Company'
@@ -296,28 +294,28 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   // === MAIN CONTENT AREA ===
   
   // === HEADER SECTION (Two-column layout) ===
-  let currentY = 20
+  let currentY = 25
   
   // Company Information (Top Left) - Larger, bold company name
   addText(doc, companyName, contentStartX, currentY, 'title', templateColors.primary, 'left')
-  currentY += 8
+  currentY += 10
   
   // Company contact details without icons for cleaner look
   addText(doc, companyAddress, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 5
+  currentY += 6
   addText(doc, companyPhone, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 5
+  currentY += 6
   addText(doc, companyEmail, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
-  currentY += 5
+  currentY += 6
   addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
 
-  // Invoice Details (Top Right) - Proper positioning
-  const rightColumnX = contentStartX + contentWidth - 15
+  // Invoice Details (Top Right) - Proper positioning with more margin
+  const rightColumnX = contentStartX + contentWidth - 25
   addText(doc, 'Invoice', rightColumnX, 20, 'title', templateColors.accent, 'right')
   addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 30, 'subheading', templateColors.primary, 'right')
 
   // === DATES AND BILL TO SECTION (Two-column layout) ===
-  currentY = 55
+  currentY = 65
   
   // Dates (Left)
   addText(doc, `Date: ${createdDate}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
@@ -325,8 +323,8 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, `Due Date: ${dueDate}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
   
   // Bill To (Right) - Properly aligned with better spacing
-  const billToY = 55
-  const billToRightX = contentStartX + contentWidth - 15 // Give more margin from right edge
+  const billToY = 65
+  const billToRightX = contentStartX + contentWidth - 25 // Give more margin from right edge
   const billToMaxWidth = 80 // Limit width to prevent cramping
   
   addText(doc, 'Bill To:', billToRightX, billToY, 'heading', templateColors.accent, 'right')
@@ -344,14 +342,14 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, clientWebsite, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
 
   // === ITEMS TABLE (Full-width bordered table matching template) ===
-  currentY = 85
+  currentY = 95
   const tableStartY = currentY
   
   // Define table structure - adjusted widths for better proportions
   const tableX = contentStartX
-  const tableWidth = contentWidth - 5 // Leave some margin from right edge
+  const tableWidth = contentWidth - 15 // Leave more margin from right edge
   const rowHeight = 12
-  const colWidths = [15, 60, 20, 30, 35] // Item, Description, Qty/Hour, Rate, Total
+  const colWidths = [15, 55, 20, 30, 35] // Item, Description, Qty/Hour, Rate, Total
   
   // Draw header row with gray background
   drawBox(doc, tableX, tableStartY, tableWidth, rowHeight, templateColors.lightGray, templateColors.borderGray, 0.5)
@@ -371,7 +369,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, 'Description', tableX + colWidths[0] + 2, tableStartY + 8, 'subheading', templateColors.accent, 'left')
   addText(doc, 'Qty/Hour', tableX + colWidths[0] + colWidths[1] + 10, tableStartY + 8, 'subheading', templateColors.accent, 'center')
   addText(doc, 'Rate', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, tableStartY + 8, 'subheading', templateColors.accent, 'right')
-  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 33, tableStartY + 8, 'subheading', templateColors.accent, 'right')
+  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 30, tableStartY + 8, 'subheading', templateColors.accent, 'right')
   
   currentY = tableStartY + rowHeight
   
@@ -406,14 +404,14 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     addText(doc, item.product || item.description || 'Service', tableX + colWidths[0] + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
     addText(doc, String(item.qty || item.quantity || 1), tableX + colWidths[0] + colWidths[1] + 10, currentY + 8, 'body', templateColors.darkGray, 'center')
     addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, currentY + 8, 'body', templateColors.darkGray, 'right')
-    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 33, currentY + 8, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 30, currentY + 8, 'body', templateColors.darkGray, 'right')
     
     currentY += rowHeight
   })
 
   // === FINANCIAL SUMMARY (Right-aligned matching template) ===
   currentY += 8
-  const summaryBoxX = contentStartX + contentWidth - 75
+  const summaryBoxX = contentStartX + contentWidth - 85
   const summaryBoxWidth = 75
   
   // Draw summary box with border
