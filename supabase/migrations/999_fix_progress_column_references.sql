@@ -44,7 +44,6 @@ SELECT
     b.service_id,
     b.scheduled_date,
     b.due_at,
-    b.title,
     b.requirements,
     b.package_id,
     b.subtotal,

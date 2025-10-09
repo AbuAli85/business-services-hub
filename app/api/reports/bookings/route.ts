@@ -153,24 +153,65 @@ export async function GET(request: NextRequest) {
     const totalRevenue = transformedBookings.reduce((sum: number, booking: any) => 
       sum + (booking.amount || 0), 0)
     
-    const averageBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0
+    const averageProgress = totalBookings > 0 
+      ? transformedBookings.reduce((sum: number, booking: any) => sum + (booking.progress || 0), 0) / totalBookings 
+      : 0
+    
+    // Calculate category breakdown
+    const categoryBreakdown = transformedBookings.reduce((acc: any, booking: any) => {
+      const category = booking.service_category || 'Unknown'
+      acc[category] = (acc[category] || 0) + 1
+      return acc
+    }, {})
+    
+    // Calculate monthly breakdown
+    const monthlyBreakdown = transformedBookings.reduce((acc: any, booking: any) => {
+      const date = new Date(booking.created_at)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      if (!acc[monthKey]) {
+        acc[monthKey] = { count: 0, revenue: 0 }
+      }
+      acc[monthKey].count++
+      acc[monthKey].revenue += booking.amount || 0
+      return acc
+    }, {})
     
     return ok({
       success: true,
-      data: {
-        bookings: transformedBookings,
-        pagination: {
-          page,
-          pageSize,
-          total: count || totalBookings,
-          totalPages: Math.ceil((count || totalBookings) / pageSize)
-        },
+      report: {
         summary: {
           total_bookings: totalBookings,
-          status_distribution: statusCounts,
           total_revenue: totalRevenue,
-          average_booking_value: averageBookingValue
-        }
+          average_progress: averageProgress,
+          period: {
+            from: dateFrom || null,
+            to: dateTo || null
+          }
+        },
+        breakdown: {
+          by_status: statusCounts,
+          by_category: categoryBreakdown,
+          by_month: monthlyBreakdown
+        },
+        bookings: transformedBookings.map((b: any) => ({
+          id: b.id,
+          title: b.title,
+          status: b.status,
+          client_name: b.client_name,
+          provider_name: b.provider_name,
+          service_title: b.service_title,
+          progress: b.progress,
+          amount: b.amount,
+          currency: 'OMR', // Default currency
+          created_at: b.created_at,
+          due_at: b.scheduled_date
+        }))
+      },
+      pagination: {
+        page,
+        pageSize,
+        total: count || totalBookings,
+        totalPages: Math.ceil((count || totalBookings) / pageSize)
       }
     })
     
