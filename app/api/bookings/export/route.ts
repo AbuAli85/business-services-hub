@@ -70,7 +70,7 @@ export async function GET(req: Request) {
         'Approval Status': booking.approval_status || 'pending',
         'Amount': booking.amount || '0.00',
         'Currency': booking.currency || 'OMR',
-        'Progress %': booking.progress || '0',
+        'Progress %': booking.project_progress || '0',
         'Created Date': booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-US', { 
           year: 'numeric', 
           month: 'short', 

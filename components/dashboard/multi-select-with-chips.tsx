@@ -62,6 +62,7 @@ export function MultiSelectWithChips({
   const [open, setOpen] = useState(false)
   const [customValue, setCustomValue] = useState('')
   const [showCustomInput, setShowCustomInput] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const customInputRef = useRef<HTMLInputElement>(null)
 
   // Debug logging
@@ -118,9 +119,15 @@ export function MultiSelectWithChips({
     onChange(selectedValues.filter(v => v !== value))
   }
 
-  const availableOptions = options.filter(option => 
-    !selectedValues.includes(option.value)
-  )
+  // Filter options based on search query and selection status
+  const availableOptions = options.filter(option => {
+    const isNotSelected = !selectedValues.includes(option.value)
+    const matchesSearch = searchQuery === '' || 
+      option.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (option.description && option.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    
+    return isNotSelected && matchesSearch
+  })
 
   // Debug logging for availableOptions
   useEffect(() => {
@@ -172,7 +179,12 @@ export function MultiSelectWithChips({
       )}
 
       {/* Multi-select dropdown */}
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={(newOpen) => {
+        setOpen(newOpen)
+        if (!newOpen) {
+          setSearchQuery('')
+        }
+      }}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
@@ -194,8 +206,12 @@ export function MultiSelectWithChips({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 z-50" align="start">
-          <Command>
-            <CommandInput placeholder="Search items..." />
+          <Command shouldFilter={false}>
+            <CommandInput 
+              placeholder="Search items..." 
+              value={searchQuery}
+              onValueChange={setSearchQuery}
+            />
             <CommandList>
               <CommandEmpty>No items found.</CommandEmpty>
               <CommandGroup>

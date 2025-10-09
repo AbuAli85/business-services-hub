@@ -25,6 +25,8 @@ export function DeliverablesSelector({
   useEffect(() => {
     const fetchDeliverables = async () => {
       console.log('🔍 DeliverablesSelector: categoryId =', categoryId)
+      console.log('🔍 DeliverablesSelector: categoryId type =', typeof categoryId)
+      console.log('🔍 DeliverablesSelector: categoryId length =', categoryId?.length)
       
       if (!categoryId) {
         console.log('❌ DeliverablesSelector: No categoryId, clearing options')
@@ -61,6 +63,8 @@ export function DeliverablesSelector({
         }))
 
         console.log('🎯 DeliverablesSelector: Formatted options:', formattedOptions)
+        console.log('🎯 DeliverablesSelector: Options length:', formattedOptions.length)
+        console.log('🎯 DeliverablesSelector: First option:', formattedOptions[0])
         setOptions(formattedOptions)
       } catch (error) {
         console.error('❌ DeliverablesSelector: Error fetching deliverables:', error)
