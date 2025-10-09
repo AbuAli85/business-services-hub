@@ -95,6 +95,19 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   const pageWidth = doc.internal.pageSize.getWidth()
   const pageHeight = doc.internal.pageSize.getHeight()
   
+  // Debug logging for data structure
+  console.log('🔍 PDF Generator - Invoice data:', {
+    id: invoice.id,
+    hasBooking: !!invoice.booking,
+    hasService: !!invoice.booking?.service,
+    hasProvider: !!invoice.booking?.service?.provider,
+    hasProviderCompany: !!invoice.booking?.service?.provider?.company,
+    hasClient: !!invoice.booking?.client,
+    hasClientCompany: !!invoice.booking?.client?.company,
+    providerData: invoice.booking?.service?.provider,
+    clientData: invoice.booking?.client
+  })
+  
   // Layout dimensions
   const sidebarWidth = 50 // Dark blue sidebar width
   const contentStartX = sidebarWidth + 5
@@ -108,21 +121,41 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   // Company information (Provider)
   const providerCompany = invoice.booking?.service?.provider?.company || {}
-  const companyName = providerCompany.name || 'Your Company Name'
-  const companyAddress = providerCompany.address || '123 Anywhere St., Any City, ST 12345'
-  const companyPhone = providerCompany.phone || '123-456-7890'
-  const companyEmail = providerCompany.email || 'luxsess2001@hotmail.com'
-  const companyWebsite = providerCompany.website || 'reallygreatsite.com'
-  const companyLogo = providerCompany.logo_url
+  const provider = invoice.booking?.service?.provider || {}
+  const companyName = providerCompany.name || provider.company_name || 'Your Company Name'
+  const companyAddress = providerCompany.address || provider.address || '123 Anywhere St., Any City, ST 12345'
+  const companyPhone = providerCompany.phone || provider.phone || '123-456-7890'
+  const companyEmail = providerCompany.email || provider.email || 'provider@company.com'
+  const companyWebsite = providerCompany.website || provider.website || 'company.com'
+  const companyLogo = providerCompany.logo_url || provider.logo_url
   
   // Client information
   const client = invoice.booking?.client || {}
-  const clientName = client.full_name || 'Fahad alamri'
-  const clientCompany = client.company?.name || 'Client Company'
-  const clientAddress = client.company?.address || '123 Anywhere St., Any City, ST 12345'
-  const clientPhone = client.phone || '95153930'
-  const clientEmail = client.email || 'chairman@falconeyegroup.net'
-  const clientWebsite = client.company?.website || 'clientcompany.com'
+  const clientCompany = client.company || {}
+  const clientName = client.full_name || 'Client Name'
+  const clientCompanyName = clientCompany.name || client.company_name || 'Client Company'
+  const clientAddress = clientCompany.address || client.address || '123 Anywhere St., Any City, ST 12345'
+  const clientPhone = client.phone || clientCompany.phone || '123-456-7890'
+  const clientEmail = client.email || clientCompany.email || 'client@company.com'
+  const clientWebsite = clientCompany.website || client.website || 'clientcompany.com'
+  
+  // Debug logging for extracted data
+  console.log('🔍 PDF Generator - Extracted company data:', {
+    companyName,
+    companyAddress,
+    companyPhone,
+    companyEmail,
+    companyWebsite
+  })
+  
+  console.log('🔍 PDF Generator - Extracted client data:', {
+    clientName,
+    clientCompanyName,
+    clientAddress,
+    clientPhone,
+    clientEmail,
+    clientWebsite
+  })
   
   // Financial calculations
   let safeSubtotal = invoice.subtotal || 0
@@ -147,12 +180,26 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   // === SIDEBAR SECTION (Dark Blue) ===
   drawBox(doc, 0, 0, sidebarWidth, pageHeight, templateColors.primary)
   
-  // Logo placeholder
+  // Logo section
   const logoSize = 20
   const logoX = 15
   const logoY = 20
   drawBox(doc, logoX, logoY, logoSize, logoSize, templateColors.white)
-  addText(doc, 'LOGO', logoX + 5, logoY + 12, 'small', templateColors.primary, 'center')
+  
+  if (companyLogo) {
+    try {
+      // Try to add the company logo if URL is provided
+      // For now, we'll add a placeholder that mentions the logo
+      addText(doc, 'LOGO', logoX + 5, logoY + 12, 'small', templateColors.primary, 'center')
+      addText(doc, 'Available', logoX + 5, logoY + 16, 'caption', templateColors.primary, 'center')
+    } catch (error) {
+      console.warn('⚠️ PDF Generator - Could not load company logo:', error)
+      addText(doc, 'LOGO', logoX + 5, logoY + 12, 'small', templateColors.primary, 'center')
+    }
+  } else {
+    // No logo available - show placeholder
+    addText(doc, 'LOGO', logoX + 5, logoY + 12, 'small', templateColors.primary, 'center')
+  }
   
   // Professional Services text
   addText(doc, 'PROFESSIONAL SERVICES', 10, 50, 'small', templateColors.white, 'left')
@@ -194,21 +241,22 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   currentY += 5
   addText(doc, `Due Date: ${dueDate}`, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
   
-  // Bill To (Right) - Properly aligned
+  // Bill To (Right) - Properly aligned with better spacing
   const billToY = 55
-  addText(doc, 'Bill To:', rightColumnX, billToY, 'heading', templateColors.accent, 'right')
+  const billToRightX = contentStartX + contentWidth - 10 // Give more margin from right edge
+  addText(doc, 'Bill To:', billToRightX, billToY, 'heading', templateColors.accent, 'right')
   let billToCurrentY = billToY + 6
-  addText(doc, clientName, rightColumnX, billToCurrentY, 'subheading', templateColors.primary, 'right')
+  addText(doc, clientName, billToRightX, billToCurrentY, 'subheading', templateColors.primary, 'right')
   billToCurrentY += 5
-  addText(doc, clientCompany, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  addText(doc, clientCompanyName, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
   billToCurrentY += 5
-  addText(doc, clientAddress, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  addText(doc, clientAddress, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
   billToCurrentY += 5
-  addText(doc, clientEmail, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  addText(doc, clientEmail, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
   billToCurrentY += 5
-  addText(doc, clientPhone, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  addText(doc, clientPhone, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
   billToCurrentY += 5
-  addText(doc, clientWebsite, rightColumnX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  addText(doc, clientWebsite, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
 
   // === ITEMS TABLE (Full-width bordered table matching template) ===
   currentY = 85
@@ -218,7 +266,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   const tableX = contentStartX
   const tableWidth = contentWidth
   const rowHeight = 12
-  const colWidths = [15, 70, 20, 30, 30] // Item, Description, Qty/Hour, Rate, Total
+  const colWidths = [15, 65, 20, 30, 35] // Item, Description, Qty/Hour, Rate, Total
   
   // Draw header row with gray background
   drawBox(doc, tableX, tableStartY, tableWidth, rowHeight, templateColors.lightGray, templateColors.borderGray, 0.5)
@@ -238,7 +286,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, 'Description', tableX + colWidths[0] + 2, tableStartY + 8, 'subheading', templateColors.accent, 'left')
   addText(doc, 'Qty/Hour', tableX + colWidths[0] + colWidths[1] + 10, tableStartY + 8, 'subheading', templateColors.accent, 'center')
   addText(doc, 'Rate', tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, tableStartY + 8, 'subheading', templateColors.accent, 'right')
-  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, tableStartY + 8, 'subheading', templateColors.accent, 'right')
+  addText(doc, 'Total', tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 33, tableStartY + 8, 'subheading', templateColors.accent, 'right')
   
   currentY = tableStartY + rowHeight
   
@@ -273,7 +321,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     addText(doc, item.product || item.description || 'Service', tableX + colWidths[0] + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
     addText(doc, String(item.qty || item.quantity || 1), tableX + colWidths[0] + colWidths[1] + 10, currentY + 8, 'body', templateColors.darkGray, 'center')
     addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 28, currentY + 8, 'body', templateColors.darkGray, 'right')
-    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 28, currentY + 8, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 33, currentY + 8, 'body', templateColors.darkGray, 'right')
     
     currentY += rowHeight
   })
