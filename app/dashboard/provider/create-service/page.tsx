@@ -627,62 +627,70 @@ export default function CreateServicePage() {
 
   // Step components
   const renderStep1 = () => (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Cover Image */}
-      <div>
-        <Label className="text-sm font-medium text-slate-700 mb-2 block">Cover Image</Label>
-        <div className="flex items-center gap-4">
-          <div className="w-40 h-24 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden border relative">
+      <div className="space-y-3">
+        <Label className="text-base font-semibold text-slate-800 mb-3 block">Cover Image</Label>
+        <div className="flex items-start gap-6">
+          <div className="w-48 h-32 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center overflow-hidden border-2 border-slate-200 relative shadow-sm hover:shadow-md transition-shadow duration-200">
             {coverPreview ? (
-              <Image src={coverPreview} alt="Cover preview" fill className="object-cover" sizes="160px" />
+              <Image src={coverPreview} alt="Cover preview" fill className="object-cover" sizes="192px" />
             ) : (
-              <Building2 className="h-8 w-8 text-gray-400" />
+              <div className="text-center">
+                <Building2 className="h-10 w-10 text-slate-400 mx-auto mb-2" />
+                <p className="text-xs text-slate-500 font-medium">Service Cover</p>
+              </div>
             )}
           </div>
-          <div className="space-y-2">
-            <Input
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp"
-              onChange={(e) => handleCoverChange(e.target.files?.[0] || null)}
-            />
-            <p className="text-xs text-gray-500">PNG, JPG, or WEBP up to 5MB. Shown as service cover.</p>
+          <div className="space-y-3 flex-1">
+            <div className="relative">
+              <Input
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                onChange={(e) => handleCoverChange(e.target.files?.[0] || null)}
+                className="h-12 border-2 border-slate-200 focus:border-blue-500 transition-all duration-200 rounded-lg"
+              />
+            </div>
+            <p className="text-sm text-slate-600 font-medium">PNG, JPG, or WEBP up to 5MB. Shown as service cover.</p>
           </div>
         </div>
       </div>
 
       {/* Category Selection */}
-      <div>
-        <Label htmlFor="category_id" className="text-sm font-medium text-slate-700 mb-2 block">
+      <div className="space-y-3">
+        <Label htmlFor="category_id" className="text-base font-semibold text-slate-800 mb-3 block">
           Service Category *
           <TooltipProvider>
             <Tooltip content="Choose the category that best fits your service">
-              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+              <HelpCircle className="inline h-4 w-4 ml-2 text-slate-500" />
             </Tooltip>
           </TooltipProvider>
         </Label>
         {loadingCategories ? (
-          <div className="h-12 border-2 border-slate-200 rounded-md flex items-center justify-center">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-slate-600">Loading categories...</span>
+          <div className="h-14 border-2 border-slate-200 rounded-xl flex items-center justify-center bg-slate-50">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-slate-700 font-medium">Loading categories...</span>
           </div>
         ) : (
           <Select value={formData.category_id} onValueChange={(value) => handleInputChange('category_id', value)}>
-            <SelectTrigger className={`h-12 border-2 transition-all duration-200 ${
-              validationErrors.category_id ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
+            <SelectTrigger className={`h-14 border-2 transition-all duration-200 rounded-xl text-base ${
+              validationErrors.category_id 
+                ? 'border-red-500 bg-red-50 focus:border-red-500' 
+                : 'border-slate-200 bg-white focus:border-blue-500 hover:border-slate-300'
             }`}>
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl border-2 border-slate-200 shadow-xl">
               {categories.map(category => (
-                <SelectItem key={category.id} value={category.id}>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
+                <SelectItem key={category.id} value={category.id} className="rounded-lg">
+                  <div className="flex items-center space-x-4 py-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
                       {category.icon || category.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div className="font-medium">{category.name}</div>
+                      <div className="font-semibold text-slate-900">{category.name}</div>
                       {category.description && (
-                        <div className="text-xs text-slate-500">{category.description}</div>
+                        <div className="text-sm text-slate-600">{category.description}</div>
                       )}
                     </div>
                   </div>
@@ -692,50 +700,55 @@ export default function CreateServicePage() {
           </Select>
         )}
         {validationErrors.category_id && (
-          <p className="text-red-500 text-sm mt-1">{validationErrors.category_id}</p>
+          <p className="text-red-600 text-sm mt-2 font-medium flex items-center">
+            <AlertCircle className="h-4 w-4 mr-1" />
+            {validationErrors.category_id}
+          </p>
         )}
       </div>
 
       {/* Service Title */}
-      <div>
-        <Label htmlFor="service_title" className="text-sm font-medium text-slate-700 mb-2 block">
+      <div className="space-y-3">
+        <Label htmlFor="service_title" className="text-base font-semibold text-slate-800 mb-3 block">
           Service Title *
           <TooltipProvider>
             <Tooltip content="Choose from professional service titles or create a custom one">
-              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+              <HelpCircle className="inline h-4 w-4 ml-2 text-slate-500" />
             </Tooltip>
           </TooltipProvider>
         </Label>
         <Select value={formData.service_title} onValueChange={(value) => handleInputChange('service_title', value)}>
-          <SelectTrigger className={`h-12 border-2 transition-all duration-200 ${
-            validationErrors.service_title ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
+          <SelectTrigger className={`h-14 border-2 transition-all duration-200 rounded-xl text-base ${
+            validationErrors.service_title 
+              ? 'border-red-500 bg-red-50 focus:border-red-500' 
+              : 'border-slate-200 bg-white focus:border-blue-500 hover:border-slate-300'
           }`}>
             <SelectValue placeholder="Select or create a service title" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl border-2 border-slate-200 shadow-xl">
             {serviceTitles.map(title => (
-              <SelectItem key={title.id} value={title.id}>
-                <div className="flex items-center space-x-3">
-                  <div className="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+              <SelectItem key={title.id} value={title.id} className="rounded-lg">
+                <div className="flex items-center space-x-4 py-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                     <FileText className="h-4 w-4 text-blue-600" />
                   </div>
                   <div>
-                    <div className="font-medium">{title.title}</div>
+                    <div className="font-semibold text-slate-900">{title.title}</div>
                     {title.description && (
-                      <div className="text-xs text-slate-500">{title.description}</div>
+                      <div className="text-sm text-slate-600">{title.description}</div>
                     )}
                   </div>
                 </div>
               </SelectItem>
             ))}
-            <SelectItem value="custom">
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+            <SelectItem value="custom" className="rounded-lg">
+              <div className="flex items-center space-x-4 py-2">
+                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                   <Plus className="h-4 w-4 text-green-600" />
                 </div>
                 <div>
-                  <div className="font-medium">Custom Title</div>
-                  <div className="text-xs text-slate-500">Create your own service title</div>
+                  <div className="font-semibold text-slate-900">Custom Title</div>
+                  <div className="text-sm text-slate-600">Create your own service title</div>
                 </div>
               </div>
             </SelectItem>
@@ -747,58 +760,66 @@ export default function CreateServicePage() {
             value={formData.custom_title}
             onChange={(e) => handleInputChange('custom_title', e.target.value)}
             placeholder="Enter custom service title"
-            className="mt-2 h-12 text-base border-2 border-slate-200 focus:border-blue-500 transition-all duration-200"
+            className="h-14 text-base border-2 border-slate-200 focus:border-blue-500 transition-all duration-200 rounded-xl"
           />
         )}
         
         {validationErrors.service_title && (
-          <p className="text-red-500 text-sm mt-1">{validationErrors.service_title}</p>
+          <p className="text-red-600 text-sm mt-2 font-medium flex items-center">
+            <AlertCircle className="h-4 w-4 mr-1" />
+            {validationErrors.service_title}
+          </p>
         )}
       </div>
 
       {/* Duration and Price Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <Label htmlFor="duration" className="text-sm font-medium text-slate-700 mb-2 block">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-3">
+          <Label htmlFor="duration" className="text-base font-semibold text-slate-800 mb-3 block">
             Duration *
             <TooltipProvider>
               <Tooltip content="Estimated time to complete the service">
-                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+                <HelpCircle className="inline h-4 w-4 ml-2 text-slate-500" />
               </Tooltip>
             </TooltipProvider>
           </Label>
           <Select value={formData.duration} onValueChange={(value) => handleInputChange('duration', value)}>
-            <SelectTrigger className={`h-12 border-2 transition-all duration-200 ${
-              validationErrors.duration ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
+            <SelectTrigger className={`h-14 border-2 transition-all duration-200 rounded-xl text-base ${
+              validationErrors.duration 
+                ? 'border-red-500 bg-red-50 focus:border-red-500' 
+                : 'border-slate-200 bg-white focus:border-blue-500 hover:border-slate-300'
             }`}>
               <SelectValue placeholder="Select duration" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl border-2 border-slate-200 shadow-xl">
               {durationOptions.map(duration => (
-                <SelectItem key={duration} value={duration}>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-slate-500" />
-                    <span>{duration}</span>
+                <SelectItem key={duration} value={duration} className="rounded-lg">
+                  <div className="flex items-center space-x-3 py-2">
+                    <Clock className="h-5 w-5 text-slate-600" />
+                    <span className="font-medium">{duration}</span>
                   </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {validationErrors.duration && (
-            <p className="text-red-500 text-sm mt-1">{validationErrors.duration}</p>
+            <p className="text-red-600 text-sm mt-2 font-medium flex items-center">
+              <AlertCircle className="h-4 w-4 mr-1" />
+              {validationErrors.duration}
+            </p>
           )}
         </div>
 
         <div className="space-y-3">
-          <Label htmlFor="price" className="text-sm font-medium text-slate-700 mb-2 block">
+          <Label htmlFor="price" className="text-base font-semibold text-slate-800 mb-3 block">
             Price (OMR) *
             <TooltipProvider>
               <Tooltip content="Set your service pricing">
-                <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+                <HelpCircle className="inline h-4 w-4 ml-2 text-slate-500" />
               </Tooltip>
             </TooltipProvider>
           </Label>
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="relative">
               <Input
                 id="price"
@@ -809,72 +830,77 @@ export default function CreateServicePage() {
                 onChange={(e) => handleInputChange('price', e.target.value)}
                 placeholder={formData.price_type === 'custom_quotation' ? 'Contact for quote' : '0.00'}
                 disabled={formData.price_type === 'custom_quotation'}
-                className={`h-12 text-base border-2 transition-all duration-200 pl-12 ${
+                className={`h-14 text-base border-2 transition-all duration-200 pl-14 rounded-xl ${
                   formData.price_type === 'custom_quotation' 
                     ? 'bg-slate-50 text-slate-500 cursor-not-allowed border-slate-200'
                     : validationErrors.price 
-                      ? 'border-red-500 focus:border-red-500' 
-                      : 'border-slate-200 focus:border-blue-500'
+                      ? 'border-red-500 bg-red-50 focus:border-red-500' 
+                      : 'border-slate-200 bg-white focus:border-blue-500 hover:border-slate-300'
                 }`}
               />
-              <span className={`absolute left-4 top-1/2 transform -translate-y-1/2 font-medium ${
-                formData.price_type === 'custom_quotation' ? 'text-slate-400' : 'text-slate-400'
+              <span className={`absolute left-4 top-1/2 transform -translate-y-1/2 font-semibold text-lg ${
+                formData.price_type === 'custom_quotation' ? 'text-slate-400' : 'text-slate-600'
               }`}>
                 OMR
               </span>
             </div>
             
             {/* Price Type Toggle */}
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-8">
+              <div className="flex items-center space-x-3">
                 <Switch
                   id="price-type"
                   checked={formData.price_type === 'starting_from'}
                   onCheckedChange={(checked) => 
                     handleInputChange('price_type', checked ? 'starting_from' : 'fixed')
                   }
+                  className="data-[state=checked]:bg-blue-600"
                 />
-                <Label htmlFor="price-type" className="text-sm text-slate-600">
+                <Label htmlFor="price-type" className="text-sm font-medium text-slate-700">
                   Starting from
                 </Label>
                 <TooltipProvider>
                   <Tooltip content="Price shown as 'Starting from' to indicate minimum cost">
-                    <HelpCircle className="h-3 w-3 text-slate-400" />
+                    <HelpCircle className="h-4 w-4 text-slate-500" />
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <Switch
                   id="custom-quotation"
                   checked={formData.price_type === 'custom_quotation'}
                   onCheckedChange={(checked) => 
                     handleInputChange('price_type', checked ? 'custom_quotation' : 'fixed')
                   }
+                  className="data-[state=checked]:bg-green-600"
                 />
-                <Label htmlFor="custom-quotation" className="text-sm text-slate-600">
+                <Label htmlFor="custom-quotation" className="text-sm font-medium text-slate-700">
                   Custom quotation
                 </Label>
                 <TooltipProvider>
                   <Tooltip content="Client will contact you for a personalized quote">
-                    <HelpCircle className="h-3 w-3 text-slate-400" />
+                    <HelpCircle className="h-4 w-4 text-slate-500" />
                   </Tooltip>
                 </TooltipProvider>
               </div>
             </div>
           </div>
           {validationErrors.price && (
-            <p className="text-red-500 text-sm mt-1">{validationErrors.price}</p>
+            <p className="text-red-600 text-sm mt-2 font-medium flex items-center">
+              <AlertCircle className="h-4 w-4 mr-1" />
+              {validationErrors.price}
+            </p>
           )}
         </div>
       </div>
 
       {/* Description */}
-      <div className="space-y-2">
-        <Label htmlFor="description" className="text-sm font-medium text-slate-700 mb-2 block">
+      <div className="space-y-3">
+        <Label htmlFor="description" className="text-base font-semibold text-slate-800 mb-3 block">
           Description *
           <TooltipProvider>
             <Tooltip content="Describe your service in detail, including scope, value, and compliance notes">
-              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+              <HelpCircle className="inline h-4 w-4 ml-2 text-slate-500" />
             </Tooltip>
           </TooltipProvider>
         </Label>
@@ -883,47 +909,66 @@ export default function CreateServicePage() {
           value={formData.description}
           onChange={(e) => handleInputChange('description', e.target.value)}
           placeholder="Describe your service in detail, including scope, value, and compliance notes... (Minimum 50 characters)"
-          rows={4}
+          rows={5}
           maxLength={500}
-          className={`border-2 transition-all duration-200 resize-none ${
-            validationErrors.description ? 'border-red-500 focus:border-red-500' : 'border-slate-200 focus:border-blue-500'
+          className={`border-2 transition-all duration-200 resize-none rounded-xl text-base ${
+            validationErrors.description 
+              ? 'border-red-500 bg-red-50 focus:border-red-500' 
+              : 'border-slate-200 bg-white focus:border-blue-500 hover:border-slate-300'
           }`}
         />
-        <div className="flex justify-between items-center mt-2">
+        <div className="flex justify-between items-center mt-3">
           {validationErrors.description ? (
-            <p className="text-red-500 text-sm">{validationErrors.description}</p>
+            <p className="text-red-600 text-sm font-medium flex items-center">
+              <AlertCircle className="h-4 w-4 mr-1" />
+              {validationErrors.description}
+            </p>
           ) : (
-            <p className={`text-sm ${formData.description.length >= 50 ? 'text-green-600' : 'text-amber-600'}`}>
-              {formData.description.length >= 50 ? '✓ Minimum requirement met' : `Need ${50 - formData.description.length} more characters`}
+            <p className={`text-sm font-medium flex items-center ${
+              formData.description.length >= 50 ? 'text-green-600' : 'text-amber-600'
+            }`}>
+              {formData.description.length >= 50 ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Minimum requirement met
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  Need {50 - formData.description.length} more characters
+                </>
+              )}
             </p>
           )}
-          <p className={`text-sm ${formData.description.length >= 50 ? 'text-green-600' : 'text-slate-400'}`}>
+          <p className={`text-sm font-medium ${
+            formData.description.length >= 50 ? 'text-green-600' : 'text-slate-500'
+          }`}>
             {formData.description.length}/500 characters
           </p>
         </div>
       </div>
 
       {/* Company Selection */}
-      <div>
-        <Label htmlFor="company_id" className="text-sm font-medium text-slate-700 mb-2 block">
+      <div className="space-y-3">
+        <Label htmlFor="company_id" className="text-base font-semibold text-slate-800 mb-3 block">
           Company Providing Service *
           <TooltipProvider>
             <Tooltip content="Select which company will provide this service">
-              <HelpCircle className="inline h-4 w-4 ml-1 text-slate-400" />
+              <HelpCircle className="inline h-4 w-4 ml-2 text-slate-500" />
             </Tooltip>
           </TooltipProvider>
         </Label>
         {loadingCompanies ? (
-          <div className="h-12 border-2 border-slate-200 rounded-md flex items-center justify-center">
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-slate-600">Loading companies...</span>
+          <div className="h-14 border-2 border-slate-200 rounded-xl flex items-center justify-center bg-slate-50">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-slate-700 font-medium">Loading companies...</span>
           </div>
         ) : companies.length === 0 ? (
-          <div className="h-12 border-2 border-slate-200 rounded-md flex items-center justify-center bg-slate-50">
+          <div className="h-14 border-2 border-slate-200 rounded-xl flex items-center justify-center bg-slate-50">
             <div className="text-center">
-              <Building2 className="h-5 w-5 text-slate-400 mx-auto mb-1" />
-              <p className="text-slate-600 text-sm">No companies found</p>
-              <Link href="/dashboard/company" className="text-blue-600 text-sm hover:underline">
+              <Building2 className="h-6 w-6 text-slate-400 mx-auto mb-2" />
+              <p className="text-slate-700 font-medium mb-1">No companies found</p>
+              <Link href="/dashboard/company" className="text-blue-600 text-sm font-medium hover:underline">
                 Create a company first
               </Link>
             </div>
@@ -933,34 +978,36 @@ export default function CreateServicePage() {
             value={formData.company_id} 
             onValueChange={(value) => handleInputChange('company_id', value)}
           >
-            <SelectTrigger className={`h-12 border-2 transition-all duration-200 ${
-              validationErrors.company_id ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'
+            <SelectTrigger className={`h-14 border-2 transition-all duration-200 rounded-xl text-base ${
+              validationErrors.company_id 
+                ? 'border-red-500 bg-red-50 focus:border-red-500' 
+                : 'border-slate-200 bg-white focus:border-blue-500 hover:border-slate-300'
             }`}>
               <SelectValue placeholder="Select a company" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl border-2 border-slate-200 shadow-xl">
               {companies.map(company => (
-                <SelectItem key={company.id} value={company.id}>
-                  <div className="flex items-center space-x-3">
+                <SelectItem key={company.id} value={company.id} className="rounded-lg">
+                  <div className="flex items-center space-x-4 py-2">
                     {company.logo_url ? (
-                      <div className="relative w-6 h-6 rounded overflow-hidden">
+                      <div className="relative w-8 h-8 rounded-lg overflow-hidden">
                         <Image 
                           src={company.logo_url} 
                           alt={`${company.name} logo`} 
                           fill
                           className="object-cover"
-                          sizes="24px"
+                          sizes="32px"
                         />
                       </div>
                     ) : (
-                      <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shadow-sm">
                         {company.name.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <div className="font-medium">{company.name}</div>
+                      <div className="font-semibold text-slate-900">{company.name}</div>
                       {company.industry && (
-                        <div className="text-xs text-slate-500">{company.industry}</div>
+                        <div className="text-sm text-slate-600">{company.industry}</div>
                       )}
                     </div>
                   </div>
@@ -970,7 +1017,10 @@ export default function CreateServicePage() {
           </Select>
         )}
         {validationErrors.company_id && (
-          <p className="text-red-500 text-sm mt-1">{validationErrors.company_id}</p>
+          <p className="text-red-600 text-sm mt-2 font-medium flex items-center">
+            <AlertCircle className="h-4 w-4 mr-1" />
+            {validationErrors.company_id}
+          </p>
         )}
       </div>
     </div>
@@ -1177,26 +1227,26 @@ export default function CreateServicePage() {
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <div className="max-w-4xl mx-auto p-6 lg:p-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+        <div className="max-w-5xl mx-auto p-6 lg:p-8">
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-10">
             <Link 
               href="/dashboard/services"
-              className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 transition-colors duration-200 mb-6 group"
+              className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 transition-all duration-200 mb-8 group"
             >
               <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform duration-200" />
               Back to My Services
             </Link>
             
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-6 shadow-lg">
-                <Plus className="h-8 w-8 text-white" />
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 rounded-3xl mb-8 shadow-xl ring-4 ring-blue-100">
+                <Plus className="h-10 w-10 text-white" />
               </div>
-              <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 mb-4">
+              <h1 className="text-4xl lg:text-5xl font-bold text-slate-900 mb-6 tracking-tight">
                 Create Professional Service
               </h1>
-              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
                 Build a comprehensive service offering with structured categories and professional templates
               </p>
             </div>
@@ -1206,13 +1256,15 @@ export default function CreateServicePage() {
           <Stepper steps={steps} className="mb-8" />
 
           {/* Form Content */}
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl text-slate-900 flex items-center gap-3">
-                <FileText className="h-6 w-6 text-blue-600" />
+          <Card className="border-0 shadow-2xl bg-white/90 backdrop-blur-sm rounded-2xl overflow-hidden">
+            <CardHeader className="pb-6 bg-gradient-to-r from-slate-50 to-blue-50/50 border-b border-slate-100">
+              <CardTitle className="text-2xl font-semibold text-slate-900 flex items-center gap-4">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
                 {steps[currentStep - 1]?.title}
               </CardTitle>
-              <CardDescription className="text-slate-600">
+              <CardDescription className="text-slate-600 text-lg mt-2">
                 {steps[currentStep - 1]?.description}
               </CardDescription>
             </CardHeader>
@@ -1225,15 +1277,15 @@ export default function CreateServicePage() {
               {currentStep === 5 && renderStep5()}
 
               {/* Navigation */}
-              <div className="flex items-center justify-between pt-6 border-t border-slate-200">
+              <div className="flex items-center justify-between pt-8 border-t-2 border-slate-100">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={prevStep}
                   disabled={currentStep === 1}
-                  className="h-11 px-6"
+                  className="h-12 px-8 rounded-xl border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-all duration-200 font-medium"
                 >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="mr-2 h-5 w-5" />
                   Previous
                 </Button>
                 
@@ -1241,17 +1293,17 @@ export default function CreateServicePage() {
                   <Button
                     type="button"
                     onClick={nextStep}
-                    className="h-11 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    className="h-12 px-8 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
                   >
                     Next Step
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 ) : (
                   <Button
                     type="button"
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="h-11 px-8 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                    className="h-12 px-10 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold disabled:opacity-50"
                   >
                     {loading ? (
                       <>
@@ -1260,7 +1312,7 @@ export default function CreateServicePage() {
                       </>
                     ) : (
                       <>
-                        <Save className="mr-2 h-4 w-4" />
+                        <Save className="mr-2 h-5 w-5" />
                         Create Service
                       </>
                     )}
@@ -1271,12 +1323,14 @@ export default function CreateServicePage() {
           </Card>
 
           {/* Service Creation Info */}
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-2xl shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                <Info className="h-5 w-5 text-white" />
+              </div>
               <div>
-                <h4 className="font-medium text-blue-900 mb-1">Professional Service Creation</h4>
-                <p className="text-sm text-blue-700">
+                <h4 className="font-semibold text-blue-900 mb-2 text-lg">Professional Service Creation</h4>
+                <p className="text-blue-800 leading-relaxed">
                   This enhanced form uses professional templates and categories to ensure consistency across all services. 
                   Your service will be structured with proper deliverables, requirements, and milestones for a professional client experience.
                 </p>
