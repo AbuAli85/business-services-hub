@@ -190,6 +190,103 @@ export default function CreateBookingPage() {
           }
         } else {
           console.warn(`Service with ID ${serviceParam} not found in available services`)
+          // Try to fetch the specific service to see why it's not included
+          try {
+            const { data: specificService, error: specificError } = await supabase
+              .from('services')
+              .select('id, title, status, approval_status')
+              .eq('id', serviceParam)
+              .single()
+            
+            if (specificService) {
+              console.log('Specific service found:', {
+                id: specificService.id,
+                title: specificService.title,
+                status: specificService.status,
+                approval_status: specificService.approval_status
+              })
+              console.log('Service filtering criteria: status=active, approval_status=approved OR null')
+              console.log('This service does not meet the filtering criteria')
+              
+              // Allow booking even if service doesn't meet strict criteria
+              // This provides a better user experience
+              if (specificService.status === 'active' || specificService.status === 'draft') {
+                console.log('Allowing booking for non-approved service')
+                toast.warning('This service is not yet approved, but you can still book it')
+                
+                // Fetch complete service details for better user experience
+                try {
+                  const { data: completeService, error: completeError } = await supabase
+                    .from('services')
+                    .select(`
+                      *,
+                      packages:service_packages (*)
+                    `)
+                    .eq('id', specificService.id)
+                    .single()
+                  
+                  if (completeService) {
+                    // Fetch provider information
+                    const { data: provider } = await supabase
+                      .from('profiles')
+                      .select('id, full_name, company_name, email, phone')
+                      .eq('id', completeService.provider_id)
+                      .single()
+                    
+                    const enrichedService = {
+                      ...completeService,
+                      provider: provider || { id: '', full_name: 'Unknown Provider', company_name: '', email: '', phone: '' }
+                    }
+                    
+                    setSelectedService(enrichedService as any)
+                    setFormData(prev => ({ ...prev, service_id: specificService.id }))
+                    
+                    // Auto-select first package if available
+                    const firstPkg = (completeService.packages || [])[0]
+                    if (firstPkg) {
+                      setSelectedPackage(firstPkg)
+                      setFormData(prev => ({ ...prev, package_id: firstPkg.id }))
+                    }
+                  } else {
+                    // Fallback to minimal service object
+                    const fallbackService = {
+                      id: specificService.id,
+                      title: specificService.title,
+                      description: 'Service details not available',
+                      category: 'Unknown',
+                      base_price: 0,
+                      currency: 'OMR',
+                      provider: { id: '', full_name: 'Unknown Provider', company_name: '', email: '', phone: '' },
+                      packages: []
+                    }
+                    
+                    setSelectedService(fallbackService as any)
+                    setFormData(prev => ({ ...prev, service_id: specificService.id }))
+                  }
+                } catch (error) {
+                  console.error('Error fetching complete service details:', error)
+                  // Use minimal fallback
+                  const fallbackService = {
+                    id: specificService.id,
+                    title: specificService.title,
+                    description: 'Service details not available',
+                    category: 'Unknown',
+                    base_price: 0,
+                    currency: 'OMR',
+                    provider: { id: '', full_name: 'Unknown Provider', company_name: '', email: '', phone: '' },
+                    packages: []
+                  }
+                  
+                  setSelectedService(fallbackService as any)
+                  setFormData(prev => ({ ...prev, service_id: specificService.id }))
+                }
+              }
+            } else {
+              console.log('Specific service not found in database:', specificError)
+            }
+          } catch (error) {
+            console.error('Error fetching specific service:', error)
+          }
         }
       }
     } catch (error) {
