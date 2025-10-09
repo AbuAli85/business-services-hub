@@ -7,6 +7,7 @@ DROP VIEW IF EXISTS public.v_booking_status CASCADE;
 CREATE VIEW public.v_booking_status
 AS
 SELECT 
+    b.id as id,
     b.id as booking_id,
     COALESCE(b.title, 'Service Booking') as booking_title,
     b.status as booking_status,
@@ -49,9 +50,22 @@ SELECT
     b.subtotal,
     b.vat_percent,
     b.vat_amount,
-    b.currency
+    b.currency,
+    b.approval_status,
     
-FROM public.bookings b;
+    -- Add computed fields for export compatibility
+    b.created_at as created_at,
+    b.updated_at as updated_at,
+    
+    -- Add service and profile information for export
+    s.title as service_title,
+    c.full_name as client_name,
+    p.full_name as provider_name
+    
+FROM public.bookings b
+LEFT JOIN public.services s ON b.service_id = s.id
+LEFT JOIN public.profiles c ON b.client_id = c.id
+LEFT JOIN public.profiles p ON b.provider_id = p.id;
 
 -- Grant permissions
 GRANT SELECT ON public.v_booking_status TO authenticated;

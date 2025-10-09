@@ -383,14 +383,14 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('v_booking_status')
       .select(`
-        id, booking_title, service_id, service_title, service_description, service_category,
-        client_id, client_name, client_email, client_company, client_avatar,
-        provider_id, provider_name, provider_email, provider_company, provider_avatar,
-        progress, total_milestones, completed_milestones, raw_status, approval_status, display_status,
-        payment_status, invoice_status, invoice_id, amount, currency,
-        created_at, updated_at, due_at, requirements, notes, scheduled_date, location
+        id, booking_id, booking_title, service_id, service_title,
+        client_id, client_name,
+        provider_id, provider_name,
+        progress, display_status, booking_status,
+        amount, currency,
+        booking_created_at, booking_updated_at, scheduled_date
       `, { count: 'planned' })
-      .gte('created_at', sinceIso)
+      .gte('booking_created_at', sinceIso)
 
     if (userRole === 'provider') {
       query = query.eq('provider_id', user.id)
@@ -596,20 +596,24 @@ export async function GET(request: NextRequest) {
             ...booking,
             progress_percentage: progressMap.get(String(booking.id)) ?? 0,
             service_title: booking.service_title || service?.title || 'Service',
-            service_description: booking.service_description || service?.description || '',
-            service_category: booking.service_category || service?.category || '',
+            service_description: service?.description || '',
+            service_category: service?.category || '',
             client_name: booking.client_name || client?.full_name || 'Client',
-            client_email: booking.client_email || client?.email || '',
+            client_email: client?.email || '',
             provider_name: booking.provider_name || provider?.full_name || 'Provider',
-            provider_email: booking.provider_email || provider?.email || '',
+            provider_email: provider?.email || '',
             // Add both formats for compatibility
             amount: totalAmount,
             amount_cents: amountCents,
             // Map status fields for UI compatibility
-            status: booking.raw_status || booking.display_status || 'pending',
-            approval_status: booking.approval_status || null,
+            status: booking.booking_status || booking.display_status || 'pending',
+            approval_status: null,
+            display_status: booking.display_status,
+            // Map renamed columns from view
+            created_at: booking.booking_created_at,
+            updated_at: booking.booking_updated_at,
             // Invoice data
-            invoice_status: invoice?.status || booking.invoice_status || null,
+            invoice_status: invoice?.status || null,
             invoice_amount: invoice?.amount || null
           }
           
@@ -670,17 +674,20 @@ export async function GET(request: NextRequest) {
           ...booking,
           progress_percentage: progressMap.get(String(booking.id)) ?? 0,
           service_title: booking.service_title || 'Service',
-          service_description: booking.service_description || '',
-          service_category: booking.service_category || '',
+          service_description: '',
+          service_category: '',
           client_name: booking.client_name || 'Client',
-          client_email: booking.client_email || '',
+          client_email: '',
           provider_name: booking.provider_name || 'Provider',
-          provider_email: booking.provider_email || '',
+          provider_email: '',
           amount: totalAmount,
           amount_cents: amountCents,
-          status: booking.raw_status || booking.display_status || 'pending',
-          approval_status: booking.approval_status || null,
-          invoice_status: booking.invoice_status || null,
+          status: booking.booking_status || booking.display_status || 'pending',
+          approval_status: null,
+          display_status: booking.display_status,
+          created_at: booking.booking_created_at,
+          updated_at: booking.booking_updated_at,
+          invoice_status: null,
           invoice_amount: null
         }
       })

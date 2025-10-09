@@ -44,7 +44,7 @@ export async function GET(req: Request) {
 
     let query = supabase
       .from('v_booking_status')
-      .select('id, booking_title, service_title, client_name, provider_name, display_status, approval_status, amount, currency, progress, created_at, updated_at, scheduled_date')
+      .select('id, booking_title, display_status, amount, currency, progress, booking_created_at, booking_updated_at, scheduled_date')
 
     if (ids.length > 0) {
       query = query.in('id', ids)
@@ -59,9 +59,65 @@ export async function GET(req: Request) {
     const { data, error } = await query
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
+    // Enrich bookings with missing data
+    const enrichedData = await Promise.all(
+      (data || []).map(async (booking: any) => {
+        try {
+          // Fetch service information
+          const { data: service } = await supabase
+            .from('services')
+            .select('title')
+            .eq('id', booking.service_id)
+            .single()
+
+          // Fetch client information
+          const { data: client } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', booking.client_id)
+            .single()
+
+          // Fetch provider information
+          const { data: provider } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('id', booking.provider_id)
+            .single()
+
+          // Fetch booking details for approval_status
+          const { data: bookingDetails } = await supabase
+            .from('bookings')
+            .select('approval_status')
+            .eq('id', booking.id)
+            .single()
+
+          return {
+            ...booking,
+            service_title: service?.title || 'Unknown Service',
+            client_name: client?.full_name || 'Unknown Client',
+            provider_name: provider?.full_name || 'Unknown Provider',
+            approval_status: bookingDetails?.approval_status || 'pending',
+            created_at: booking.booking_created_at,
+            updated_at: booking.booking_updated_at
+          }
+        } catch (error) {
+          console.error('Error enriching booking:', error)
+          return {
+            ...booking,
+            service_title: 'Unknown Service',
+            client_name: 'Unknown Client',
+            provider_name: 'Unknown Provider',
+            approval_status: 'pending',
+            created_at: booking.booking_created_at,
+            updated_at: booking.booking_updated_at
+          }
+        }
+      })
+    )
+
     if (format === 'csv') {
       // Format the data for CSV export with proper column names
-      const formattedData = (data || []).map((booking: any) => ({
+      const formattedData = (enrichedData || []).map((booking: any) => ({
         'Booking ID': booking.id,
         'Service Title': booking.service_title || 'Service',
         'Client Name': booking.client_name || 'Client',
@@ -70,7 +126,7 @@ export async function GET(req: Request) {
         'Approval Status': booking.approval_status || 'pending',
         'Amount': booking.amount || '0.00',
         'Currency': booking.currency || 'OMR',
-        'Progress %': booking.project_progress || '0',
+        'Progress %': booking.progress || '0',
         'Created Date': booking.created_at ? new Date(booking.created_at).toLocaleDateString('en-US', { 
           year: 'numeric', 
           month: 'short', 
@@ -106,7 +162,7 @@ export async function GET(req: Request) {
     }
 
     // default JSON
-    return NextResponse.json({ data })
+    return NextResponse.json({ data: enrichedData })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 })
   }
