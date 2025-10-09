@@ -309,20 +309,20 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   currentY += 6
   addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
 
-  // Invoice Details (Top Right) - Moved up for top alignment with company name
+  // Invoice Details (Top Right) - Top aligned tighter with company name
   const rightColumnX = pageWidth - 20
-  addText(doc, 'Invoice', rightColumnX, 22, 'title', templateColors.accent, 'right')
-  addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 29, 'body', templateColors.primary, 'right')
-  addText(doc, `Date: ${createdDate}`, rightColumnX, 35, 'body', templateColors.darkGray, 'right')
-  addText(doc, `Due Date: ${dueDate}`, rightColumnX, 40, 'body', templateColors.darkGray, 'right')
+  addText(doc, 'Invoice', rightColumnX, 19, 'title', templateColors.accent, 'right')
+  addText(doc, `Invoice Number: #${invoiceNumber}`, rightColumnX, 26, 'body', templateColors.primary, 'right')
+  addText(doc, `Date: ${createdDate}`, rightColumnX, 32, 'body', templateColors.darkGray, 'right')
+  addText(doc, `Due Date: ${dueDate}`, rightColumnX, 37, 'body', templateColors.darkGray, 'right')
   
   // Add blue underline under "Invoice"
   doc.setDrawColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
   doc.setLineWidth(1)
-  doc.line(rightColumnX - 35, 27, rightColumnX, 27)
+  doc.line(rightColumnX - 35, 24, rightColumnX, 24)
 
   // === BILL TO SECTION (Right-aligned matching template) ===
-  const billToY = 43 // Moved up ~10mm closer to invoice header for compact layout
+  const billToY = 38 // Raised higher for tighter spacing
   const billToRightX = pageWidth - 20
   
   addText(doc, 'Bill To:', billToRightX, billToY, 'heading', templateColors.accent, 'right')
@@ -338,9 +338,14 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, clientPhone, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
   billToCurrentY += 6
   addText(doc, clientWebsite, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  
+  // Add subtle separator line under Bill To section
+  doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
+  doc.setLineWidth(0.2)
+  doc.line(contentStartX, billToCurrentY + 5, pageWidth - margin, billToCurrentY + 5)
 
   // === ITEMS TABLE (Full-width bordered table matching template) ===
-  currentY = 82 // Moved up to start directly under Bill To for compact layout
+  currentY = 75 // Start directly under Bill To for optimal spacing
   const tableStartY = currentY
   
   // Define table structure - Match template column widths exactly
@@ -416,12 +421,12 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   })
 
   // === FINANCIAL SUMMARY (Right-aligned matching template) ===
-  currentY += 15 // Reduced spacing for compact layout
+  currentY += 10 // Further reduced spacing for optimal layout
   
   // Add subtle gray line above totals for separation
   doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
   doc.setLineWidth(0.3)
-  doc.line(contentStartX, currentY - 2, contentStartX + contentWidth, currentY - 2)
+  doc.line(contentStartX, currentY - 4, pageWidth - margin, currentY - 4)
   
   const summaryBoxX = contentStartX + contentWidth - 90
   const summaryBoxWidth = 85 // Increased width for cleaner right alignment
@@ -453,7 +458,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 5, currentY, 'heading', templateColors.accent, 'right')
 
   // === FOOTER SECTION (Side-by-side: Signature left, Terms right) ===
-  const footerStartY = pageHeight - 60 // Lifted higher for balanced layout
+  const footerStartY = pageHeight - 65 // Adjusted for better balance
   const signatureWidth = 60
   const signatureHeight = 20
   
