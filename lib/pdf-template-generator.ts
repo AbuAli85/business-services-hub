@@ -119,7 +119,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   const createdDate = new Date(invoice.created_at).toLocaleDateString('en-GB')
   const dueDate = new Date(invoice.due_date || Date.now() + 30 * 86400000).toLocaleDateString('en-GB')
   
-  // Company information (Provider) - Try multiple sources
+  // Company information (Provider) - Try multiple sources with more comprehensive fallbacks
   const providerCompany = invoice.booking?.service?.provider?.company || {}
   const provider = invoice.booking?.service?.provider || {}
   
@@ -130,29 +130,69 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   console.log('🔍 PDF Generator - Provider ID sources:', {
     nested: invoice.booking?.service?.provider?.id,
     direct: directProviderId,
-    hasNestedData: !!invoice.booking?.service?.provider
+    hasNestedData: !!invoice.booking?.service?.provider,
+    providerCompanyExists: !!providerCompany,
+    providerExists: !!provider
   })
   
-  const companyName = providerCompany.name || provider.company_name || 'Your Company Name'
-  const companyAddress = providerCompany.address || provider.address || '123 Anywhere St., Any City, ST 12345'
-  const companyPhone = providerCompany.phone || provider.phone || '123-456-7890'
-  const companyEmail = providerCompany.email || provider.email || 'provider@company.com'
-  const companyWebsite = providerCompany.website || provider.website || 'company.com'
-  const companyLogo = providerCompany.logo_url || provider.logo_url
+  // Try multiple fallback approaches for company data
+  // TEMPORARY: Add test data to verify extraction is working
+  const companyName = providerCompany.name || 
+                     provider.company_name || 
+                     provider.full_name || 
+                     (directProviderId ? `Provider ID: ${directProviderId}` : 'Your Company Name')
+  const companyAddress = providerCompany.address || 
+                        provider.address || 
+                        '123 Anywhere St., Any City, ST 12345'
+  const companyPhone = providerCompany.phone || 
+                      provider.phone || 
+                      '123-456-7890'
+  const companyEmail = providerCompany.email || 
+                      provider.email || 
+                      'provider@company.com'
+  const companyWebsite = providerCompany.website || 
+                        provider.website || 
+                        'company.com'
+  const companyLogo = providerCompany.logo_url || 
+                     provider.logo_url
   
-  // Client information
+  // Client information - Try multiple sources with comprehensive fallbacks
   const client = invoice.booking?.client || {}
   const clientCompany = client.company || {}
-  const clientName = client.full_name || 'Client Name'
-  const clientCompanyName = clientCompany.name || client.company_name || 'Client Company'
-  const clientAddress = clientCompany.address || client.address || '123 Anywhere St., Any City, ST 12345'
-  const clientPhone = client.phone || clientCompany.phone || '123-456-7890'
-  const clientEmail = client.email || clientCompany.email || 'client@company.com'
-  const clientWebsite = clientCompany.website || client.website || 'clientcompany.com'
+  
+  console.log('🔍 PDF Generator - Client data sources:', {
+    hasClient: !!client,
+    hasClientCompany: !!clientCompany,
+    clientName: client.full_name,
+    clientCompanyName: clientCompany.name || client.company_name
+  })
+  
+  const clientName = client.full_name || 
+                    (directClientId ? `Client ID: ${directClientId}` : 'Client Name')
+  const clientCompanyName = clientCompany.name || 
+                           client.company_name || 
+                           'Client Company'
+  const clientAddress = clientCompany.address || 
+                       client.address || 
+                       '123 Anywhere St., Any City, ST 12345'
+  const clientPhone = client.phone || 
+                     clientCompany.phone || 
+                     '123-456-7890'
+  const clientEmail = client.email || 
+                     clientCompany.email || 
+                     'client@company.com'
+  const clientWebsite = clientCompany.website || 
+                       client.website || 
+                       'clientcompany.com'
   
   // Debug logging for extracted data
   console.log('🔍 PDF Generator - Raw provider data:', invoice.booking?.service?.provider)
   console.log('🔍 PDF Generator - Raw client data:', invoice.booking?.client)
+  console.log('🔍 PDF Generator - Provider company data:', invoice.booking?.service?.provider?.company)
+  console.log('🔍 PDF Generator - Client company data:', invoice.booking?.client?.company)
+  console.log('🔍 PDF Generator - Direct provider ID:', invoice.provider_id)
+  console.log('🔍 PDF Generator - Direct client ID:', invoice.client_id)
+  
   console.log('🔍 PDF Generator - Extracted company data:', {
     companyName,
     companyAddress,
@@ -170,6 +210,35 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     clientEmail,
     clientWebsite
   })
+  
+  // Check if we're using fallback values
+  const isUsingFallbacks = {
+    company: companyName === 'Your Company Name',
+    client: clientName === 'Client Name'
+  }
+  console.log('🔍 PDF Generator - Using fallback values:', isUsingFallbacks)
+  
+  // If we're using fallbacks, log detailed debugging info
+  if (isUsingFallbacks.company || isUsingFallbacks.client) {
+    console.log('⚠️ PDF Generator - Using fallback values, detailed debugging:')
+    console.log('Invoice structure:', {
+      hasBooking: !!invoice.booking,
+      hasService: !!invoice.booking?.service,
+      hasProvider: !!invoice.booking?.service?.provider,
+      hasClient: !!invoice.booking?.client,
+      providerId: invoice.provider_id,
+      clientId: invoice.client_id,
+      bookingId: invoice.booking?.id
+    })
+    
+    // Log the actual data structure
+    if (invoice.booking?.service?.provider) {
+      console.log('Provider data structure:', JSON.stringify(invoice.booking.service.provider, null, 2))
+    }
+    if (invoice.booking?.client) {
+      console.log('Client data structure:', JSON.stringify(invoice.booking.client, null, 2))
+    }
+  }
   
   // Financial calculations
   let safeSubtotal = invoice.subtotal || 0

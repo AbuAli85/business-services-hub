@@ -292,6 +292,18 @@ export async function POST(request: NextRequest) {
     console.log('🔍 PDF API - Provider ID:', finalInvoice.provider_id)
     console.log('🔍 PDF API - Client ID:', finalInvoice.client_id)
     console.log('🔍 PDF API - Invoice ID:', finalInvoice.id)
+    
+    // Check if enrichment worked
+    const hasProviderData = !!(invoiceForPdf.booking?.service?.provider?.full_name || invoiceForPdf.booking?.service?.provider?.company?.name)
+    const hasClientData = !!(invoiceForPdf.booking?.client?.full_name || invoiceForPdf.booking?.client?.company?.name)
+    console.log('🔍 PDF API - Data enrichment status:', {
+      hasProviderData,
+      hasClientData,
+      providerName: invoiceForPdf.booking?.service?.provider?.full_name,
+      clientName: invoiceForPdf.booking?.client?.full_name,
+      providerCompany: invoiceForPdf.booking?.service?.provider?.company?.name,
+      clientCompany: invoiceForPdf.booking?.client?.company?.name
+    })
 
     // Debug VAT and calculation data
     console.log('🔍 PDF API - VAT Data:', {
