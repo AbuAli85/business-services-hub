@@ -136,9 +136,11 @@ export default function CreateBookingPage() {
           packages:service_packages (*)
         `)
         .eq('status', 'active')
-        .eq('approval_status', 'approved')
+        .or('approval_status.eq.approved,approval_status.is.null')
 
       if (error) throw error
+
+      console.log('Fetched services:', services?.length || 0)
 
       // Fetch provider information separately to avoid complex joins
       const enrichedServices = await Promise.all(
@@ -168,8 +170,13 @@ export default function CreateBookingPage() {
 
       // Preselect service from query parameter if available
       const serviceParam = searchParams?.get('service')
+      console.log('Looking for preselected service:', serviceParam)
+      console.log('Available services:', enrichedServices?.map(s => ({ id: s.id, title: s.title })))
+      
       if (serviceParam && (enrichedServices || []).length > 0) {
         const svc = (enrichedServices as any).find((s: Service) => s.id === serviceParam)
+        console.log('Found preselected service:', svc ? svc.title : 'Not found')
+        
         if (svc) {
           setSelectedService(svc)
           setFormData(prev => ({ ...prev, service_id: svc.id }))
@@ -181,6 +188,8 @@ export default function CreateBookingPage() {
             // For services without packages, clear package_id to indicate direct booking
             setFormData(prev => ({ ...prev, package_id: '' }))
           }
+        } else {
+          console.warn(`Service with ID ${serviceParam} not found in available services`)
         }
       }
     } catch (error) {
@@ -355,10 +364,31 @@ export default function CreateBookingPage() {
               )}
             </CardHeader>
             <CardContent>
-              {preSelectedServiceId && !selectedService ? (
+              {loading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading selected service...</p>
+                  <p className="text-gray-600">Loading services...</p>
+                </div>
+              ) : preSelectedServiceId && !selectedService ? (
+                <div className="p-8 text-center">
+                  <div className="text-red-500 mb-4">
+                    <AlertCircle className="h-12 w-12 mx-auto" />
+                  </div>
+                  <p className="text-gray-600 mb-2">Service not found or no longer available.</p>
+                  <p className="text-sm text-gray-500 mb-4">The service you're looking for may have been removed or is no longer active.</p>
+                  <Button 
+                    onClick={() => router.push('/dashboard/bookings/create')}
+                    variant="outline"
+                    className="mr-2"
+                  >
+                    Browse All Services
+                  </Button>
+                  <Button 
+                    onClick={() => router.back()}
+                    variant="outline"
+                  >
+                    Go Back
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-4">
