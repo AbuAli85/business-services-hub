@@ -257,8 +257,9 @@ export async function example9_MakeComWebhook() {
 
 // ==================== Example 10: React Component Usage ====================
 
-export function Example10_ReactComponent() {
-  // Example React component for manual invoice generation
+export async function example10_ReactComponentUsage() {
+  // Example handler function for React components
+  // Use this in your React component's onClick handler
   
   const handleGenerateInvoice = async (bookingId: string) => {
     try {
@@ -283,12 +284,25 @@ export function Example10_ReactComponent() {
     }
   }
   
+  return handleGenerateInvoice
+}
+
+/*
+Example React Component (create in a .tsx file):
+
+export function InvoiceGeneratorButton({ bookingId }: { bookingId: string }) {
+  const handleClick = async () => {
+    const handler = await example10_ReactComponentUsage()
+    await handler(bookingId)
+  }
+  
   return (
-    <button onClick={() => handleGenerateInvoice('booking-id-here')}>
+    <button onClick={handleClick}>
       Generate Invoice
     </button>
   )
 }
+*/
 
 // ==================== Helper: Check Booking is Ready for Invoice ====================
 
