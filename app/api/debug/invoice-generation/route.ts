@@ -52,7 +52,11 @@ export async function GET(request: NextRequest) {
         }
         
         // Check service with provider
-        if (booking.service_id) {
+        console.log('Checking booking service_id:', booking.service_id, 'for booking:', booking.id)
+        
+        if (!booking.service_id) {
+          issues.push('Missing service_id')
+        } else {
           const { data: service, error: serviceError } = await supabase
             .from('services')
             .select(`
@@ -69,8 +73,12 @@ export async function GET(request: NextRequest) {
             .eq('id', booking.service_id)
             .single()
           
-          if (serviceError || !service) {
-            issues.push('Service not found or inaccessible')
+          console.log('Service query result:', { service, error: serviceError })
+          
+          if (serviceError) {
+            issues.push(`Service query error: ${serviceError.message}`)
+          } else if (!service) {
+            issues.push('Service not found')
           } else {
             details.service = service.title
             
@@ -78,14 +86,12 @@ export async function GET(request: NextRequest) {
               issues.push('Service has no provider linked')
             } else {
               const provider = Array.isArray(service.provider) ? service.provider[0] : service.provider
-              details.provider = provider.full_name
+              details.provider = provider.full_name || provider.email
               
               if (!provider.full_name) issues.push('Provider missing full_name')
               if (!provider.email) issues.push('Provider missing email')
             }
           }
-        } else {
-          issues.push('Missing service_id')
         }
         
         // Check client
