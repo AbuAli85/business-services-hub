@@ -23,11 +23,13 @@ export async function GET(request: NextRequest) {
     
     const supabase = createClient(supabaseUrl, supabaseKey)
     
-    // Find approved bookings
+    // Find approved bookings with service_id
     const { data: approvedBookings, error: bookingsError } = await supabase
       .from('bookings')
       .select('id, status, amount, service_id, client_id, provider_id')
       .in('status', ['approved', 'completed'])
+    
+    console.log('Found approved bookings:', approvedBookings?.length)
     
     if (bookingsError) {
       throw bookingsError
