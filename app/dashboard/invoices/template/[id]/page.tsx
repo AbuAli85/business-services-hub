@@ -309,6 +309,8 @@ export default function InvoiceTemplatePage() {
                 : null
               
               console.log('📊 Client company data:', companyData)
+              console.log('📊 Client company address:', companyData?.address)
+              console.log('📊 Client company website:', companyData?.website)
               
               // Merge client data with existing data
               if (!enrichedInvoiceData.booking) {
@@ -324,20 +326,20 @@ export default function InvoiceTemplatePage() {
                 company: companyData ? {
                   id: companyData.id,
                   name: companyData.name,
-                  address: companyData.address || '123 Client Street, City, Country',
-                  phone: companyData.phone || client.phone || '+1-234-567-8900',
+                  address: companyData.address || 'Address Not Available',
+                  phone: companyData.phone || client.phone || 'Phone Not Available',
                   email: companyData.email || client.email,
-                  website: companyData.website || 'client-company.com',
+                  website: companyData.website || 'Website Not Available',
                   logo_url: companyData.logo_url,
                   created_at: companyData.created_at,
                   updated_at: companyData.updated_at
                 } : {
                   id: '2',
                   name: client.company_name || client.full_name + "'s Company",
-                  address: '123 Client Street, City, Country',
-                  phone: client.phone || '+1-234-567-8900',
+                  address: 'Address Not Available',
+                  phone: client.phone || 'Phone Not Available',
                   email: client.email,
-                  website: 'client-company.com',
+                  website: 'Website Not Available',
                   logo_url: undefined,
                   created_at: invoiceData.created_at,
                   updated_at: invoiceData.updated_at
@@ -624,10 +626,10 @@ export default function InvoiceTemplatePage() {
               company: {
                 id: invoice.booking?.client?.company?.id || '2',
                 name: invoice.booking?.client?.company?.name || invoice.booking?.client?.full_name + "'s Company" || 'Client Company',
-                address: invoice.booking?.client?.company?.address || 'Client Address Not Provided',
-                phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || 'Phone Not Provided',
-                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || 'client@email.com',
-                website: invoice.booking?.client?.company?.website || 'Website Not Provided',
+                address: invoice.booking?.client?.company?.address || 'Address Not Available',
+                phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || 'Phone Not Available',
+                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || 'Email Not Available',
+                website: invoice.booking?.client?.company?.website || 'Website Not Available',
                 logo_url: invoice.booking?.client?.company?.logo_url || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
