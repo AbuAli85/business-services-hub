@@ -1,5 +1,6 @@
 import { getSupabaseClient } from './supabase'
 import { z } from 'zod'
+import { generateInvoiceFromBooking } from './workflows/generateInvoiceAutomated'
 
 export interface InvoiceData {
   id: string
@@ -67,12 +68,13 @@ export class SmartInvoiceService {
 
   /**
    * Automatically generate invoice when booking is approved
+   * Now uses the new automated workflow system
    */
   async generateInvoiceOnApproval(bookingId: string): Promise<InvoiceData | null> {
     try {
-      console.log('🔧 Generating invoice for approved booking:', bookingId)
+      console.log('🔧 [Smart Invoice Service] Generating invoice for approved booking:', bookingId)
 
-      // Validate input defensively
+      // Validate input
       const idSchema = z.string().uuid('Invalid bookingId')
       const parsedId = idSchema.safeParse(bookingId)
       if (!parsedId.success) {
@@ -80,130 +82,24 @@ export class SmartInvoiceService {
         return null
       }
 
-      const supabase = await this.getClient()
+      // Use the new automated workflow
+      const result = await generateInvoiceFromBooking(bookingId, {
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        daysUntilDue: 30,
+        autoSendEmail: true
+      })
 
-      // Get booking details with service and user information
-      const { data: booking, error: bookingError } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          service:services(
-            id,
-            title,
-            description,
-            base_price,
-            currency,
-            provider:profiles(
-              id,
-              full_name,
-              email,
-              company:companies(
-                name,
-                logo_url,
-                vat_number,
-                cr_number
-              )
-            )
-          ),
-          client:profiles(
-            id,
-            full_name,
-            email
-          )
-        `)
-        .eq('id', bookingId)
-        .single()
-
-      if (bookingError) {
-        console.error('❌ Error fetching booking:', bookingError)
+      if (!result.success) {
+        console.error('❌ Automated invoice generation failed:', result.error)
         return null
       }
 
-      if (!booking) {
-        console.error('❌ Booking not found:', bookingId)
-        return null
-      }
-
-      // Check if invoice already exists
-      const { data: existingInvoice } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('booking_id', bookingId)
-        .single()
-
-      if (existingInvoice) {
-        console.log('ℹ️ Invoice already exists for booking:', bookingId)
-        return null
-      }
-
-      // Generate invoice number
-      const invoiceNumber = await this.generateInvoiceNumber()
-
-      // Calculate amounts
-      const subtotal = booking.amount || booking.service?.base_price || 0
-      const vatPercent = 5.0 // Default VAT for Oman
-      const vatAmount = Math.round((subtotal * vatPercent / 100) * 100) / 100
-      const totalAmount = subtotal + vatAmount
-
-      // Calculate due date (30 days from now)
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + 30)
-
-      // Create invoice data with only fields that exist in the table
-      const invoiceData = {
-        booking_id: bookingId,
-        client_id: booking.client_id,
-        provider_id: booking.provider_id || booking.service?.provider?.id || null,
-        amount: totalAmount,
-        currency: booking.currency || 'OMR',
-        status: 'issued' as const,
-        invoice_number: invoiceNumber,
-        due_date: dueDate.toISOString(),
-        subtotal,
-        total_amount: totalAmount,
-        payment_terms: 'Payment due within 30 days',
-        notes: `Invoice for ${booking.service?.title || 'Service'} - Booking #${bookingId.slice(0, 8)}`,
-        // Add optional fields that might exist
-        ...(booking.service?.title && { service_title: booking.service.title }),
-        ...(booking.service?.description && { service_description: booking.service.description }),
-        ...(booking.client?.full_name && { client_name: booking.client.full_name }),
-        ...(booking.client?.email && { client_email: booking.client.email }),
-        ...(booking.service?.provider?.full_name && { provider_name: booking.service.provider.full_name }),
-        ...(booking.service?.provider?.email && { provider_email: booking.service.provider.email }),
-        ...(booking.service?.provider?.company?.name && { company_name: booking.service.provider.company.name }),
-        ...(booking.service?.provider?.company?.logo_url && { company_logo: booking.service.provider.company.logo_url }),
-        vat_percent: vatPercent,
-        vat_amount: vatAmount
-      }
-
-      // Insert invoice into database
-      const { data: invoice, error: invoiceError } = await supabase
-        .from('invoices')
-        .insert(invoiceData)
-        .select()
-        .single()
-
-      if (invoiceError) {
-        console.error('❌ Error creating invoice:', invoiceError)
-        return null
-      }
-
-      console.log('✅ Invoice created successfully:', invoice.id)
-
-      // Send notifications
-      await this.sendInvoiceNotifications(invoice, booking)
-
-      // Send notification to client about new invoice
-      try {
-        await this.sendInvoiceNotificationToClient(invoice, booking)
-      } catch (notificationError) {
-        console.warn('⚠️ Failed to send invoice notification to client:', notificationError)
-      }
-
-      return invoice
+      console.log('✅ [Smart Invoice Service] Invoice created successfully via automated workflow:', result.invoice?.id)
+      return result.invoice
 
     } catch (error) {
-      console.error('❌ Error generating invoice:', error)
+      console.error('❌ [Smart Invoice Service] Error generating invoice:', error)
       return null
     }
   }
