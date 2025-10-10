@@ -338,11 +338,11 @@ export default function InvoiceTemplatePage() {
       }
 
       setInvoice(enrichedInvoiceData)
-      console.log('📊 Final enriched invoice data:', enrichedInvoiceData)
+      console.log('📊 Final enriched invoice data:', JSON.stringify(enrichedInvoiceData, null, 2))
       console.log('📊 Provider data in enriched:', enrichedInvoiceData.booking?.service?.provider)
       console.log('📊 Client data in enriched:', enrichedInvoiceData.booking?.client)
       console.log('📊 Provider company in enriched:', enrichedInvoiceData.booking?.service?.provider?.company)
-      console.log('📊 Client company in enriched:', enrichedInvoiceData.booking?.client?.company)
+      console.log('📊 Client company in enriched:', JSON.stringify(enrichedInvoiceData.booking?.client?.company, null, 2))
       
       // Additional debugging for template data
       console.log('🔍 Template data check:', {
@@ -350,10 +350,14 @@ export default function InvoiceTemplatePage() {
         hasProviderCompany: !!enrichedInvoiceData.booking?.service?.provider?.company,
         providerCompanyName: enrichedInvoiceData.booking?.service?.provider?.company?.name,
         providerCompanyAddress: enrichedInvoiceData.booking?.service?.provider?.company?.address,
+        providerCompanyWebsite: enrichedInvoiceData.booking?.service?.provider?.company?.website,
         hasClient: !!enrichedInvoiceData.booking?.client,
         hasClientCompany: !!enrichedInvoiceData.booking?.client?.company,
         clientCompanyName: enrichedInvoiceData.booking?.client?.company?.name,
-        clientCompanyAddress: enrichedInvoiceData.booking?.client?.company?.address
+        clientCompanyAddress: enrichedInvoiceData.booking?.client?.company?.address,
+        clientCompanyWebsite: enrichedInvoiceData.booking?.client?.company?.website,
+        clientCompanyPhone: enrichedInvoiceData.booking?.client?.company?.phone,
+        clientCompanyEmail: enrichedInvoiceData.booking?.client?.company?.email
       })
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
@@ -632,7 +636,10 @@ export default function InvoiceTemplatePage() {
             company: templateInvoice.company,
             client: templateInvoice.client,
             providerData: invoice.booking?.service?.provider,
-            clientData: invoice.booking?.client
+            clientData: invoice.booking?.client,
+            clientCompanyData: invoice.booking?.client?.company,
+            clientAddress: invoice.booking?.client?.company?.address,
+            clientWebsite: invoice.booking?.client?.company?.website
           })
           
           return <InvoiceTemplate invoice={templateInvoice} />
