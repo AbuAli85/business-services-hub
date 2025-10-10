@@ -614,30 +614,11 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
 
   const handleDownloadPDF = async (invoice: InvoiceRecord) => {
     try {
-      // Try to download existing PDF first
-      const response = await fetch(`/api/invoices/pdf/${invoice.id}`, {
-        method: 'GET'
-      })
-      
-      if (response.ok) {
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${invoice.invoice_number || invoice.id}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-        toast.success('PDF downloaded successfully')
-      } else {
-        // If no existing PDF, generate one
-        await handleGeneratePDF(invoice)
-      }
+      // Use the new template-based PDF generator directly
+      await handleGeneratePDF(invoice)
     } catch (error) {
       logger.error('Error downloading PDF:', error)
-      // Fallback to generating PDF
-      await handleGeneratePDF(invoice)
+      toast.error('Failed to download PDF')
     }
   }
 
@@ -1116,19 +1097,10 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
                                   View Template
                                 </DropdownMenuItem>
                                 
-                                {invoice.pdf_url ? (
-                                  <DropdownMenuItem asChild>
-                                    <a href={invoice.pdf_url} target="_blank" rel="noreferrer">
-                                      <Download className="h-4 w-4 mr-2" />
-                                      Download PDF
-                                    </a>
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem onClick={() => handleGeneratePDF(invoice)}>
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Generate PDF
-                                  </DropdownMenuItem>
-                                )}
+                                <DropdownMenuItem onClick={() => handleDownloadPDF(invoice)}>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download PDF
+                                </DropdownMenuItem>
                                 
                                 {userRole === 'client' && invoice.status === 'issued' && (
                                   <DropdownMenuItem onClick={() => handlePayInvoice(invoice)}>
