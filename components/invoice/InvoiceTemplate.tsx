@@ -14,6 +14,9 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
   console.log('🔍 InvoiceTemplate received data:', {
     company: invoice.company,
     client: invoice.client,
+    companyLogoUrl: invoice.company?.logo_url,
+    hasLogoUrl: !!invoice.company?.logo_url,
+    logoUrlCheck: invoice.company?.logo_url && !invoice.company.logo_url.includes('/logo.png'),
     fullInvoice: invoice
   })
   
@@ -23,32 +26,34 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
     return String(value)
   }
   
-  // Ensure we have valid company and client data with defaults
-  const company = invoice.company || {
-    name: 'Company Name',
-    address: '123 Business Street, City, Country',
-    phone: '+1-234-567-8900',
-    email: 'contact@company.com',
-    website: 'company.com'
+  // Ensure we have valid company and client data with contextual defaults
+  const company = {
+    name: invoice.company?.name || 'Service Provider',
+    address: invoice.company?.address || 'Business Address Not Available',
+    phone: invoice.company?.phone || 'Phone Not Available',
+    email: invoice.company?.email || 'Email Not Available',
+    website: invoice.company?.website || 'Website Not Available',
+    logo_url: invoice.company?.logo_url
   }
   
-  const client = invoice.client || {
-    full_name: 'Client Name',
-    email: 'client@email.com',
-    phone: '+1-234-567-8900',
+  const client = {
+    full_name: invoice.client?.full_name || 'Client Name Not Available',
+    email: invoice.client?.email || 'Email Not Available',
+    phone: invoice.client?.phone || 'Phone Not Available',
     company: {
-      name: 'Client Company',
-      address: '456 Client Street, City, Country',
-      email: 'contact@clientcompany.com',
-      phone: '+1-234-567-8900',
-      website: 'clientcompany.com'
+      name: invoice.client?.company?.name || 'Company Name Not Available',
+      address: invoice.client?.company?.address || 'Address Not Available',
+      email: invoice.client?.company?.email || invoice.client?.email || 'Email Not Available',
+      phone: invoice.client?.company?.phone || invoice.client?.phone || 'Phone Not Available',
+      website: invoice.client?.company?.website || 'Website Not Available',
+      logo_url: invoice.client?.company?.logo_url
     }
   }
   
   return (
     <div className={`max-w-4xl mx-auto bg-white shadow-lg print:shadow-none relative ${className}`}>
       {/* Logo Watermark - Professional and Subtle */}
-      {company.logo_url && !company.logo_url.includes('/logo.png') && (
+      {company.logo_url && !company.logo_url.includes('/logo.png') && company.logo_url.length > 0 && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           {/* Main centered watermark */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 opacity-5 print:opacity-3">
@@ -91,7 +96,7 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
         <div className="w-32 bg-blue-900 flex flex-col items-center py-8">
           {/* Company Logo Area */}
           <div className="mb-8">
-            {company.logo_url && !company.logo_url.includes('/logo.png') ? (
+            {company.logo_url && !company.logo_url.includes('/logo.png') && company.logo_url.length > 0 ? (
               <div className="relative w-16 h-16 bg-white rounded-lg p-2">
                 <Image
                   src={company.logo_url}
@@ -99,11 +104,21 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
                   fill
                   className="object-contain p-2"
                   sizes="64px"
+                  onError={(e) => {
+                    console.warn('⚠️ Logo failed to load:', company.logo_url)
+                    e.currentTarget.style.display = 'none'
+                    e.currentTarget.parentElement?.querySelector('.logo-fallback')?.classList.remove('hidden')
+                  }}
                 />
+                <div className="logo-fallback hidden w-full h-full bg-white rounded-lg flex items-center justify-center">
+                  <span className="text-blue-900 font-bold text-xs">LOGO</span>
+                </div>
               </div>
             ) : (
               <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-blue-900 font-bold text-sm">LOGO</span>
+                <span className="text-blue-900 font-bold text-xs">
+                  {company.name ? company.name.substring(0, 4).toUpperCase() : 'LOGO'}
+                </span>
               </div>
             )}
           </div>
@@ -127,33 +142,33 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
             {/* Company Information */}
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                {safeString(company.name, 'Your Company Name')}
+                {safeString(company.name, 'Service Provider')}
               </h1>
               <div className="space-y-2 text-sm text-gray-600">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
                   </svg>
-                  <span>{safeString(company.address, '123 Anywhere St., Any City, ST 12345')}</span>
+                  <span>{safeString(company.address, 'Business Address Not Available')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
                   </svg>
-                  <span>{safeString(company.phone, '123-456-7890')}</span>
+                  <span>{safeString(company.phone, 'Phone Not Available')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
                   </svg>
-                  <span>{safeString(company.email, 'hello@company.com')}</span>
+                  <span>{safeString(company.email, 'Email Not Available')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.498-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clipRule="evenodd"/>
                   </svg>
-                  <span>{safeString(company.website, 'company-website.com')}</span>
+                  <span>{safeString(company.website, 'Website Not Available')}</span>
                 </div>
               </div>
             </div>
@@ -185,8 +200,8 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
             <div className="text-right">
               <h3 className="text-lg font-bold text-blue-600 mb-2">Bill To:</h3>
               <div className="text-sm text-gray-700">
-                <div className="font-semibold">{safeString(client.full_name, 'Client Name')}</div>
-                <div className="font-semibold">{safeString(client.company?.name, 'Client Company')}</div>
+                <div className="font-semibold">{safeString(client.full_name, 'Client Name Not Available')}</div>
+                <div className="font-semibold">{safeString(client.company?.name, 'Company Name Not Available')}</div>
                 <div className="mt-1">
                   {(() => {
                     const address = client.company?.address
@@ -203,15 +218,15 @@ export default function InvoiceTemplate({ invoice, className = '' }: InvoiceTemp
                       } else if (addrObj.address) {
                         return addrObj.address
                       } else {
-                        return Object.values(addrObj).filter(v => v && typeof v === 'string').join(', ') || '123 Client Street, City, Country'
+                        return Object.values(addrObj).filter(v => v && typeof v === 'string').join(', ') || 'Address Not Available'
                       }
                     }
-                    return '123 Client Street, City, Country'
+                    return 'Address Not Available'
                   })()}
                 </div>
-                <div className="mt-1">{safeString(client.company?.email || client.email, 'client@email.com')}</div>
-                <div className="mt-1">📞 {safeString(client.company?.phone || client.phone, '123-456-7890')}</div>
-                <div className="mt-1">🌐 {safeString(client.company?.website, 'client-website.com')}</div>
+                <div className="mt-1">{safeString(client.company?.email || client.email, 'Email Not Available')}</div>
+                <div className="mt-1">📞 {safeString(client.company?.phone || client.phone, 'Phone Not Available')}</div>
+                <div className="mt-1">🌐 {safeString(client.company?.website, 'Website Not Available')}</div>
               </div>
             </div>
           </div>

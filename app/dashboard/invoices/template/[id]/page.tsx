@@ -342,6 +342,18 @@ export default function InvoiceTemplatePage() {
       console.log('📊 Client data in enriched:', enrichedInvoiceData.booking?.client)
       console.log('📊 Provider company in enriched:', enrichedInvoiceData.booking?.service?.provider?.company)
       console.log('📊 Client company in enriched:', enrichedInvoiceData.booking?.client?.company)
+      
+      // Additional debugging for template data
+      console.log('🔍 Template data check:', {
+        hasProvider: !!enrichedInvoiceData.booking?.service?.provider,
+        hasProviderCompany: !!enrichedInvoiceData.booking?.service?.provider?.company,
+        providerCompanyName: enrichedInvoiceData.booking?.service?.provider?.company?.name,
+        providerCompanyAddress: enrichedInvoiceData.booking?.service?.provider?.company?.address,
+        hasClient: !!enrichedInvoiceData.booking?.client,
+        hasClientCompany: !!enrichedInvoiceData.booking?.client?.company,
+        clientCompanyName: enrichedInvoiceData.booking?.client?.company?.name,
+        clientCompanyAddress: enrichedInvoiceData.booking?.client?.company?.address
+      })
     } catch (error) {
       console.error('Error in checkUserAndFetchInvoice:', error)
       toast.error('Failed to fetch invoice')
@@ -537,8 +549,8 @@ export default function InvoiceTemplatePage() {
 
       {/* Invoice Template */}
       <div className="py-8">
-        <InvoiceTemplate 
-          invoice={{
+        {(() => {
+          const templateInvoice = {
             id: invoice.id,
             invoice_number: formatInvoiceNumber(invoice.invoice_number),
             issued_date: invoice.created_at,
@@ -559,11 +571,11 @@ export default function InvoiceTemplatePage() {
             updated_at: invoice.updated_at,
             company: {
               id: invoice.booking?.service?.provider?.company?.id || '1',
-              name: invoice.booking?.service?.provider?.company?.name || 'Your Company Name',
-              address: invoice.booking?.service?.provider?.company?.address || '123 Anywhere St., Any City, ST 12345',
-              phone: invoice.booking?.service?.provider?.company?.phone || '123-456-7890',
-              email: invoice.booking?.service?.provider?.email || 'hello@reallygreatsite.com',
-              website: invoice.booking?.service?.provider?.company?.website || 'reallygreatsite.com',
+              name: invoice.booking?.service?.provider?.company?.name || invoice.booking?.service?.provider?.full_name + "'s Company" || 'Service Provider Company',
+              address: invoice.booking?.service?.provider?.company?.address || 'Business Address Not Provided',
+              phone: invoice.booking?.service?.provider?.company?.phone || 'Phone Not Provided',
+              email: invoice.booking?.service?.provider?.company?.email || invoice.booking?.service?.provider?.email || 'Email Not Provided',
+              website: invoice.booking?.service?.provider?.company?.website || 'Website Not Provided',
               logo_url: invoice.booking?.service?.provider?.company?.logo_url || undefined,
               created_at: invoice.created_at,
               updated_at: invoice.updated_at
@@ -571,15 +583,15 @@ export default function InvoiceTemplatePage() {
             client: {
               id: invoice.client_id,
               full_name: invoice.booking?.client?.full_name || 'Client Information',
-              email: invoice.booking?.client?.email || 'client@company.com',
-              phone: invoice.booking?.client?.phone || '123-456-7890',
+              email: invoice.booking?.client?.email || 'client@email.com',
+              phone: invoice.booking?.client?.phone || 'Phone Not Provided',
               company: {
                 id: invoice.booking?.client?.company?.id || '2',
-                name: invoice.booking?.client?.company?.name || 'Client Company',
-                address: invoice.booking?.client?.company?.address || '123 Anywhere St., Any City, ST 12345',
-                phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || '123-456-7890',
-                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || 'client@company.com',
-                website: invoice.booking?.client?.company?.website || 'clientcompany.com',
+                name: invoice.booking?.client?.company?.name || invoice.booking?.client?.full_name + "'s Company" || 'Client Company',
+                address: invoice.booking?.client?.company?.address || 'Client Address Not Provided',
+                phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || 'Phone Not Provided',
+                email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || 'client@email.com',
+                website: invoice.booking?.client?.company?.website || 'Website Not Provided',
                 logo_url: invoice.booking?.client?.company?.logo_url || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at
@@ -598,8 +610,17 @@ export default function InvoiceTemplatePage() {
               created_at: invoice.created_at,
               updated_at: invoice.updated_at
             }]
-          }}
-        />
+          }
+          
+          console.log('🔍 Final template data being passed to InvoiceTemplate:', {
+            company: templateInvoice.company,
+            client: templateInvoice.client,
+            providerData: invoice.booking?.service?.provider,
+            clientData: invoice.booking?.client
+          })
+          
+          return <InvoiceTemplate invoice={templateInvoice} />
+        })()}
       </div>
     </div>
   )
