@@ -614,12 +614,11 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
 
   const handleDownloadPDF = async (invoice: InvoiceRecord) => {
     try {
-      // Navigate to the template page and trigger PDF download
-      // This will use the web template for PDF generation
-      window.open(`/dashboard/invoices/template/${invoice.id}?download=true`, '_blank')
+      // Generate PDF directly using the template-based API
+      await handleGeneratePDF(invoice)
     } catch (error) {
-      logger.error('Error opening template for PDF download:', error)
-      toast.error('Failed to open template for PDF download')
+      logger.error('Error downloading PDF:', error)
+      toast.error('Failed to download PDF')
     }
   }
 
