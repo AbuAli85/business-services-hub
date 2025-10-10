@@ -156,12 +156,21 @@ export async function GET(request: NextRequest) {
       autoSendEmail: true
     })
     
+    // Collect detailed errors
+    const errors = result.results
+      .filter(r => !r.success)
+      .map((r, idx) => ({
+        bookingId: bookingsNeedingInvoices[idx],
+        error: r.error
+      }))
+    
     return NextResponse.json({
       success: true,
-      message: `Generated ${result.successful} invoices`,
+      message: `Generated ${result.successful} invoices (${result.failed} failed)`,
       successful: result.successful,
       failed: result.failed,
-      total: bookingsNeedingInvoices.length
+      total: bookingsNeedingInvoices.length,
+      errors: errors.length > 0 ? errors : undefined
     })
     
   } catch (error) {

@@ -54,9 +54,25 @@ export async function generateInvoiceFromBooking(
     const booking = await fetchBookingForInvoice(bookingId, supabaseUrl, supabaseKey)
     
     if (!booking) {
+      console.error('❌ Booking fetch failed for:', bookingId)
       return {
         success: false,
         error: 'Booking not found or missing required relations'
+      }
+    }
+    
+    // Detailed validation
+    const validationIssues: string[] = []
+    if (!booking.client) validationIssues.push('Missing client data')
+    if (!booking.service) validationIssues.push('Missing service data')
+    if (!booking.service?.provider) validationIssues.push('Missing provider data')
+    if (!booking.amount || booking.amount <= 0) validationIssues.push('Invalid booking amount')
+    
+    if (validationIssues.length > 0) {
+      console.error('❌ Booking validation failed:', validationIssues)
+      return {
+        success: false,
+        error: `Booking data incomplete: ${validationIssues.join(', ')}`
       }
     }
     
@@ -64,7 +80,9 @@ export async function generateInvoiceFromBooking(
       id: booking.id,
       amount: booking.amount,
       hasClient: !!booking.client,
-      hasProvider: !!booking.service?.provider
+      hasProvider: !!booking.service?.provider,
+      clientName: booking.client?.full_name,
+      providerName: booking.service?.provider?.full_name
     })
     
     // ==================== Step 2: Check for Existing Invoice ====================
