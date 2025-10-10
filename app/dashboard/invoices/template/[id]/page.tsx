@@ -399,39 +399,42 @@ export default function InvoiceTemplatePage() {
 
     try {
       setDownloading(true)
-      toast.loading('Generating PDF...', { id: 'pdf-download' })
-      console.log('📄 Downloading PDF for invoice:', invoice.id, invoice.invoice_number)
+      toast.loading('Generating PDF from web template...', { id: 'pdf-download' })
+      console.log('📄 Converting web template to PDF for invoice:', invoice.id, invoice.invoice_number)
       
-      const response = await fetch('/api/invoices/generate-template-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ invoiceId: invoice.id })
-      })
-
-      console.log('📊 PDF generation response status:', response.status)
-
-      if (response.ok) {
-        const blob = await response.blob()
-        console.log('✅ PDF blob created, size:', blob.size, 'bytes')
-        
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice-${invoice.invoice_number || invoice.id}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        
-        toast.success('Invoice PDF downloaded successfully!', { id: 'pdf-download' })
-      } else {
-        const errorData = await response.json()
-        console.error('❌ PDF generation error:', errorData)
-        toast.error(`Failed to download: ${errorData.error || 'Unknown error'}`, { id: 'pdf-download' })
+      // Get the invoice template element
+      const templateElement = document.getElementById('invoice-template')
+      if (!templateElement) {
+        toast.error('Invoice template not found', { id: 'pdf-download' })
+        return
       }
+
+      // Use html2pdf.js to convert the web template directly to PDF
+      const html2pdf = (await import('html2pdf.js')).default
+
+      const opt = {
+        margin: [0, 0, 0, 0] as [number, number, number, number],
+        filename: `invoice-${invoice.invoice_number || invoice.id}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          scrollY: 0,
+        },
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
+        pagebreak: { mode: ['css', 'avoid-all'] }
+      }
+
+      console.log('✅ Converting web template to PDF...')
+      await html2pdf().set(opt).from(templateElement).save()
+      
+      toast.success('Invoice PDF downloaded successfully!', { id: 'pdf-download' })
+      console.log('✅ PDF generated from web template successfully')
+      
     } catch (error) {
-      console.error('❌ Error downloading invoice:', error)
-      toast.error('Failed to download PDF. Please try again.', { id: 'pdf-download' })
+      console.error('❌ Error converting web template to PDF:', error)
+      toast.error('Failed to generate PDF from web template. Please try again.', { id: 'pdf-download' })
     } finally {
       setDownloading(false)
     }
