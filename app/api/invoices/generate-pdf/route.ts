@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { generateProfessionalPDF, shouldRegeneratePDF } from '@/lib/pdf-invoice-generator'
 
+// Handle both GET and POST requests
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const invoiceId = searchParams.get('invoiceId')
+  
+  if (!invoiceId) {
+    return NextResponse.json({ error: 'Invoice ID is required as query parameter' }, { status: 400 })
+  }
+  
+  return generatePDFForInvoice(invoiceId)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { invoiceId } = await request.json()
@@ -9,6 +21,19 @@ export async function POST(request: NextRequest) {
     if (!invoiceId) {
       return NextResponse.json({ error: 'Invoice ID is required' }, { status: 400 })
     }
+    
+    return generatePDFForInvoice(invoiceId)
+  } catch (error) {
+    console.error('❌ POST request error:', error)
+    return NextResponse.json({ 
+      error: 'Invalid request body', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 400 })
+  }
+}
+
+async function generatePDFForInvoice(invoiceId: string) {
+  try {
 
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
     if (!uuidRegex.test(invoiceId)) {
