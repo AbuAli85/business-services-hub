@@ -25,7 +25,7 @@ const typography = {
 }
 
 // Helper function to format currency
-function formatCurrency(amount: number, currency: string = 'OMR'): string {
+function formatCurrency(amount: number, currency: string = 'USD'): string {
   // For OMR, we want 3 decimal places as shown in template
   if (currency === 'OMR') {
     return `OMR ${amount.toFixed(3)}`
@@ -456,8 +456,8 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     addText(doc, String(index + 1).padStart(2, '0'), tableX + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
     addText(doc, item.product || item.description || 'Service', tableX + colWidths[0] + 2, currentY + 8, 'body', templateColors.darkGray, 'left')
     addText(doc, String(item.qty || item.quantity || 1), tableX + colWidths[0] + colWidths[1] + 15, currentY + 8, 'body', templateColors.darkGray, 'center')
-    addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 20, currentY + 8, 'body', templateColors.darkGray, 'right')
-    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'OMR'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 20, currentY + 8, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.unit_price || safeSubtotal, invoice.currency || 'USD'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + 20, currentY + 8, 'body', templateColors.darkGray, 'right')
+    addText(doc, formatCurrency(item.total || ((item.unit_price || safeSubtotal) * (item.qty || item.quantity || 1)), invoice.currency || 'USD'), tableX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 20, currentY + 8, 'body', templateColors.darkGray, 'right')
     
     currentY += rowHeight
   })
@@ -481,12 +481,12 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   // Subtotal row
   addText(doc, 'Subtotal', summaryBoxX + 3, currentY, 'subheading', templateColors.darkGray, 'left')
-  addText(doc, formatCurrency(safeSubtotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 3, currentY, 'subheading', templateColors.primary, 'right')
+  addText(doc, formatCurrency(safeSubtotal, invoice.currency || 'USD'), summaryBoxX + summaryBoxWidth - 3, currentY, 'subheading', templateColors.primary, 'right')
   currentY += 5
   
   // VAT row
   addText(doc, `VAT (${(displayVatPercent * 100).toFixed(1)}%)`, summaryBoxX + 3, currentY, 'subheading', templateColors.darkGray, 'left')
-  addText(doc, formatCurrency(displayVatAmount, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 3, currentY, 'subheading', templateColors.primary, 'right')
+  addText(doc, formatCurrency(displayVatAmount, invoice.currency || 'USD'), summaryBoxX + summaryBoxWidth - 3, currentY, 'subheading', templateColors.primary, 'right')
   
   // Separator line
   currentY += 4
@@ -497,7 +497,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   // Total row (bold blue to match web emphasis)
   addText(doc, 'Total Amount Due', summaryBoxX + 3, currentY, 'heading', templateColors.primary, 'left')
-  addText(doc, formatCurrency(displayTotal, invoice.currency || 'OMR'), summaryBoxX + summaryBoxWidth - 7, currentY, 'heading', templateColors.accent, 'right')
+  addText(doc, formatCurrency(displayTotal, invoice.currency || 'USD'), summaryBoxX + summaryBoxWidth - 7, currentY, 'heading', templateColors.accent, 'right')
 
   // === FOOTER SECTION (Side-by-side: Signature left, Terms right) ===
   const footerStartY = pageHeight - 110 // Moved up for proper visibility on one page
@@ -546,8 +546,8 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
   
-  // Match web template paragraph format
-  const paymentTerms = 'Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in OMR unless otherwise specified.'
+  // Match web template paragraph format exactly
+  const paymentTerms = 'Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in USD unless otherwise specified.'
   const serviceAgreement = 'Service Agreement: All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.'
   const disputes = 'Disputes: Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
   
@@ -566,12 +566,16 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   // === FOOTER ===
   const footerY = pageHeight - 10 // Slightly higher for clean bottom margin
   
-  // Add light separator line above thank you note
+  // Add light separator line above thank you note (matching web template)
   doc.setDrawColor(230, 230, 230)
   doc.setLineWidth(0.3)
   doc.line(contentStartX, footerY - 4, pageWidth - margin, footerY - 4)
   
-  addText(doc, 'Thank you for your business!', contentStartX + contentWidth / 2, footerY, 'subheading', templateColors.accent, 'center')
+  // Thank you message - matching web template style
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
+  doc.text('Thank you for your business!', contentStartX + contentWidth / 2, footerY, { align: 'center' })
 
   return new Uint8Array(doc.output('arraybuffer'))
 }
