@@ -141,7 +141,7 @@ export default function InvoiceTemplatePage() {
       const role = user.user_metadata?.role || 'client'
       setUserRole(role as 'client' | 'provider' | 'admin')
 
-      // Build query based on user role
+      // Build query based on user role - fetch all nested data
       let query = supabase
         .from('invoices')
         .select(`
@@ -158,15 +158,8 @@ export default function InvoiceTemplatePage() {
                 id,
                 full_name,
                 email,
-                company:companies(
-                  id,
-                  name,
-                  address,
-                  phone,
-                  email,
-                  website,
-                  logo_url
-                )
+                phone,
+                company_name
               )
             ),
             client:profiles!bookings_client_id_fkey(
@@ -174,15 +167,7 @@ export default function InvoiceTemplatePage() {
               full_name,
               email,
               phone,
-              company:companies(
-                id,
-                name,
-                address,
-                phone,
-                email,
-                website,
-                logo_url
-              )
+              company_name
             )
           )
         `)
@@ -216,18 +201,28 @@ export default function InvoiceTemplatePage() {
         hasClientData: !!invoiceData.booking?.client
       })
       
-      // Check if we need to fetch provider/client data
-      console.log('🔍 Checking if fallback fetch is needed:', {
-        needsProviderFetch: !invoiceData.booking?.service?.provider && invoiceData.provider_id,
-        needsClientFetch: !invoiceData.booking?.client && invoiceData.client_id,
+      // Check if we need to fetch provider/client company data
+      const hasProviderCompany = invoiceData.booking?.service?.provider?.company && 
+                                  Object.keys(invoiceData.booking.service.provider.company).length > 2
+      const hasClientCompany = invoiceData.booking?.client?.company && 
+                               Object.keys(invoiceData.booking.client.company).length > 2
+      
+      console.log('🔍 Checking if company data fetch is needed:', {
+        hasProviderData: !!invoiceData.booking?.service?.provider,
+        hasProviderCompany: hasProviderCompany,
+        hasClientData: !!invoiceData.booking?.client,
+        hasClientCompany: hasClientCompany,
+        needsProviderFetch: !hasProviderCompany && invoiceData.provider_id,
+        needsClientFetch: !hasClientCompany && invoiceData.client_id,
         providerId: invoiceData.provider_id,
         clientId: invoiceData.client_id
       })
 
-      // If provider or client data is missing, fetch it using the profiles API
+      // Enrich invoice data with full company information
       let enrichedInvoiceData = { ...invoiceData }
       
-      if (!invoiceData.booking?.service?.provider && invoiceData.provider_id) {
+      // Always fetch provider company data if provider_id exists (since we don't query companies initially)
+      if (invoiceData.provider_id && !hasProviderCompany) {
         console.log('🔍 Fetching provider data for ID:', invoiceData.provider_id)
         try {
           const providerResponse = await fetch(`/api/profiles/search?id=${invoiceData.provider_id}`)
@@ -236,28 +231,44 @@ export default function InvoiceTemplatePage() {
             if (providerData.profiles && providerData.profiles.length > 0) {
               const provider = providerData.profiles[0]
               console.log('✅ Provider data fetched:', provider)
-              enrichedInvoiceData = {
-                ...enrichedInvoiceData,
-                booking: {
-                  ...enrichedInvoiceData.booking,
-                  service: {
-                    ...enrichedInvoiceData.booking?.service,
-                    provider: {
-                      id: provider.id,
-                      full_name: provider.full_name,
-                      email: provider.email,
-                      phone: provider.phone,
-                      company: {
-                        id: provider.company_id || '1',
-                        name: provider.company_name || 'Provider Company',
-                        address: provider.address || '123 Provider St.',
-                        phone: provider.phone || '123-456-7890',
-                        email: provider.email || 'provider@company.com',
-                        website: provider.website || 'providercompany.com',
-                        logo_url: provider.logo_url
-                      }
-                    }
-                  }
+              
+              // Extract company data from the fetched profile
+              const companyData = provider.companies && Array.isArray(provider.companies) && provider.companies.length > 0
+                ? provider.companies[0]
+                : null
+              
+              console.log('📊 Provider company data:', companyData)
+              
+              // Merge provider data with existing data
+              if (!enrichedInvoiceData.booking) {
+                enrichedInvoiceData.booking = {} as any
+              }
+              if (!enrichedInvoiceData.booking.service) {
+                enrichedInvoiceData.booking.service = {} as any
+              }
+              
+              enrichedInvoiceData.booking.service.provider = {
+                ...(enrichedInvoiceData.booking.service.provider || {}),
+                id: provider.id,
+                full_name: provider.full_name,
+                email: provider.email,
+                phone: provider.phone,
+                company: companyData ? {
+                  id: companyData.id,
+                  name: companyData.name,
+                  address: companyData.address || '123 Business Street, City, Country',
+                  phone: companyData.phone || provider.phone || '+1-234-567-8900',
+                  email: companyData.email || provider.email,
+                  website: companyData.website || 'company-website.com',
+                  logo_url: companyData.logo_url
+                } : {
+                  id: '1',
+                  name: provider.company_name || provider.full_name + "'s Company",
+                  address: '123 Business Street, City, Country',
+                  phone: provider.phone || '+1-234-567-8900',
+                  email: provider.email,
+                  website: 'company-website.com',
+                  logo_url: undefined
                 }
               }
             }
@@ -267,7 +278,8 @@ export default function InvoiceTemplatePage() {
         }
       }
 
-      if (!invoiceData.booking?.client && invoiceData.client_id) {
+      // Always fetch client company data if client_id exists (since we don't query companies initially)
+      if (invoiceData.client_id && !hasClientCompany) {
         console.log('🔍 Fetching client data for ID:', invoiceData.client_id)
         try {
           const clientResponse = await fetch(`/api/profiles/search?id=${invoiceData.client_id}`)
@@ -276,25 +288,45 @@ export default function InvoiceTemplatePage() {
             if (clientData.profiles && clientData.profiles.length > 0) {
               const client = clientData.profiles[0]
               console.log('✅ Client data fetched:', client)
-              enrichedInvoiceData = {
-                ...enrichedInvoiceData,
-                booking: {
-                  ...enrichedInvoiceData.booking,
-                  client: {
-                    id: client.id,
-                    full_name: client.full_name,
-                    email: client.email,
-                    phone: client.phone,
-                    company: {
-                      id: client.company_id || '2',
-                      name: client.company_name || 'Client Company',
-                      address: client.address || '123 Client St.',
-                      phone: client.phone || '123-456-7890',
-                      email: client.email || 'client@company.com',
-                      website: client.website || 'clientcompany.com',
-                      logo_url: client.logo_url
-                    }
-                  }
+              
+              // Extract company data from the fetched profile
+              const companyData = client.companies && Array.isArray(client.companies) && client.companies.length > 0
+                ? client.companies[0]
+                : null
+              
+              console.log('📊 Client company data:', companyData)
+              
+              // Merge client data with existing data
+              if (!enrichedInvoiceData.booking) {
+                enrichedInvoiceData.booking = {} as any
+              }
+              
+              enrichedInvoiceData.booking.client = {
+                ...(enrichedInvoiceData.booking.client || {}),
+                id: client.id,
+                full_name: client.full_name,
+                email: client.email,
+                phone: client.phone,
+                company: companyData ? {
+                  id: companyData.id,
+                  name: companyData.name,
+                  address: companyData.address || '123 Client Street, City, Country',
+                  phone: companyData.phone || client.phone || '+1-234-567-8900',
+                  email: companyData.email || client.email,
+                  website: companyData.website || 'client-company.com',
+                  logo_url: companyData.logo_url,
+                  created_at: companyData.created_at,
+                  updated_at: companyData.updated_at
+                } : {
+                  id: '2',
+                  name: client.company_name || client.full_name + "'s Company",
+                  address: '123 Client Street, City, Country',
+                  phone: client.phone || '+1-234-567-8900',
+                  email: client.email,
+                  website: 'client-company.com',
+                  logo_url: undefined,
+                  created_at: invoiceData.created_at,
+                  updated_at: invoiceData.updated_at
                 }
               }
             }
