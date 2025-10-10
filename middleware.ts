@@ -52,7 +52,8 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/session',
   '/api/services', // Public service listings
   '/api/bookings/summary', // Dashboard summary endpoint should be public (handled via RLS)
-  '/api/invoices/generate-template-pdf' // PDF generation uses service role key
+  '/api/invoices/generate-template-pdf', // PDF generation uses service role key
+  '/api/invoices/generate-pdf' // PDF generation uses service role key
 ]
 
 function isPublicRoute(pathname: string): boolean {
