@@ -115,6 +115,19 @@ export default function InvoiceTemplatePage() {
     }
   }, [invoice])
 
+  // Auto-download PDF when download=true parameter is present
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const shouldDownload = urlParams.get('download') === 'true'
+    
+    if (shouldDownload && invoice && !loading && !downloading) {
+      // Small delay to ensure template is fully rendered
+      setTimeout(() => {
+        handleDownloadInvoice()
+      }, 1000)
+    }
+  }, [invoice, loading, downloading])
+
   const checkUserAndFetchInvoice = async () => {
     try {
       setLoading(true)
@@ -571,7 +584,7 @@ export default function InvoiceTemplatePage() {
       </div>
 
       {/* Invoice Template */}
-      <div className="py-8">
+      <div id="invoice-template" className="py-8">
         {(() => {
           const templateInvoice = {
             id: invoice.id,
