@@ -149,49 +149,53 @@ export async function POST(request: NextRequest) {
     if (finalInvoice.provider_id) {
       console.log('🔍 PDF API - Fetching provider data for ID:', finalInvoice.provider_id)
       try {
+        // Fetch provider profile
         const { data: providerProfile, error: providerError } = await supabase
           .from('profiles')
-          .select(`
-            id,
-            full_name,
-            email,
-            phone,
-            company_name,
-            address,
-            website,
-            logo_url,
-            company_id,
-            company:companies(
-              id,
-              name,
-              address,
-              phone,
-              email,
-              website,
-              logo_url
-            )
-          `)
+          .select('id, full_name, email, phone, company_name')
           .eq('id', finalInvoice.provider_id)
           .single()
+        
+        // Fetch provider company separately using owner_id
+        let providerCompany = null
+        if (providerProfile && !providerError) {
+          const { data: companyData } = await supabase
+            .from('companies')
+            .select('id, name, address, phone, email, website, logo_url, cr_number, vat_number')
+            .eq('owner_id', finalInvoice.provider_id)
+            .maybeSingle()
+          
+          providerCompany = companyData
+        }
 
         if (!providerError && providerProfile) {
           console.log('✅ PDF API - Provider profile fetched:', providerProfile)
+          console.log('✅ PDF API - Provider company fetched:', providerCompany)
           
           // Use company data if available, otherwise use profile data
-          const providerCompany = Array.isArray(providerProfile.company) ? providerProfile.company[0] : providerProfile.company || {}
           const providerData = {
             id: providerProfile.id,
             full_name: providerProfile.full_name,
             email: providerProfile.email,
             phone: providerProfile.phone,
-            company: {
-              id: providerCompany.id || providerProfile.company_id || '1',
-              name: providerCompany.name || providerProfile.company_name || 'Provider Company',
-              address: providerCompany.address || providerProfile.address || '123 Provider St.',
-              phone: providerCompany.phone || providerProfile.phone || '123-456-7890',
-              email: providerCompany.email || providerProfile.email || 'provider@company.com',
-              website: providerCompany.website || providerProfile.website || 'providercompany.com',
-              logo_url: providerCompany.logo_url || providerProfile.logo_url
+            company: providerCompany ? {
+              id: providerCompany.id,
+              name: providerCompany.name,
+              address: providerCompany.address || 'Address Not Available',
+              phone: providerCompany.phone || 'Phone Not Available',
+              email: providerCompany.email || providerProfile.email,
+              website: providerCompany.website || 'Website Not Available',
+              logo_url: providerCompany.logo_url,
+              cr_number: providerCompany.cr_number,
+              vat_number: providerCompany.vat_number
+            } : {
+              id: '1',
+              name: providerProfile.company_name || providerProfile.full_name + "'s Company",
+              address: 'Address Not Available',
+              phone: 'Phone Not Available',
+              email: providerProfile.email,
+              website: 'Website Not Available',
+              logo_url: undefined
             }
           }
           
@@ -219,49 +223,53 @@ export async function POST(request: NextRequest) {
     if (finalInvoice.client_id) {
       console.log('🔍 PDF API - Fetching client data for ID:', finalInvoice.client_id)
       try {
+        // Fetch client profile
         const { data: clientProfile, error: clientError } = await supabase
           .from('profiles')
-          .select(`
-            id,
-            full_name,
-            email,
-            phone,
-            company_name,
-            address,
-            website,
-            logo_url,
-            company_id,
-            company:companies(
-              id,
-              name,
-              address,
-              phone,
-              email,
-              website,
-              logo_url
-            )
-          `)
+          .select('id, full_name, email, phone, company_name')
           .eq('id', finalInvoice.client_id)
           .single()
+        
+        // Fetch client company separately using owner_id
+        let clientCompany = null
+        if (clientProfile && !clientError) {
+          const { data: companyData } = await supabase
+            .from('companies')
+            .select('id, name, address, phone, email, website, logo_url, cr_number, vat_number')
+            .eq('owner_id', finalInvoice.client_id)
+            .maybeSingle()
+          
+          clientCompany = companyData
+        }
 
         if (!clientError && clientProfile) {
           console.log('✅ PDF API - Client profile fetched:', clientProfile)
+          console.log('✅ PDF API - Client company fetched:', clientCompany)
           
           // Use company data if available, otherwise use profile data
-          const clientCompany = Array.isArray(clientProfile.company) ? clientProfile.company[0] : clientProfile.company || {}
           const clientData = {
             id: clientProfile.id,
             full_name: clientProfile.full_name,
             email: clientProfile.email,
             phone: clientProfile.phone,
-            company: {
-              id: clientCompany.id || clientProfile.company_id || '2',
-              name: clientCompany.name || clientProfile.company_name || 'Client Company',
-              address: clientCompany.address || clientProfile.address || '123 Client St.',
-              phone: clientCompany.phone || clientProfile.phone || '123-456-7890',
-              email: clientCompany.email || clientProfile.email || 'client@company.com',
-              website: clientCompany.website || clientProfile.website || 'clientcompany.com',
-              logo_url: clientCompany.logo_url || clientProfile.logo_url
+            company: clientCompany ? {
+              id: clientCompany.id,
+              name: clientCompany.name,
+              address: clientCompany.address || 'Address Not Available',
+              phone: clientCompany.phone || 'Phone Not Available',
+              email: clientCompany.email || clientProfile.email,
+              website: clientCompany.website || 'Website Not Available',
+              logo_url: clientCompany.logo_url,
+              cr_number: clientCompany.cr_number,
+              vat_number: clientCompany.vat_number
+            } : {
+              id: '2',
+              name: clientProfile.company_name || clientProfile.full_name + "'s Company",
+              address: 'Address Not Available',
+              phone: 'Phone Not Available',
+              email: clientProfile.email,
+              website: 'Website Not Available',
+              logo_url: undefined
             }
           }
           

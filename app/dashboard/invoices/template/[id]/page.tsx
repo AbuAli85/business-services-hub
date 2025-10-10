@@ -95,6 +95,7 @@ export default function InvoiceTemplatePage() {
   const params = useParams()
   const [invoice, setInvoice] = useState<InvoiceData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [userRole, setUserRole] = useState<'client' | 'provider' | 'admin'>('client')
 
@@ -390,9 +391,11 @@ export default function InvoiceTemplatePage() {
   }
 
   const handleDownloadInvoice = async () => {
-    if (!invoice) return
+    if (!invoice || downloading) return
 
     try {
+      setDownloading(true)
+      toast.loading('Generating PDF...', { id: 'pdf-download' })
       console.log('📄 Downloading PDF for invoice:', invoice.id, invoice.invoice_number)
       
       const response = await fetch('/api/invoices/generate-template-pdf', {
@@ -415,15 +418,18 @@ export default function InvoiceTemplatePage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
-        toast.success('Invoice downloaded successfully')
+        
+        toast.success('Invoice PDF downloaded successfully!', { id: 'pdf-download' })
       } else {
         const errorData = await response.json()
         console.error('❌ PDF generation error:', errorData)
-        toast.error(`Failed to download invoice: ${errorData.error || 'Unknown error'}`)
+        toast.error(`Failed to download: ${errorData.error || 'Unknown error'}`, { id: 'pdf-download' })
       }
     } catch (error) {
       console.error('❌ Error downloading invoice:', error)
-      toast.error('Failed to download invoice')
+      toast.error('Failed to download PDF. Please try again.', { id: 'pdf-download' })
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -526,11 +532,21 @@ export default function InvoiceTemplatePage() {
               </Button>
               
               <Button 
-                onClick={handleDownloadInvoice} 
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+                onClick={handleDownloadInvoice}
+                disabled={downloading}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Download className="h-4 w-4" />
-                Download PDF
+                {downloading ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </>
+                )}
               </Button>
               
               {userRole === 'client' && invoice.status === 'issued' && (
