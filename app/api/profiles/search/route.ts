@@ -46,27 +46,10 @@ export async function GET(req: NextRequest) {
 
     // If searching by ID, return that specific profile with company data
     if (id) {
+      // First, fetch the profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select(`
-          id, 
-          full_name, 
-          email, 
-          role, 
-          phone, 
-          company_name,
-          companies:companies!profiles_id_fkey(
-            id,
-            name,
-            address,
-            phone,
-            email,
-            website,
-            logo_url,
-            created_at,
-            updated_at
-          )
-        `)
+        .select('id, full_name, email, role, phone, company_name')
         .eq('id', id)
         .single()
 
@@ -79,26 +62,32 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: profileError.message }, { status: 500 })
       }
 
-      // If the companies query failed, try to fetch company data separately if company_name exists
-      let enrichedProfile = { ...profileData }
-      if (profileData && (!profileData.companies || (Array.isArray(profileData.companies) && profileData.companies.length === 0))) {
-        console.log('🔍 No company data from direct query, trying alternative approach')
-        // Try to get company by matching the company_name
-        if (profileData.company_name) {
-          const { data: companyData } = await supabase
-            .from('companies')
-            .select('id, name, address, phone, email, website, logo_url, created_at, updated_at')
-            .eq('name', profileData.company_name)
-            .limit(1)
-            .single()
-          
-          if (companyData) {
-            enrichedProfile.companies = [companyData]
-          }
-        }
+      // Now fetch company data where owner_id matches this profile
+      // This works because the FK is: companies.owner_id → profiles.id
+      const { data: companyData, error: companyError } = await supabase
+        .from('companies')
+        .select('id, name, address, phone, email, website, logo_url, cr_number, vat_number, created_at, updated_at')
+        .eq('owner_id', id)
+        .maybeSingle()
+      
+      if (companyError && companyError.code !== 'PGRST116') {
+        console.warn('⚠️ Company fetch error:', companyError)
       }
 
-      return NextResponse.json({ profiles: enrichedProfile ? [enrichedProfile] : [] })
+      // Build enriched profile with company data
+      const enrichedProfile = {
+        ...profileData,
+        companies: companyData ? [companyData] : []
+      }
+
+      console.log('✅ Profile fetched with company:', {
+        profileId: profileData.id,
+        profileName: profileData.full_name,
+        hasCompany: !!companyData,
+        companyName: companyData?.name
+      })
+
+      return NextResponse.json({ profiles: [enrichedProfile] })
     }
 
     // Otherwise, search by query string
