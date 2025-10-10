@@ -108,8 +108,8 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
     clientData: invoice.booking?.client
   })
   
-  // Layout dimensions - Match template exactly
-  const sidebarWidth = 35 // Dark blue sidebar width (reduced from 50)
+  // Layout dimensions - Match web template exactly (w-32 = 128px ≈ 35mm)
+  const sidebarWidth = 35 // Match web template w-32 (128px)
   const contentStartX = sidebarWidth + 8
   const contentWidth = pageWidth - sidebarWidth - 20
   const margin = 15
@@ -298,9 +298,12 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   // === HEADER SECTION (Two-column layout matching template) ===
   let currentY = 25
   
-  // Company Information (Top Left) - Larger, bold company name
-  addText(doc, companyName, contentStartX, currentY, 'title', templateColors.primary, 'left')
-  currentY += 10
+  // Company Information (Top Left) - Match web template size (text-3xl)
+  doc.setFontSize(28) // text-3xl equivalent
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(templateColors.primary[0], templateColors.primary[1], templateColors.primary[2])
+  doc.text(companyName, contentStartX, currentY)
+  currentY += 12
   
   // Company contact details without icons for cleaner look
   addText(doc, companyAddress, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
@@ -311,36 +314,72 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   currentY += 6
   addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
 
-  // Invoice Details (Top Right) - Clean spacing to prevent overlap
+  // Invoice Details (Top Right) - Match web template size (text-4xl)
   const rightColumnX = pageWidth - 20
-  addText(doc, 'Invoice', rightColumnX, 19, 'title', templateColors.accent, 'right')
-  addText(doc, `Invoice Number:`, rightColumnX, 26, 'body', templateColors.primary, 'right')
-  addText(doc, `#${invoiceNumber}`, rightColumnX, 32, 'subheading', templateColors.primary, 'right')
-  addText(doc, `Date: ${createdDate}`, rightColumnX, 38, 'body', templateColors.darkGray, 'right')
-  addText(doc, `Due Date: ${dueDate}`, rightColumnX, 44, 'body', templateColors.darkGray, 'right')
+  doc.setFontSize(32) // text-4xl equivalent for "Invoice"
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
+  doc.text('Invoice', rightColumnX, 19, { align: 'right' })
+  
+  // Invoice number - match web template style
+  doc.setFontSize(14) // text-lg equivalent
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(templateColors.primary[0], templateColors.primary[1], templateColors.primary[2])
+  doc.text(`Invoice Number: #${invoiceNumber}`, rightColumnX, 26, { align: 'right' })
   
   // Add blue underline under "Invoice"
   doc.setDrawColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
   doc.setLineWidth(1)
   doc.line(rightColumnX - 35, 24, rightColumnX, 24)
 
+  // === DATES SECTION (Left side matching web template) ===
+  const datesY = 35
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
+  doc.text(`Date: ${createdDate}`, contentStartX, datesY)
+  doc.text(`Due Date: ${dueDate}`, contentStartX, datesY + 6)
+
   // === BILL TO SECTION (Right-aligned matching template) ===
   const billToY = 50 // More space below Due Date to prevent crowding
   const billToRightX = pageWidth - 20
   
-  addText(doc, 'Bill To:', billToRightX, billToY, 'heading', templateColors.accent, 'right')
+  // Bill To header - match web template (text-lg font-bold)
+  doc.setFontSize(14)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
+  doc.text('Bill To:', billToRightX, billToY, { align: 'right' })
+  
   let billToCurrentY = billToY + 8
-  addText(doc, clientName, billToRightX, billToCurrentY, 'subheading', templateColors.primary, 'right')
+  // Client name - match web template (font-semibold)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(templateColors.primary[0], templateColors.primary[1], templateColors.primary[2])
+  doc.text(clientName, billToRightX, billToCurrentY, { align: 'right' })
   billToCurrentY += 6
-  addText(doc, clientCompanyName, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  
+  // Company name - match web template (font-semibold)
+  doc.text(clientCompanyName, billToRightX, billToCurrentY, { align: 'right' })
   billToCurrentY += 6
-  addText(doc, clientAddress, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right', 80)
-  billToCurrentY += 6
-  addText(doc, clientEmail, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 6
-  addText(doc, clientPhone, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
-  billToCurrentY += 6
-  addText(doc, clientWebsite, billToRightX, billToCurrentY, 'body', templateColors.darkGray, 'right')
+  
+  // Address - match web template (text-sm)
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
+  const addressLines = doc.splitTextToSize(clientAddress, 80)
+  doc.text(addressLines, billToRightX, billToCurrentY, { align: 'right' })
+  billToCurrentY += addressLines.length * 3 + 2
+  
+  // Email - match web template (text-sm)
+  doc.text(clientEmail, billToRightX, billToCurrentY, { align: 'right' })
+  billToCurrentY += 4
+  
+  // Phone - match web template with emoji
+  doc.text(`📞 ${clientPhone}`, billToRightX, billToCurrentY, { align: 'right' })
+  billToCurrentY += 4
+  
+  // Website - match web template with emoji
+  doc.text(`🌐 ${clientWebsite}`, billToRightX, billToCurrentY, { align: 'right' })
   
   // Add subtle separator line under Bill To section
   doc.setDrawColor(templateColors.borderGray[0], templateColors.borderGray[1], templateColors.borderGray[2])
@@ -493,28 +532,36 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   
   addText(doc, 'Name and Signature', contentStartX + signatureWidth / 2, footerStartY + signatureHeight / 2 + 1, 'body', templateColors.darkGray, 'center')
 
-  // === TERMS & CONDITIONS (Right side) - Simplified and cleaner ===
+  // === TERMS & CONDITIONS (Right side) - Match web template format ===
   const termsX = pageWidth - 85
   const termsWidth = 75
   
-  addText(doc, 'Terms & Conditions', termsX, footerStartY + 3, 'subheading', templateColors.accent, 'left')
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
+  doc.text('Terms & Conditions', termsX, footerStartY + 3)
   
   let termsY = footerStartY + 8
   doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
   doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
   
-  // Simplified terms - cleaner and less cluttered
-  const termsText = [
-    '• Payment due within 30 days',
-    '• Late fees: 1.5% monthly',
-    '• All amounts in OMR',
-    '• 90-day service guarantee',
-    '• Disputes: 15 days written notice'
-  ]
+  // Match web template paragraph format
+  const paymentTerms = 'Payment Terms: Payment is due within 30 days of invoice date. Late payments are subject to a 1.5% monthly service charge. All amounts are in OMR unless otherwise specified.'
+  const serviceAgreement = 'Service Agreement: All services are provided subject to our standard terms of service. Work performed is guaranteed for 90 days from completion date.'
+  const disputes = 'Disputes: Any disputes must be submitted in writing within 15 days of invoice date. For questions regarding this invoice, please contact us at the provided contact information.'
   
-  termsText.forEach((line, index) => {
-    doc.text(line, termsX, termsY + (index * 3))
-  })
+  // Split text to fit width and add with proper spacing
+  const paymentLines = doc.splitTextToSize(paymentTerms, termsWidth)
+  doc.text(paymentLines, termsX, termsY)
+  termsY += paymentLines.length * 2.5 + 4
+  
+  const serviceLines = doc.splitTextToSize(serviceAgreement, termsWidth)
+  doc.text(serviceLines, termsX, termsY)
+  termsY += serviceLines.length * 2.5 + 4
+  
+  const disputesLines = doc.splitTextToSize(disputes, termsWidth)
+  doc.text(disputesLines, termsX, termsY)
 
   // === FOOTER ===
   const footerY = pageHeight - 10 // Slightly higher for clean bottom margin
