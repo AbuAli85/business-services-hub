@@ -295,7 +295,7 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
 
   // === MAIN CONTENT AREA ===
   
-  // === HEADER SECTION (Two-column layout matching template) ===
+  // === HEADER SECTION (Matching web template exactly) ===
   let currentY = 25
   
   // Company Information (Top Left) - Match web template size (text-3xl)
@@ -303,45 +303,57 @@ export async function generateTemplatePDF(invoice: any): Promise<Uint8Array> {
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(templateColors.primary[0], templateColors.primary[1], templateColors.primary[2])
   doc.text(companyName, contentStartX, currentY)
-  currentY += 12
+  currentY += 16 // mb-4 equivalent
   
-  // Company contact details without icons for cleaner look
-  addText(doc, companyAddress, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  // Company contact details with icons (matching web template)
+  doc.setFontSize(10) // text-sm equivalent
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
+  
+  // Address with location icon
+  doc.text('📍', contentStartX, currentY)
+  doc.text(companyAddress, contentStartX + 6, currentY)
   currentY += 6
-  addText(doc, companyPhone, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  
+  // Phone with phone icon
+  doc.text('📞', contentStartX, currentY)
+  doc.text(companyPhone, contentStartX + 6, currentY)
   currentY += 6
-  addText(doc, companyEmail, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  
+  // Email with email icon
+  doc.text('✉️', contentStartX, currentY)
+  doc.text(companyEmail, contentStartX + 6, currentY)
   currentY += 6
-  addText(doc, companyWebsite, contentStartX, currentY, 'body', templateColors.darkGray, 'left')
+  
+  // Website with website icon
+  doc.text('🌐', contentStartX, currentY)
+  doc.text(companyWebsite, contentStartX + 6, currentY)
 
-  // Invoice Details (Top Right) - Match web template size (text-4xl)
+  // Invoice Details (Top Right) - Match web template exactly
   const rightColumnX = pageWidth - 20
   doc.setFontSize(32) // text-4xl equivalent for "Invoice"
   doc.setFont('helvetica', 'bold')
   doc.setTextColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
-  doc.text('Invoice', rightColumnX, 19, { align: 'right' })
+  doc.text('Invoice', rightColumnX, 25, { align: 'right' })
   
-  // Invoice number - match web template style
+  // Invoice number - match web template style (mb-2 spacing)
   doc.setFontSize(14) // text-lg equivalent
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(templateColors.primary[0], templateColors.primary[1], templateColors.primary[2])
-  doc.text(`Invoice Number: #${invoiceNumber}`, rightColumnX, 26, { align: 'right' })
-  
-  // Add blue underline under "Invoice"
-  doc.setDrawColor(templateColors.accent[0], templateColors.accent[1], templateColors.accent[2])
-  doc.setLineWidth(1)
-  doc.line(rightColumnX - 35, 24, rightColumnX, 24)
+  doc.text(`Invoice Number: #${invoiceNumber}`, rightColumnX, 32, { align: 'right' })
 
-  // === DATES SECTION (Left side matching web template) ===
-  const datesY = 35
-  doc.setFontSize(10)
+  // === DATES AND BILL TO SECTION (Matching web template layout) ===
+  const sectionStartY = 50 // More space below header
+  
+  // Dates (Left side) - matching web template
+  doc.setFontSize(10) // text-sm
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(templateColors.darkGray[0], templateColors.darkGray[1], templateColors.darkGray[2])
-  doc.text(`Date: ${createdDate}`, contentStartX, datesY)
-  doc.text(`Due Date: ${dueDate}`, contentStartX, datesY + 6)
+  doc.text(`Date: ${createdDate}`, contentStartX, sectionStartY)
+  doc.text(`Due Date: ${dueDate}`, contentStartX, sectionStartY + 6)
 
-  // === BILL TO SECTION (Right-aligned matching template) ===
-  const billToY = 50 // More space below Due Date to prevent crowding
+  // === BILL TO SECTION (Right-aligned matching web template) ===
+  const billToY = sectionStartY // Same level as dates to match web template
   const billToRightX = pageWidth - 20
   
   // Bill To header - match web template (text-lg font-bold)
