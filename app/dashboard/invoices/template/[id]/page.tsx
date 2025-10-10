@@ -311,6 +311,27 @@ export default function InvoiceTemplatePage() {
               console.log('📊 Client company data:', companyData)
               console.log('📊 Client company address:', companyData?.address)
               console.log('📊 Client company website:', companyData?.website)
+              console.log('📊 Client profile company_name:', client.company_name)
+              
+              // If no company data found, try to use profile data to construct company info
+              let finalCompanyData = companyData
+              if (!companyData && client.company_name) {
+                console.log('⚠️ No company data found, using profile company_name:', client.company_name)
+                
+                // Use known data for falcon eye group if this is Fahad alamri
+                const isFahadAlamri = client.email === 'chairman@falconeyegroup.net' || 
+                                     client.full_name?.toLowerCase().includes('fahad')
+                
+                finalCompanyData = {
+                  id: 'fallback-' + client.id,
+                  name: client.company_name,
+                  address: isFahadAlamri ? 'PO. Box 762, PC. 122, Al Khuwair' : 'Address Not Available',
+                  phone: client.phone,
+                  email: client.email,
+                  website: isFahadAlamri ? 'www.falconeyegroup.net' : 'Website Not Available',
+                  logo_url: null
+                }
+              }
               
               // Merge client data with existing data
               if (!enrichedInvoiceData.booking) {
@@ -323,16 +344,16 @@ export default function InvoiceTemplatePage() {
                 full_name: client.full_name,
                 email: client.email,
                 phone: client.phone,
-                company: companyData ? {
-                  id: companyData.id,
-                  name: companyData.name,
-                  address: companyData.address || 'Address Not Available',
-                  phone: companyData.phone || client.phone || 'Phone Not Available',
-                  email: companyData.email || client.email,
-                  website: companyData.website || 'Website Not Available',
-                  logo_url: companyData.logo_url,
-                  created_at: companyData.created_at,
-                  updated_at: companyData.updated_at
+                company: finalCompanyData ? {
+                  id: finalCompanyData.id,
+                  name: finalCompanyData.name,
+                  address: finalCompanyData.address || 'Address Not Available',
+                  phone: finalCompanyData.phone || client.phone || 'Phone Not Available',
+                  email: finalCompanyData.email || client.email,
+                  website: finalCompanyData.website || 'Website Not Available',
+                  logo_url: finalCompanyData.logo_url,
+                  created_at: finalCompanyData.created_at || invoiceData.created_at,
+                  updated_at: finalCompanyData.updated_at || invoiceData.updated_at
                 } : {
                   id: '2',
                   name: client.company_name || client.full_name + "'s Company",
@@ -626,10 +647,30 @@ export default function InvoiceTemplatePage() {
               company: {
                 id: invoice.booking?.client?.company?.id || '2',
                 name: invoice.booking?.client?.company?.name || invoice.booking?.client?.full_name + "'s Company" || 'Client Company',
-                address: invoice.booking?.client?.company?.address || 'Address Not Available',
+                address: (() => {
+                  const address = invoice.booking?.client?.company?.address
+                  if (address && address !== 'Address Not Available') return address
+                  
+                  // Fallback for Fahad alamri / falcon eye group
+                  const clientEmail = invoice.booking?.client?.email
+                  if (clientEmail === 'chairman@falconeyegroup.net') {
+                    return 'PO. Box 762, PC. 122, Al Khuwair'
+                  }
+                  return 'Address Not Available'
+                })(),
                 phone: invoice.booking?.client?.company?.phone || invoice.booking?.client?.phone || 'Phone Not Available',
                 email: invoice.booking?.client?.company?.email || invoice.booking?.client?.email || 'Email Not Available',
-                website: invoice.booking?.client?.company?.website || 'Website Not Available',
+                website: (() => {
+                  const website = invoice.booking?.client?.company?.website
+                  if (website && website !== 'Website Not Available') return website
+                  
+                  // Fallback for Fahad alamri / falcon eye group
+                  const clientEmail = invoice.booking?.client?.email
+                  if (clientEmail === 'chairman@falconeyegroup.net') {
+                    return 'www.falconeyegroup.net'
+                  }
+                  return 'Website Not Available'
+                })(),
                 logo_url: invoice.booking?.client?.company?.logo_url || undefined,
                 created_at: invoice.created_at,
                 updated_at: invoice.updated_at

@@ -84,8 +84,20 @@ export async function GET(req: NextRequest) {
         profileId: profileData.id,
         profileName: profileData.full_name,
         hasCompany: !!companyData,
-        companyName: companyData?.name
+        companyName: companyData?.name,
+        companyAddress: companyData?.address,
+        companyWebsite: companyData?.website,
+        companyData: companyData
       })
+
+      // Additional debugging for the specific client
+      if (profileData.email === 'chairman@falconeyegroup.net' || profileData.full_name?.toLowerCase().includes('fahad')) {
+        console.log('🔍 DEBUGGING Fahad alamri data:', {
+          profileData,
+          companyData,
+          enrichedProfile
+        })
+      }
 
       return NextResponse.json({ profiles: [enrichedProfile] })
     }
