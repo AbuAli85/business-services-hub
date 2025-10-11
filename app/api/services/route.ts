@@ -139,12 +139,33 @@ export async function GET(request: NextRequest) {
             console.warn('⚠️ Services API: Error fetching bookings:', bookingsError.message)
           } else if (bookings) {
             console.log('📊 Services API: Fetched', bookings.length, 'bookings for', serviceIds.length, 'services')
+            console.log('📊 Services API: Service IDs being queried:', serviceIds)
+            console.log('📊 Services API: Raw booking data:', bookings)
+            
             // Count bookings per service
             bookings.forEach((booking: any) => {
               const count = bookingCounts.get(booking.service_id) || 0
               bookingCounts.set(booking.service_id, count + 1)
             })
             console.log('✅ Services API: Calculated booking counts for', bookingCounts.size, 'services with bookings')
+            console.log('📊 Services API: Booking counts map:', Object.fromEntries(bookingCounts))
+          } else {
+            console.log('📊 Services API: No bookings found for services:', serviceIds)
+            
+            // Debug: Check if there are any bookings at all
+            const { data: allBookings, error: allBookingsError } = await supabase
+              .from('bookings')
+              .select('id, service_id, title, status')
+              .limit(5)
+            
+            if (allBookingsError) {
+              console.warn('⚠️ Services API: Error checking all bookings:', allBookingsError.message)
+            } else {
+              console.log('📊 Services API: Total bookings in database:', allBookings?.length || 0)
+              if (allBookings && allBookings.length > 0) {
+                console.log('📊 Services API: Sample bookings:', allBookings)
+              }
+            }
           }
           
           // Fetch reviews and calculate average ratings per service
