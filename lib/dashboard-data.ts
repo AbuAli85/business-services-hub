@@ -265,6 +265,8 @@ class DashboardDataManager {
         apiUrl = `/api/services?provider_id=${userId}&limit=100`
       }
       
+      console.log('📊 Dashboard Data: Fetching services from:', apiUrl)
+      
       // Fetch services from the API
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -273,6 +275,13 @@ class DashboardDataManager {
         },
         credentials: 'include'
       })
+
+      if (response.status === 401) {
+        console.warn('⚠️ Dashboard Data: Unauthorized - user needs to login')
+        // Set empty services array for unauthenticated users
+        this.services = []
+        return
+      }
 
       if (response.ok) {
         const data = await response.json()

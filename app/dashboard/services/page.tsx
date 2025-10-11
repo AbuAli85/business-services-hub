@@ -262,8 +262,10 @@ export default function ServicesPage() {
         if (!mounted) return
         
         if (!authResult.isAuthenticated || !authResult.user) {
-          console.warn('User not authenticated')
+          console.warn('⚠️ Services Page: User not authenticated, redirecting to login')
           setAuthLoading(false)
+          // Redirect to login page
+          router.push('/auth/sign-in?redirect=/dashboard/services')
           return
         }
         
@@ -277,8 +279,12 @@ export default function ServicesPage() {
         setAuthLoading(false)
         console.log('✅ Services Page: Auth loaded - userId:', authResult.user.id, 'role:', authResult.role)
       } catch (e) {
-        console.error('Error getting user auth:', e)
+        console.error('❌ Services Page: Error getting user auth:', e)
         setAuthLoading(false)
+        // Redirect to login on auth error
+        if (mounted) {
+          router.push('/auth/sign-in?redirect=/dashboard/services')
+        }
       }
     }
 
@@ -287,7 +293,7 @@ export default function ServicesPage() {
     return () => {
       mounted = false
     }
-  }, [])
+  }, [router])
 
   // Debug: Log when services data changes
   useEffect(() => {
@@ -369,6 +375,20 @@ export default function ServicesPage() {
             <p className="text-sm text-gray-600">
               {authLoading ? 'Authenticating...' : 'Loading services...'}
             </p>
+          </div>
+        </div>
+      </RoleBasedLayout>
+    )
+  }
+  
+  // If no userId after auth loading is complete, don't render (redirect is happening)
+  if (!authLoading && !userId) {
+    return (
+      <RoleBasedLayout role={userRole} onNavigate={handleNavigate} onLogout={handleLogout}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-sm text-gray-600">Redirecting to login...</p>
           </div>
         </div>
       </RoleBasedLayout>
