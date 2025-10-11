@@ -127,12 +127,12 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
         console.log('📊 Sample notification:', allNotifications[0])
       }
       
-      const unread = allNotifications.filter(n => !n.read && !n.read_at).length
+      const unread = allNotifications.filter(n => !n.read).length
       console.log('📊 Unread notifications:', unread, 'out of', allNotifications.length)
       
       const recentCount = allNotifications.filter(n => {
         const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000
-        const notifTime = new Date(n.timestamp || n.created_at).getTime()
+        const notifTime = new Date(n.created_at).getTime()
         return notifTime > twentyFourHoursAgo
       }).length
       

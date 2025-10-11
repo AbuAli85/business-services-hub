@@ -258,6 +258,17 @@ export async function GET(request: NextRequest) {
     }
     
     console.log('📤 Services API: Returning', servicesWithProviders.length, 'services')
+    
+    // Debug: Log sample service to verify booking_count and total_revenue are included
+    if (servicesWithProviders.length > 0) {
+      console.log('📊 Sample service being returned:', {
+        id: servicesWithProviders[0].id,
+        title: servicesWithProviders[0].title,
+        booking_count: servicesWithProviders[0].booking_count,
+        total_revenue: servicesWithProviders[0].total_revenue,
+        base_price: servicesWithProviders[0].base_price
+      })
+    }
 
     return ok({
       services: servicesWithProviders,

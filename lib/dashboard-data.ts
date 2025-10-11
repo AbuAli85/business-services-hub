@@ -308,6 +308,7 @@ class DashboardDataManager {
           review_count: service?.review_count || 0, // Keep both for compatibility
           bookingCount: service?.booking_count || service?.bookingCount || 0,
           booking_count: service?.booking_count || service?.bookingCount || 0, // Keep both for compatibility
+          total_revenue: service?.total_revenue || 0, // Revenue from API
           createdAt: service?.created_at || new Date().toISOString(),
           updatedAt: service?.updated_at || new Date().toISOString(),
           cover_image_url: service?.cover_image_url
@@ -734,13 +735,32 @@ class DashboardDataManager {
   }
 
   // Calculate booking counts for each service
+  // Only calculate if not already provided by API
   private calculateServiceBookingCounts() {
+    console.log('📊 Dashboard Data: Calculating/preserving service booking counts')
+    
     this.services = this.services.map(service => {
+      // If service already has booking_count from API, preserve it
+      // Only calculate from local bookings if missing
+      const apiBookingCount = service.booking_count || service.bookingCount
+      const apiRevenue = service.total_revenue
+      
+      if (apiBookingCount !== undefined && apiRevenue !== undefined) {
+        console.log('📊 Service', service.title, '- Using API data: bookings =', apiBookingCount, ', revenue =', apiRevenue)
+        return service // Already has data from API
+      }
+      
+      // Calculate from local bookings if not provided by API
       const serviceBookings = this.bookings.filter(booking => booking.serviceId === service.id)
+      const calculatedRevenue = serviceBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0)
+      
+      console.log('📊 Service', service.title, '- Calculating locally: bookings =', serviceBookings.length, ', revenue =', calculatedRevenue)
+      
       return {
         ...service,
         bookingCount: serviceBookings.length,
-        booking_count: serviceBookings.length // Also set the API field name
+        booking_count: serviceBookings.length,
+        total_revenue: calculatedRevenue
       }
     })
   }

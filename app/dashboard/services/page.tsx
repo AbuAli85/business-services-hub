@@ -54,9 +54,38 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
   const stats = useMemo(() => {
     const totalServices = services?.length || 0
     const activeServices = services?.filter(s => s.status === 'active').length || 0
-    const totalBookings = bookings?.length || 0
-    const totalRevenue = bookings?.reduce((sum, b) => sum + (b.totalAmount || 0), 0) || 0
-    const avgRating = services?.reduce((sum, s) => sum + (s.rating || 0), 0) / Math.max(totalServices, 1) || 0
+    
+    // Calculate total bookings from services (which now have booking_count from API)
+    const totalBookingsFromServices = services?.reduce((sum, s) => sum + (s.booking_count || s.bookingCount || 0), 0) || 0
+    // Also get from bookings array as fallback
+    const totalBookingsFromArray = bookings?.length || 0
+    // Use whichever is greater (more accurate)
+    const totalBookings = Math.max(totalBookingsFromServices, totalBookingsFromArray)
+    
+    // Calculate total revenue from services (which now have total_revenue from API)
+    const totalRevenueFromServices = services?.reduce((sum, s) => sum + (s.total_revenue || 0), 0) || 0
+    // Also calculate from bookings as fallback
+    const totalRevenueFromBookings = bookings?.reduce((sum, b) => sum + (b.totalAmount || 0), 0) || 0
+    // Use whichever is greater (more accurate)
+    const totalRevenue = Math.max(totalRevenueFromServices, totalRevenueFromBookings)
+    
+    const avgRating = services?.reduce((sum, s) => sum + (s.rating || s.avg_rating || 0), 0) / Math.max(totalServices, 1) || 0
+    
+    console.log('📊 Services Stats Calculation:', {
+      totalServices,
+      totalBookingsFromServices,
+      totalBookingsFromArray,
+      totalBookings,
+      totalRevenueFromServices,
+      totalRevenueFromBookings,
+      totalRevenue,
+      sampleService: services?.[0] ? {
+        id: services[0].id,
+        title: services[0].title,
+        booking_count: services[0].booking_count,
+        total_revenue: services[0].total_revenue
+      } : null
+    })
 
     return {
       totalServices,
@@ -132,6 +161,20 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
 // Optimized Service Card Component
 function ServiceCard({ service, isProvider, router }: { service: any, isProvider: boolean, router: any }) {
   const imageUrl = getServiceCardImageUrl(service.cover_image_url, service.category)
+  
+  // Debug: Log service data to see if booking_count and total_revenue are present
+  useEffect(() => {
+    if (service) {
+      console.log('🔍 Service Card Data:', {
+        id: service.id,
+        title: service.title,
+        booking_count: service.booking_count,
+        bookingCount: service.bookingCount,
+        total_revenue: service.total_revenue,
+        basePrice: service.basePrice
+      })
+    }
+  }, [service])
   
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -621,7 +664,7 @@ export default function ServicesPage() {
                       <div className="text-right">
                         <p className="font-bold text-gray-900">{service.booking_count || service.bookingCount || 0} bookings</p>
                         <p className="text-sm text-green-600">
-                          {formatCurrency((service.booking_count || service.bookingCount || 0) * (service.basePrice || 0), service.currency)}
+                          {formatCurrency(service.total_revenue || 0, service.currency)}
                         </p>
                       </div>
                     </div>
