@@ -55,7 +55,9 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('services')
       .select(
-        `id, title, description, category, status, base_price, currency, cover_image_url, featured, created_at, provider_id`
+        `id, title, description, category, status, base_price, currency, cover_image_url, featured, created_at, provider_id,
+         provider:profiles!services_provider_id_fkey(id, full_name, email),
+         avg_rating, review_count, booking_count, approval_status`
       )
       .eq('status', isPublicMode ? 'approved' : requestedStatus)
       .order('created_at', { ascending: false })

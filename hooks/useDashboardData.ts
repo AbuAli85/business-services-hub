@@ -34,9 +34,12 @@ export function useDashboardData(userRole?: string, userId?: string) {
       try {
         setLoading(true)
         setError(null)
+        console.log('🔄 useDashboardData: Loading data for user:', userId, 'role:', userRole)
         await dashboardData.loadData(userRole, userId)
         updateData()
+        console.log('✅ useDashboardData: Data loaded successfully')
       } catch (err) {
+        console.error('❌ useDashboardData: Error loading data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
       } finally {
         setLoading(false)

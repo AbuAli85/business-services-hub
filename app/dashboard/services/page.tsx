@@ -78,6 +78,13 @@ export default function ServicesPage() {
   const [isClient, setIsClient] = useState(false)
   const { services, bookings, loading, error, refresh } = useDashboardData(userRole || undefined, userId || undefined)
   
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 Services Page: Services data received:', services?.length || 0, 'services')
+    console.log('🔍 Services Page: User role:', userRole, 'User ID:', userId)
+    console.log('🔍 Services Page: Loading state:', loading, 'Error:', error)
+  }, [services, userRole, userId, loading, error])
+  
   // Initialize permissions
   const permissions = usePermissions(userRole, userId)
   
@@ -110,6 +117,7 @@ export default function ServicesPage() {
         
         setUserId(authResult.user.id)
         setUserRole(authResult.role as 'provider' | 'client' | 'admin' | 'staff' | null)
+        console.log('🔐 Services Page: Auth result:', authResult)
         
         // Check specific roles
         const [adminCheck, providerCheck, clientCheck] = await Promise.all([
@@ -118,6 +126,7 @@ export default function ServicesPage() {
           hasRoleV2('client')
         ])
         
+        console.log('🔐 Services Page: Role checks:', { admin: adminCheck, provider: providerCheck, client: clientCheck })
         setIsAdmin(adminCheck)
         setIsProvider(providerCheck)
         setIsClient(clientCheck)
@@ -250,6 +259,7 @@ export default function ServicesPage() {
 
   // Filter and sort services
   const filteredServices = useMemo(() => {
+    console.log('🔍 Services Page: Filtering services, total source services:', sourceServices.length)
     let filtered = sourceServices.filter(service => {
       // Safety check: ensure service exists and has required properties
       if (!service || !service.id || !service.title) return false
@@ -326,6 +336,7 @@ export default function ServicesPage() {
       }
     })
 
+    console.log('🔍 Services Page: Filtered services result:', filtered.length, 'services')
     return filtered
   }, [sourceServices, searchTerm, statusFilter, categoryFilter, sortBy, sortOrder, priceRange, ratingFilter, featuredOnly])
 
@@ -412,10 +423,14 @@ export default function ServicesPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
-          <p className="text-red-600 mb-4">Error loading services</p>
-          <Button onClick={refresh}>Retry</Button>
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Error Loading Services</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="space-x-2">
+            <Button onClick={refresh} variant="outline">Retry</Button>
+            <Button onClick={() => window.location.reload()}>Reload Page</Button>
+          </div>
         </div>
       </div>
     )
@@ -944,11 +959,24 @@ export default function ServicesPage() {
                     ? 'Create your first service to get started!' 
                     : 'No services available at the moment.'}
               </p>
-              {isProvider && (
-                <Button onClick={() => router.push('/dashboard/provider/create-service')}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Service
+              <div className="space-x-2">
+                {isProvider && (
+                  <Button onClick={() => router.push('/dashboard/provider/create-service')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Service
+                  </Button>
+                )}
+                <Button variant="outline" onClick={handleRefresh}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
                 </Button>
+              </div>
+              {!loading && stats.total === 0 && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    If you expected to see services here, please check your internet connection and try refreshing the page.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
