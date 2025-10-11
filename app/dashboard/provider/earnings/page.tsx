@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getSupabaseClient } from '@/lib/supabase'
+import { realtimeManager } from '@/lib/realtime'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { 
   DollarSign, 
@@ -21,8 +22,33 @@ import {
   Target,
   Award,
   CreditCard,
-  Banknote
+  Banknote,
+  RefreshCw,
+  Activity,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  Filter,
+  Search
 } from 'lucide-react'
+import { 
+  LineChart, 
+  Line, 
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart as RechartsPieChart,
+  Pie,
+  Cell,
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface Earning {
   id: string
@@ -45,6 +71,9 @@ interface EarningStats {
   growthRate: number
   topEarningMonth: string
   totalServices: number
+  weeklyEarnings: number
+  todayEarnings: number
+  successRate: number
 }
 
 interface Invoice {
@@ -61,6 +90,13 @@ interface Invoice {
   clients?: { full_name?: string } | null
 }
 
+interface ChartDataPoint {
+  date: string
+  earnings: number
+  count: number
+  pending: number
+}
+
 export default function EarningsPage() {
   const [earnings, setEarnings] = useState<Earning[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -72,18 +108,27 @@ export default function EarningsPage() {
     averagePerService: 0,
     growthRate: 0,
     topEarningMonth: '',
-    totalServices: 0
+    totalServices: 0,
+    weeklyEarnings: 0,
+    todayEarnings: 0,
+    successRate: 0
   })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [timeRange, setTimeRange] = useState('30')
   const [selectedMonth, setSelectedMonth] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [isRealTimeActive, setIsRealTimeActive] = useState(false)
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([])
 
-  useEffect(() => {
-    fetchEarningsData()
-  }, [timeRange, selectedMonth])
-
-  const fetchEarningsData = async () => {
+  // Fetch earnings data
+  const fetchEarningsData = useCallback(async (showLoading = true) => {
     try {
+      if (showLoading) setLoading(true)
+      else setRefreshing(true)
+
       const supabase = await getSupabaseClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
@@ -91,7 +136,7 @@ export default function EarningsPage() {
       // Fetch payments as earnings for this provider
       const { data: paymentsData, error: paymentsError } = await supabase
         .from('payments')
-        .select('id, amount, currency, status, booking_id, created_at')
+        .select('id, amount, currency, status, booking_id, created_at, client_id')
         .eq('provider_id', user.id)
         .order('created_at', { ascending: false })
 
@@ -118,8 +163,7 @@ export default function EarningsPage() {
                 serviceTitle = service?.title || 'Service'
               }
               
-              // Get client name from the payment's client_id (assuming payments table has client_id)
-              // If not, we'll need to get it from the booking
+              // Get client name
               const { data: client } = await supabase
                 .from('profiles')
                 .select('full_name')
@@ -155,7 +199,6 @@ export default function EarningsPage() {
         }))
       }
 
-      // If no live earnings, keep previous UI meaningful with empty state
       setEarnings(liveEarnings)
 
       // Fetch invoices for this provider
@@ -211,14 +254,33 @@ export default function EarningsPage() {
       
       setInvoices(enrichedInvoices as any)
 
-      // Calculate stats
+      // Calculate comprehensive stats
+      const now = new Date()
+      const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
+
       const totalEarnings = liveEarnings
         .filter(e => e.status === 'completed')
         .reduce((sum, e) => sum + e.amount, 0)
 
       const monthlyEarnings = liveEarnings
+        .filter(e => e.status === 'completed' && new Date(e.created_at) > last30Days)
+        .reduce((sum, e) => sum + e.amount, 0)
+
+      const previousMonthEarnings = liveEarnings
         .filter(e => e.status === 'completed' && 
-          new Date(e.created_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+          new Date(e.created_at) > last60Days && 
+          new Date(e.created_at) <= last30Days)
+        .reduce((sum, e) => sum + e.amount, 0)
+
+      const weeklyEarnings = liveEarnings
+        .filter(e => e.status === 'completed' && new Date(e.created_at) > last7Days)
+        .reduce((sum, e) => sum + e.amount, 0)
+
+      const todayEarnings = liveEarnings
+        .filter(e => e.status === 'completed' && new Date(e.created_at) >= today)
         .reduce((sum, e) => sum + e.amount, 0)
 
       const pendingPayments = liveEarnings
@@ -229,34 +291,177 @@ export default function EarningsPage() {
         .filter(e => e.status === 'completed')
         .length
 
+      const totalTransactions = liveEarnings.length
+      const successRate = totalTransactions > 0 
+        ? (completedPayments / totalTransactions) * 100 
+        : 0
+
+      const growthRate = previousMonthEarnings > 0
+        ? ((monthlyEarnings - previousMonthEarnings) / previousMonthEarnings) * 100
+        : monthlyEarnings > 0 ? 100 : 0
+
+      // Generate chart data
+      const chartDataMap = new Map<string, ChartDataPoint>()
+      const days = parseInt(timeRange)
+      
+      for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        chartDataMap.set(dateStr, {
+          date: dateStr,
+          earnings: 0,
+          count: 0,
+          pending: 0
+        })
+      }
+
+      liveEarnings.forEach(earning => {
+        const earningDate = new Date(earning.created_at)
+        if (earningDate > new Date(now.getTime() - days * 24 * 60 * 60 * 1000)) {
+          const dateStr = earningDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          const existing = chartDataMap.get(dateStr)
+          if (existing) {
+            if (earning.status === 'completed') {
+              existing.earnings += earning.amount
+              existing.count += 1
+            } else if (earning.status === 'pending') {
+              existing.pending += earning.amount
+            }
+          }
+        }
+      })
+
+      setChartData(Array.from(chartDataMap.values()))
+
       setStats({
         totalEarnings,
         monthlyEarnings,
         pendingPayments,
         completedPayments,
-        averagePerService: totalEarnings / completedPayments || 0,
-        growthRate: 12.5, // Mock growth rate
-        topEarningMonth: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }),
-        totalServices: liveEarnings.length
+        averagePerService: completedPayments > 0 ? totalEarnings / completedPayments : 0,
+        growthRate,
+        topEarningMonth: now.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+        totalServices: liveEarnings.length,
+        weeklyEarnings,
+        todayEarnings,
+        successRate
       })
 
+      setLastUpdated(new Date())
       setLoading(false)
+      setRefreshing(false)
     } catch (error) {
       console.error('Error fetching earnings data:', error)
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [timeRange])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchEarningsData()
+  }, [fetchEarningsData])
+
+  // Setup real-time subscriptions
+  useEffect(() => {
+    let mounted = true
+
+    const setupRealtime = async () => {
+      try {
+        const supabase = await getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user || !mounted) return
+
+        // Subscribe to payments
+        const paymentsChannel = supabase
+          .channel(`earnings-payments-${user.id}`)
+          .on('postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'payments',
+              filter: `provider_id=eq.${user.id}`
+            },
+            async (payload: any) => {
+              console.log('💰 Real-time payment update:', payload)
+              if (mounted) {
+                await fetchEarningsData(false)
+              }
+            }
+          )
+          .subscribe((status) => {
+            if (status === 'SUBSCRIBED' && mounted) {
+              console.log('✅ Subscribed to real-time payments')
+              setIsRealTimeActive(true)
+            }
+          })
+
+        // Subscribe to invoices
+        const invoicesChannel = supabase
+          .channel(`earnings-invoices-${user.id}`)
+          .on('postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'invoices',
+              filter: `provider_id=eq.${user.id}`
+            },
+            async (payload: any) => {
+              console.log('📄 Real-time invoice update:', payload)
+              if (mounted) {
+                await fetchEarningsData(false)
+              }
+            }
+          )
+          .subscribe()
+
+        return () => {
+          mounted = false
+          paymentsChannel.unsubscribe()
+          invoicesChannel.unsubscribe()
+        }
+      } catch (error) {
+        console.error('Failed to setup real-time subscriptions:', error)
+      }
+    }
+
+    setupRealtime()
+
+    return () => {
+      mounted = false
+    }
+  }, [fetchEarningsData])
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchEarningsData(false)
+    }, 5 * 60 * 1000)
+
+    return () => clearInterval(interval)
+  }, [fetchEarningsData])
+
+  // Filter earnings based on search and status
+  const filteredEarnings = earnings.filter(earning => {
+    const matchesSearch = searchQuery === '' || 
+      earning.service_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      earning.client_name.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesStatus = statusFilter === 'all' || earning.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800'
+        return 'bg-green-100 text-green-800 border-green-200'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case 'failed':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-100 text-red-800 border-red-200'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
@@ -287,10 +492,9 @@ export default function EarningsPage() {
   }
 
   const exportEarnings = () => {
-    // Mock export functionality
     const csvContent = [
       'Date,Service,Client,Amount,Status,Source',
-      ...earnings.map(e => 
+      ...filteredEarnings.map(e => 
         `${formatDate(e.created_at)},${e.service_title},${e.client_name},${e.amount} ${e.currency},${e.status},${getSourceLabel(e.source)}`
       )
     ].join('\n')
@@ -304,27 +508,49 @@ export default function EarningsPage() {
     window.URL.revokeObjectURL(url)
   }
 
+  // Chart colors
+  const COLORS = ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#3b82f6']
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 font-medium">Loading earnings data...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 bg-gradient-to-br from-gray-50 to-blue-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+      >
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Earnings & Payments</h1>
-          <p className="text-gray-600 mt-2">
-            Track your income, payments, and financial performance
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Earnings Dashboard
+            </h1>
+            {isRealTimeActive && (
+              <Badge className="bg-green-500 text-white border-0 animate-pulse">
+                <Activity className="h-3 w-3 mr-1" />
+                Live
+              </Badge>
+            )}
+          </div>
+          <p className="text-gray-600 mt-2 flex items-center gap-2">
+            <Zap className="h-4 w-4 text-yellow-500" />
+            Real-time financial performance tracking
           </p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-32">
+            <SelectTrigger className="w-40 bg-white border-2">
+              <Calendar className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -334,310 +560,602 @@ export default function EarningsPage() {
               <SelectItem value="365">Last year</SelectItem>
             </SelectContent>
           </Select>
-          <Button onClick={exportEarnings}>
+          <Button 
+            onClick={() => fetchEarningsData(false)}
+            variant="outline"
+            className="border-2"
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button onClick={exportEarnings} className="bg-blue-600 hover:bg-blue-700">
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Earnings Overview */}
+      {/* Last Updated Indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="text-sm text-gray-500 flex items-center gap-2"
+      >
+        <Clock className="h-4 w-4" />
+        Last updated: {lastUpdated.toLocaleTimeString()}
+      </motion.div>
+
+      {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-l-4 border-l-green-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(stats.totalEarnings, 'OMR')}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              All time earnings
-            </p>
-            <div className="flex items-center mt-2">
-              <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
-              <span className="text-xs text-green-600">+{stats.growthRate}% this month</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-blue-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Earnings</CardTitle>
-            <Calendar className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(stats.monthlyEarnings, 'OMR')}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Last 30 days
-            </p>
-            <div className="flex items-center mt-2">
-              <Award className="h-3 w-3 text-blue-500 mr-1" />
-              <span className="text-xs text-blue-600">Best month: {stats.topEarningMonth}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-yellow-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Payments</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {formatCurrency(stats.pendingPayments, 'OMR')}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting payment
-            </p>
-            <div className="flex items-center mt-2">
-              <AlertCircle className="h-3 w-3 text-yellow-500 mr-1" />
-              <span className="text-xs text-yellow-600">Requires attention</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-purple-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Per Service</CardTitle>
-            <BarChart3 className="h-4 w-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {formatCurrency(stats.averagePerService, 'OMR')}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Average earnings per service
-            </p>
-            <div className="flex items-center mt-2">
-              <Target className="h-3 w-3 text-purple-500 mr-1" />
-              <span className="text-xs text-purple-600">Based on {stats.completedPayments} services</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Bank Transfer</span>
-                <span className="text-sm font-medium">60%</span>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-green-500 to-green-600 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium opacity-90">Total Earnings</CardTitle>
+              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+                <DollarSign className="h-5 w-5" />
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Credit Card</span>
-                <span className="text-sm font-medium">30%</span>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">
+                {formatCurrency(stats.totalEarnings, 'OMR')}
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Cash</span>
-                <span className="text-sm font-medium">10%</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Revenue Sources</CardTitle>
-            <PieChart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Services</span>
-                <span className="text-sm font-medium">70%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Packages</span>
-                <span className="text-sm font-medium">20%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Consultations</span>
-                <span className="text-sm font-medium">10%</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Payment Status</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Completed</span>
-                <span className="text-sm font-medium text-green-600">{stats.completedPayments}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Pending</span>
-                <span className="text-sm font-medium text-yellow-600">
-                  {earnings.filter(e => e.status === 'pending').length}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Failed</span>
-                <span className="text-sm font-medium text-red-600">
-                  {earnings.filter(e => e.status === 'failed').length}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Earnings History */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Earnings History
-          </CardTitle>
-          <CardDescription>
-            Detailed breakdown of all your earnings and payments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {earnings.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium mb-2">No earnings yet</p>
-              <p className="text-sm mb-4">
-                Start by completing services and receiving payments
+              <p className="text-xs opacity-80 mt-2">
+                All time earnings
               </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {earnings.map((earning) => (
-                <div
-                  key={earning.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className={`p-2 rounded-full ${
-                      earning.status === 'completed' ? 'bg-green-100' : 
-                      earning.status === 'pending' ? 'bg-yellow-100' : 'bg-red-100'
-                    }`}>
-                      {getSourceIcon(earning.source)}
+              <div className="flex items-center mt-3 text-sm">
+                {stats.growthRate >= 0 ? (
+                  <ArrowUpRight className="h-4 w-4 mr-1" />
+                ) : (
+                  <ArrowDownRight className="h-4 w-4 mr-1" />
+                )}
+                <span className="font-semibold">
+                  {Math.abs(stats.growthRate).toFixed(1)}% {stats.growthRate >= 0 ? 'increase' : 'decrease'}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium opacity-90">Monthly Earnings</CardTitle>
+              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+                <Calendar className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">
+                {formatCurrency(stats.monthlyEarnings, 'OMR')}
+              </div>
+              <p className="text-xs opacity-80 mt-2">
+                Last 30 days
+              </p>
+              <div className="flex items-center mt-3 text-sm">
+                <Award className="h-4 w-4 mr-1" />
+                <span>Best: {stats.topEarningMonth}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium opacity-90">Pending</CardTitle>
+              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+                <Clock className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">
+                {formatCurrency(stats.pendingPayments, 'OMR')}
+              </div>
+              <p className="text-xs opacity-80 mt-2">
+                Awaiting payment
+              </p>
+              <div className="flex items-center mt-3 text-sm">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                <span>{earnings.filter(e => e.status === 'pending').length} transactions</span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-500 to-purple-600 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium opacity-90">Avg. Per Service</CardTitle>
+              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+                <BarChart3 className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">
+                {formatCurrency(stats.averagePerService, 'OMR')}
+              </div>
+              <p className="text-xs opacity-80 mt-2">
+                Average per transaction
+              </p>
+              <div className="flex items-center mt-3 text-sm">
+                <Target className="h-4 w-4 mr-1" />
+                <span>{stats.completedPayments} completed</span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Additional Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span>Today's Earnings</span>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(stats.todayEarnings, 'OMR')}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span>Weekly Earnings</span>
+                <Calendar className="h-4 w-4 text-blue-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                {formatCurrency(stats.weeklyEarnings, 'OMR')}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                <span>Success Rate</span>
+                <CheckCircle className="h-4 w-4 text-purple-600" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-purple-600">
+                {stats.successRate.toFixed(1)}%
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Earnings Trend Chart */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+      >
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              Earnings Trend
+            </CardTitle>
+            <CardDescription>
+              Daily earnings and transaction volume over time
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                  </linearGradient>
+                  <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#6b7280"
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis 
+                  stroke="#6b7280"
+                  style={{ fontSize: '12px' }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                  }}
+                  formatter={(value: any) => [`${formatCurrency(value, 'OMR')}`, undefined]}
+                />
+                <Legend />
+                <Area 
+                  type="monotone" 
+                  dataKey="earnings" 
+                  stroke="#10b981" 
+                  fillOpacity={1}
+                  fill="url(#colorEarnings)"
+                  name="Completed Earnings"
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="pending" 
+                  stroke="#f59e0b" 
+                  fillOpacity={1}
+                  fill="url(#colorPending)"
+                  name="Pending"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Earnings Distribution */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.9 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5 text-purple-600" />
+                Payment Status
+              </CardTitle>
+              <CardDescription>Breakdown by payment status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center">
+                      <CheckCircle className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-medium text-gray-900">{earning.service_title}</h4>
-                      <p className="text-sm text-gray-500">Client: {earning.client_name}</p>
-                      <div className="flex items-center space-x-2 mt-2">
-                        <Badge variant="secondary">{getSourceLabel(earning.source)}</Badge>
-                        <Badge className={getStatusColor(earning.status)}>
-                          {earning.status}
-                        </Badge>
-                      </div>
+                      <p className="font-semibold text-green-900">Completed</p>
+                      <p className="text-sm text-green-700">{stats.completedPayments} transactions</p>
                     </div>
                   </div>
-                  
                   <div className="text-right">
-                    <div className="text-lg font-semibold text-gray-900">
-                      {formatCurrency(earning.amount, earning.currency)}
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      {formatDate(earning.created_at)}
+                    <p className="text-2xl font-bold text-green-900">
+                      {formatCurrency(stats.totalEarnings, 'OMR')}
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Invoices */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Banknote className="h-5 w-5" />
-            Invoices
-          </CardTitle>
-          <CardDescription>Download receipts for your completed payments</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {invoices.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Banknote className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium mb-2">No invoices yet</p>
-              <p className="text-sm">Invoices will appear here after successful payments.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {invoices.map((inv) => (
-                <div key={inv.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="space-y-1">
-                    <div className="font-medium text-gray-900">{inv.bookings?.services?.title || 'Service'}</div>
-                    <div className="text-sm text-gray-500">
-                      {formatDate(inv.created_at)} • {inv.clients?.full_name || 'Client'} • #{inv.id.slice(0,8)}
+                <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-yellow-500 flex items-center justify-center">
+                      <Clock className="h-5 w-5 text-white" />
                     </div>
-                    <div className="text-xs">
-                      <Badge className={
-                        inv.status === 'paid' ? 'bg-green-100 text-green-800' :
-                        inv.status === 'issued' ? 'bg-blue-100 text-blue-800' :
-                        inv.status === 'void' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-                      }>
-                        {inv.status}
-                      </Badge>
+                    <div>
+                      <p className="font-semibold text-yellow-900">Pending</p>
+                      <p className="text-sm text-yellow-700">
+                        {earnings.filter(e => e.status === 'pending').length} transactions
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="text-lg font-semibold text-gray-900">{formatCurrency(inv.amount || 0, inv.currency || 'OMR')}</div>
-                    </div>
-                    {inv.invoice_pdf_url ? (
-                      <a href={inv.invoice_pdf_url} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50">
-                        <Download className="h-4 w-4 mr-2" /> Download
-                      </a>
-                    ) : (
-                      <Button variant="outline" disabled>
-                        <Download className="h-4 w-4 mr-2" /> Pending PDF
-                      </Button>
-                    )}
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-yellow-900">
+                      {formatCurrency(stats.pendingPayments, 'OMR')}
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Common tasks and actions for managing your earnings
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <Download className="h-6 w-6" />
-              <span>Download Report</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <BarChart3 className="h-6 w-6" />
-              <span>View Analytics</span>
-            </Button>
-            <Button variant="outline" className="h-20 flex-col space-y-2">
-              <CreditCard className="h-6 w-6" />
-              <span>Payment Settings</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+                <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-red-500 flex items-center justify-center">
+                      <AlertCircle className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-red-900">Failed</p>
+                      <p className="text-sm text-red-700">
+                        {earnings.filter(e => e.status === 'failed').length} transactions
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-red-900">
+                      {formatCurrency(
+                        earnings
+                          .filter(e => e.status === 'failed')
+                          .reduce((sum, e) => sum + e.amount, 0),
+                        'OMR'
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 1.0 }}
+        >
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+                Transaction Volume
+              </CardTitle>
+              <CardDescription>Daily transaction count</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Earnings History */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.1 }}
+      >
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  Recent Transactions
+                </CardTitle>
+                <CardDescription>
+                  Detailed breakdown of all your earnings and payments
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="relative flex-1 md:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search transactions..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-40 border-2">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {filteredEarnings.length === 0 ? (
+              <div className="text-center py-12">
+                <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium text-gray-900 mb-2">No transactions found</p>
+                <p className="text-sm text-gray-500">
+                  {searchQuery || statusFilter !== 'all'
+                    ? 'Try adjusting your filters'
+                    : 'Start by completing services and receiving payments'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {filteredEarnings.slice(0, 10).map((earning, index) => (
+                    <motion.div
+                      key={earning.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="flex items-center justify-between p-4 border-2 rounded-xl hover:bg-gray-50 hover:border-blue-300 transition-all duration-200 cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className={`p-3 rounded-xl ${
+                          earning.status === 'completed' ? 'bg-green-100' : 
+                          earning.status === 'pending' ? 'bg-yellow-100' : 'bg-red-100'
+                        }`}>
+                          {getSourceIcon(earning.source)}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{earning.service_title}</h4>
+                          <p className="text-sm text-gray-600">Client: {earning.client_name}</p>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Badge variant="secondary" className="text-xs">
+                              {getSourceLabel(earning.source)}
+                            </Badge>
+                            <Badge className={`${getStatusColor(earning.status)} border text-xs`}>
+                              {earning.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className={`text-xl font-bold ${
+                          earning.status === 'completed' ? 'text-green-600' :
+                          earning.status === 'pending' ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {formatCurrency(earning.amount, earning.currency)}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatDate(earning.created_at)}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {filteredEarnings.length > 10 && (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">
+                      Showing 10 of {filteredEarnings.length} transactions
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Invoices */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2 }}
+      >
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Banknote className="h-5 w-5 text-blue-600" />
+              Invoices
+            </CardTitle>
+            <CardDescription>Download receipts for your completed payments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {invoices.length === 0 ? (
+              <div className="text-center py-12">
+                <Banknote className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium text-gray-900 mb-2">No invoices yet</p>
+                <p className="text-sm text-gray-500">Invoices will appear here after successful payments.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {invoices.slice(0, 5).map((inv, index) => (
+                  <motion.div 
+                    key={inv.id} 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center justify-between p-4 border-2 rounded-xl hover:bg-gray-50 hover:border-blue-300 transition-all duration-200"
+                  >
+                    <div className="space-y-1">
+                      <div className="font-semibold text-gray-900">{inv.bookings?.services?.title || 'Service'}</div>
+                      <div className="text-sm text-gray-600">
+                        {formatDate(inv.created_at)} • {inv.clients?.full_name || 'Client'} • #{inv.id.slice(0,8)}
+                      </div>
+                      <div className="text-xs">
+                        <Badge className={
+                          inv.status === 'paid' ? 'bg-green-100 text-green-800 border-green-200' :
+                          inv.status === 'issued' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                          inv.status === 'void' ? 'bg-red-100 text-red-800 border-red-200' : 
+                          'bg-gray-100 text-gray-800 border-gray-200'
+                        }>
+                          {inv.status}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-gray-900">
+                          {formatCurrency(inv.amount || 0, inv.currency || 'OMR')}
+                        </div>
+                      </div>
+                      {inv.invoice_pdf_url ? (
+                        <a 
+                          href={inv.invoice_pdf_url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="inline-flex items-center rounded-lg border-2 border-blue-500 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+                        >
+                          <Download className="h-4 w-4 mr-2" /> 
+                          Download
+                        </a>
+                      ) : (
+                        <Button variant="outline" disabled className="border-2">
+                          <Download className="h-4 w-4 mr-2" /> 
+                          Pending
+                        </Button>
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   )
 }
