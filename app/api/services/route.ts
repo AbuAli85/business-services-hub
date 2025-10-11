@@ -118,13 +118,74 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // Fetch booking counts and review stats for all services
+    let bookingCounts: Map<string, number> = new Map()
+    let reviewCounts: Map<string, number> = new Map()
+    let avgRatings: Map<string, number> = new Map()
+    
+    if (services && services.length > 0 && !isPublicMode) {
+      try {
+        const serviceIds = services.map((s: any) => s.id).filter(Boolean)
+        if (serviceIds.length > 0) {
+          console.log('📊 Services API: Calculating stats for', serviceIds.length, 'services')
+          
+          // Fetch bookings and count them per service
+          const { data: bookings } = await supabase
+            .from('bookings')
+            .select('service_id')
+            .in('service_id', serviceIds)
+          
+          if (bookings) {
+            // Count bookings per service
+            bookings.forEach((booking: any) => {
+              const count = bookingCounts.get(booking.service_id) || 0
+              bookingCounts.set(booking.service_id, count + 1)
+            })
+            console.log('✅ Services API: Calculated booking counts for', bookingCounts.size, 'services')
+          }
+          
+          // Fetch reviews and calculate average ratings per service
+          try {
+            const { data: reviews } = await supabase
+              .from('reviews')
+              .select('service_id, rating')
+              .in('service_id', serviceIds)
+            
+            if (reviews) {
+              // Calculate review counts and average ratings per service
+              const ratingsByService: Map<string, number[]> = new Map()
+              
+              reviews.forEach((review: any) => {
+                const ratings = ratingsByService.get(review.service_id) || []
+                ratings.push(review.rating || 0)
+                ratingsByService.set(review.service_id, ratings)
+              })
+              
+              ratingsByService.forEach((ratings, serviceId) => {
+                reviewCounts.set(serviceId, ratings.length)
+                const sum = ratings.reduce((a, b) => a + b, 0)
+                const avg = sum / ratings.length
+                avgRatings.set(serviceId, Math.round(avg * 10) / 10) // Round to 1 decimal
+              })
+              
+              console.log('✅ Services API: Calculated review stats for', ratingsByService.size, 'services')
+            }
+          } catch (reviewError) {
+            console.warn('⚠️ Services API: Failed to fetch reviews (table might not exist):', reviewError)
+          }
+        }
+      } catch (statsError) {
+        console.warn('⚠️ Services API: Failed to fetch service stats:', statsError)
+      }
+    }
+    
     // Fetch provider information separately if we have services
     // Add default values for all services first
     let servicesWithProviders = (services || []).map((service: any) => ({
       ...service,
-      avg_rating: service.avg_rating || 0,
-      review_count: service.review_count || 0,
-      booking_count: service.booking_count || 0,
+      avg_rating: avgRatings.get(service.id) || service.avg_rating || 0,
+      review_count: reviewCounts.get(service.id) || service.review_count || 0,
+      booking_count: bookingCounts.get(service.id) || service.booking_count || 0,
       approval_status: service.approval_status || 'approved',
       provider_name: null
     }))

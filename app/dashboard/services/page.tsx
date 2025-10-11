@@ -299,11 +299,12 @@ export default function ServicesPage() {
     let filtered = services.filter(service => {
       if (!service || !service.id || !service.title) return false
       
+      const searchLower = (searchTerm || '').toLowerCase()
       const matchesSearch = searchTerm === '' || 
-        (service.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (service.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (service.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (service.providerName || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (service.title?.toLowerCase() ?? '').includes(searchLower) ||
+        (service.description?.toLowerCase() ?? '').includes(searchLower) ||
+        (service.category?.toLowerCase() ?? '').includes(searchLower) ||
+        (service.providerName?.toLowerCase() ?? '').includes(searchLower)
       
       const matchesStatus = statusFilter === 'all' || (service.status || 'active') === statusFilter
       const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
