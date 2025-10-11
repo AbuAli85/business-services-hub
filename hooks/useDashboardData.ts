@@ -28,7 +28,7 @@ export function useDashboardData(userRole?: string, userId?: string) {
     setSystemEvents(dashboardData.getSystemEvents())
   }, [])
 
-  // Load data on mount
+  // Load data on mount and when user role/id changes
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -36,8 +36,17 @@ export function useDashboardData(userRole?: string, userId?: string) {
         setError(null)
         console.log('🔄 useDashboardData: Loading data for user:', userId, 'role:', userRole)
         await dashboardData.loadData(userRole, userId)
-        updateData()
-        console.log('✅ useDashboardData: Data loaded successfully')
+        
+        // Update state directly instead of calling updateData
+        setMetrics(dashboardData.getMetrics())
+        setBookings(dashboardData.getBookings())
+        setInvoices(dashboardData.getInvoices())
+        setUsers(dashboardData.getUsers())
+        setServices(dashboardData.getServices())
+        setMilestoneEvents(dashboardData.getMilestoneEvents())
+        setSystemEvents(dashboardData.getSystemEvents())
+        
+        console.log('✅ useDashboardData: Data loaded successfully - Services:', dashboardData.getServices().length)
       } catch (err) {
         console.error('❌ useDashboardData: Error loading data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -46,8 +55,9 @@ export function useDashboardData(userRole?: string, userId?: string) {
       }
     }
 
+    // Only load if we have explicit parameters or they're intentionally undefined
     loadData()
-  }, [updateData, userRole, userId])
+  }, [userRole, userId])
 
   // Subscribe to data changes
   useEffect(() => {

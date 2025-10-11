@@ -233,6 +233,7 @@ export default function ServicesPage() {
   const [userRole, setUserRole] = useState<'provider' | 'client' | 'admin' | 'staff' | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [isProvider, setIsProvider] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
   
   // Optimized state management
   const [searchTerm, setSearchTerm] = useState('')
@@ -241,7 +242,11 @@ export default function ServicesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [refreshing, setRefreshing] = useState(false)
 
-  const { services, bookings, loading, error, refresh } = useDashboardData(userRole || undefined, userId || undefined)
+  // Only call useDashboardData after auth is loaded
+  const { services, bookings, loading, error, refresh } = useDashboardData(
+    authLoading ? undefined : (userRole || undefined), 
+    authLoading ? undefined : (userId || undefined)
+  )
   
   // Initialize permissions
   const permissions = usePermissions(userRole, userId)
@@ -258,6 +263,7 @@ export default function ServicesPage() {
         
         if (!authResult.isAuthenticated || !authResult.user) {
           console.warn('User not authenticated')
+          setAuthLoading(false)
           return
         }
         
@@ -266,8 +272,13 @@ export default function ServicesPage() {
         
         const providerCheck = await hasRoleV2('provider')
         setIsProvider(providerCheck)
+        
+        // Auth is loaded, now data can be fetched
+        setAuthLoading(false)
+        console.log('✅ Services Page: Auth loaded - userId:', authResult.user.id, 'role:', authResult.role)
       } catch (e) {
         console.error('Error getting user auth:', e)
+        setAuthLoading(false)
       }
     }
 
@@ -277,6 +288,14 @@ export default function ServicesPage() {
       mounted = false
     }
   }, [])
+
+  // Debug: Log when services data changes
+  useEffect(() => {
+    if (!authLoading && !loading) {
+      console.log('📊 Services Page: Data loaded -', services?.length || 0, 'services')
+      console.log('📊 Services Page: First service:', services?.[0])
+    }
+  }, [services, authLoading, loading])
 
   // Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -341,13 +360,15 @@ export default function ServicesPage() {
   }, [services])
 
   // Loading state
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <RoleBasedLayout role={userRole} onNavigate={handleNavigate} onLogout={handleLogout}>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-sm text-gray-600">Loading services...</p>
+            <p className="text-sm text-gray-600">
+              {authLoading ? 'Authenticating...' : 'Loading services...'}
+            </p>
           </div>
         </div>
       </RoleBasedLayout>

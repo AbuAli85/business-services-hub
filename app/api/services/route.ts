@@ -130,18 +130,21 @@ export async function GET(request: NextRequest) {
           console.log('📊 Services API: Calculating stats for', serviceIds.length, 'services')
           
           // Fetch bookings and count them per service
-          const { data: bookings } = await supabase
+          const { data: bookings, error: bookingsError } = await supabase
             .from('bookings')
             .select('service_id')
             .in('service_id', serviceIds)
           
-          if (bookings) {
+          if (bookingsError) {
+            console.warn('⚠️ Services API: Error fetching bookings:', bookingsError.message)
+          } else if (bookings) {
+            console.log('📊 Services API: Fetched', bookings.length, 'bookings for', serviceIds.length, 'services')
             // Count bookings per service
             bookings.forEach((booking: any) => {
               const count = bookingCounts.get(booking.service_id) || 0
               bookingCounts.set(booking.service_id, count + 1)
             })
-            console.log('✅ Services API: Calculated booking counts for', bookingCounts.size, 'services')
+            console.log('✅ Services API: Calculated booking counts for', bookingCounts.size, 'services with bookings')
           }
           
           // Fetch reviews and calculate average ratings per service
