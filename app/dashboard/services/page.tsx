@@ -272,7 +272,14 @@ function ServiceCard({ service, isProvider, router }: { service: any, isProvider
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => router.push(`/dashboard/services/${service.id}/edit`)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (service.id) {
+                    router.push(`/dashboard/services/${service.id}/edit`)
+                  } else {
+                    console.error('Service ID is missing for edit')
+                  }
+                }}
               >
                 <Edit className="h-3 w-3 mr-1" />
                 Edit
@@ -281,7 +288,14 @@ function ServiceCard({ service, isProvider, router }: { service: any, isProvider
             
             <Button
               size="sm"
-              onClick={() => router.push(`/services/${service.id}`)}
+              onClick={(e) => {
+                e.stopPropagation()
+                if (service.id) {
+                  router.push(`/services/${service.id}`)
+                } else {
+                  console.error('Service ID is missing')
+                }
+              }}
               className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
             >
               <Eye className="h-4 w-4 mr-2" />
@@ -509,7 +523,7 @@ export default function ServicesPage() {
             
             {isProvider && (
               <Button 
-                onClick={() => router.push('/dashboard/services/new')}
+                onClick={() => router.push('/dashboard/services/create')}
                 className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -606,7 +620,7 @@ export default function ServicesPage() {
                   </p>
                   {isProvider && (
                     <Button 
-                      onClick={() => router.push('/dashboard/services/new')}
+                      onClick={() => router.push('/dashboard/services/create')}
                       className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
                     >
                       <Plus className="h-4 w-4 mr-2" />
