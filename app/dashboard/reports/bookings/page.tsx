@@ -395,10 +395,10 @@ export default function BookingReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(safeSummaryData.summary.total_revenue, 'USD')}
+                {formatCurrency(safeSummaryData.summary.total_revenue, 'OMR')}
               </div>
               <p className="text-xs text-muted-foreground">
-                Average: {formatCurrency(safeSummaryData.summary.total_revenue / Math.max(safeSummaryData.summary.total_bookings, 1), 'USD')}
+                Average: {formatCurrency(safeSummaryData.summary.total_revenue / Math.max(safeSummaryData.summary.total_bookings, 1), 'OMR')}
               </p>
             </CardContent>
           </Card>
