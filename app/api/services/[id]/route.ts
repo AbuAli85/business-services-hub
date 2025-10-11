@@ -51,8 +51,7 @@ export async function GET(
           name,
           description,
           price,
-          features,
-          duration_days
+          features
         )
       `)
       .eq('id', serviceId)
