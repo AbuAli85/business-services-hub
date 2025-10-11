@@ -38,6 +38,10 @@ interface Service {
   deliverables: string[]
   requirements: string[]
   milestones: any[]
+  duration?: string
+  estimated_duration?: string
+  max_revisions?: number
+  delivery_time?: string
 }
 
 export default function ServiceDetailPage() {
@@ -182,10 +186,10 @@ export default function ServiceDetailPage() {
   }
 
   const formatCurrency = (amount: number, currency: string = 'OMR') => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency
-    }).format(amount)
+    // Always display with exactly 2 decimal places for consistency
+    const normalizedCurrency = (currency || 'OMR').toUpperCase()
+    const fixed = Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+    return `${normalizedCurrency} ${fixed}`
   }
 
   const formatDate = (dateString: string) => {
@@ -238,13 +242,14 @@ export default function ServiceDetailPage() {
           </div>
         </div>
         <div className="flex space-x-2">
-          <Button onClick={handleEdit}>
+          <Button onClick={handleEdit} size="default">
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </Button>
           <Button 
-            variant="outline" 
-            className="text-red-600 hover:text-red-700"
+            variant="destructive" 
+            size="sm"
+            className="bg-red-600 hover:bg-red-700 text-white"
             onClick={handleDelete}
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -283,6 +288,23 @@ export default function ServiceDetailPage() {
                     {formatCurrency(service.base_price, service.currency)}
                   </p>
                 </div>
+                {(service.duration || service.estimated_duration) && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-1">Duration</h4>
+                    <p className="text-gray-600 flex items-center gap-1">
+                      <Clock className="h-4 w-4 text-gray-500" />
+                      {service.duration || service.estimated_duration}
+                    </p>
+                  </div>
+                )}
+                {service.max_revisions !== undefined && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-1">Max Revisions</h4>
+                    <p className="text-gray-600">
+                      {service.max_revisions === -1 ? 'Unlimited' : service.max_revisions}
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

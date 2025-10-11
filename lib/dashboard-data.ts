@@ -834,12 +834,10 @@ export const dashboardData = new DashboardDataManager()
 
 // Utility functions
 export function formatCurrency(amount: number, currency: string = 'OMR'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(amount)
+  // Always display with exactly 2 decimal places for consistency
+  const normalizedCurrency = (currency || 'OMR').toUpperCase()
+  const fixed = Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+  return `${normalizedCurrency} ${fixed}`
 }
 
 export function formatDate(dateString: string): string {
