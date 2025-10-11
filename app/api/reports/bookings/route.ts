@@ -62,9 +62,18 @@ export async function GET(request: NextRequest) {
         client_id,
         provider_id,
         service_id,
-        services(title, category),
-        client_profile:profiles!bookings_client_id_fkey(full_name, company_name),
-        provider_profile:profiles!bookings_provider_id_fkey(full_name, company_name)
+        payment_status,
+        invoice_status,
+        duration_days,
+        milestones_completed,
+        milestones_total,
+        tasks_completed,
+        tasks_total,
+        total_messages,
+        total_files,
+        services(title, category, description, base_price, currency),
+        client_profile:profiles!bookings_client_id_fkey(full_name, company_name, email, avatar_url),
+        provider_profile:profiles!bookings_provider_id_fkey(full_name, company_name, email, avatar_url)
       `)
     
     // Apply user-specific filters
@@ -111,11 +120,16 @@ export async function GET(request: NextRequest) {
       const clientProfile = Array.isArray(bookingData.client_profile) ? bookingData.client_profile[0] : bookingData.client_profile
       const providerProfile = Array.isArray(bookingData.provider_profile) ? bookingData.provider_profile[0] : bookingData.provider_profile
       
+      console.log('🔍 Raw booking data from DB:', bookingData)
+      console.log('🔍 Service data:', service)
+      console.log('🔍 Client profile:', clientProfile)
+      console.log('🔍 Provider profile:', providerProfile)
+      
       // Create detailed report data structure
       const detailedReport = {
         booking: {
           id: bookingData.id,
-          title: bookingData.title || 'Professional Service',
+          title: bookingData.title || service?.title || 'Professional Service',
           status: bookingData.status || 'pending',
           raw_status: bookingData.status || 'pending',
           progress: bookingData.project_progress || 0,
@@ -131,63 +145,65 @@ export async function GET(request: NextRequest) {
         client: {
           id: bookingData.client_id || '',
           name: clientProfile?.full_name || 'Unknown Client',
-          email: 'No email',
+          email: clientProfile?.email || 'No email',
           company: clientProfile?.company_name || '',
-          avatar: ''
+          avatar: clientProfile?.avatar_url || ''
         },
         provider: {
           id: bookingData.provider_id || '',
           name: providerProfile?.full_name || 'Unknown Provider',
-          email: 'No email',
+          email: providerProfile?.email || 'No email',
           company: providerProfile?.company_name || '',
-          avatar: ''
+          avatar: providerProfile?.avatar_url || ''
         },
         service: {
           id: bookingData.service_id || '',
           title: service?.title || 'Professional Service',
           category: service?.category || 'General',
-          description: 'No description available',
-          base_price: bookingData.total_amount || 0,
-          currency: 'OMR'
+          description: service?.description || 'No description available',
+          base_price: service?.base_price || bookingData.total_amount || 0,
+          currency: service?.currency || 'OMR'
         },
         payment: {
           amount: bookingData.total_amount || 0,
           currency: 'OMR',
-          status: 'pending'
+          status: bookingData.payment_status || 'pending'
         },
         invoice: {
           invoice_number: `INV-${bookingData.id.slice(0, 8)}`,
           amount: bookingData.total_amount || 0,
-          status: 'pending'
+          status: bookingData.invoice_status || 'pending'
         },
         analytics: {
           overall_progress: bookingData.project_progress || 0,
-          duration_days: null,
+          duration_days: bookingData.duration_days || null,
           days_since_created: Math.floor((new Date().getTime() - new Date(bookingData.created_at).getTime()) / (1000 * 60 * 60 * 24)),
           days_until_due: bookingData.due_at ? Math.floor((new Date(bookingData.due_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null
         },
         milestones: {
-          completed: 0,
-          total: 0,
-          completion_rate: 0,
-          details: []
+          completed: bookingData.milestones_completed || 0,
+          total: bookingData.milestones_total || 0,
+          completion_rate: bookingData.milestones_total > 0 ? ((bookingData.milestones_completed || 0) / bookingData.milestones_total * 100) : 0,
+          details: (bookingData as any).milestones_details || []
         },
         tasks: {
-          completed: 0,
-          total: 0,
-          completion_rate: 0,
-          details: []
+          completed: bookingData.tasks_completed || 0,
+          total: bookingData.tasks_total || 0,
+          completion_rate: bookingData.tasks_total > 0 ? ((bookingData.tasks_completed || 0) / bookingData.tasks_total * 100) : 0,
+          details: (bookingData as any).tasks_details || []
         },
         communications: {
-          total_messages: 0,
-          details: []
+          total_messages: bookingData.total_messages || 0,
+          details: (bookingData as any).communications_details || []
         },
         files: {
-          total_files: 0,
-          details: []
+          total_files: bookingData.total_files || 0,
+          details: (bookingData as any).files_details || []
         },
-        timeline: []
+        timeline: (bookingData as any).timeline || []
       }
+      
+      console.log('📊 Final detailed report structure:', detailedReport)
       
       return ok({
         success: true,
