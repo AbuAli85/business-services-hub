@@ -376,10 +376,10 @@ export async function GET(request: NextRequest) {
       .replace(/,/g, ' ') // commas are OR separators in supabase .or()
     const status = (searchParams.get('status') || '').trim()
 
-    // Use v_booking_status view for unified data with proper joins and derived status
-    // Constrain queries to a reasonable time window to leverage indexes and reduce scan time
+    // Try v_booking_status view first, fallback to bookings table
     const DAYS_BACK = 540 // ~18 months
     const sinceIso = new Date(Date.now() - DAYS_BACK * 24 * 60 * 60 * 1000).toISOString()
+    
     let query = supabase
       .from('v_booking_status')
       .select(`
@@ -463,15 +463,98 @@ export async function GET(request: NextRequest) {
     // Pagination
     const from = (page - 1) * pageSize
     const to = from + pageSize - 1
-    const { data, count, error: queryError } = await query.range(from, to)
+    let { data, count, error: queryError } = await query.range(from, to)
+
+    // If v_booking_status view fails, try fallback to bookings table
+    if (queryError && queryError.message?.includes('relation "v_booking_status" does not exist')) {
+      console.log('🔄 Bookings API: v_booking_status view not found, falling back to bookings table')
+      
+      // Fallback query using bookings table with joins
+      let fallbackQuery = supabase
+        .from('bookings')
+        .select(`
+          id, service_id, client_id, provider_id, status, amount, currency,
+          created_at, updated_at, scheduled_date,
+          services!inner(title, category),
+          client_profile:profiles!bookings_client_id_fkey(full_name),
+          provider_profile:profiles!bookings_provider_id_fkey(full_name)
+        `, { count: 'planned' })
+        .gte('created_at', sinceIso)
+
+      // Apply role-based filtering
+      if (userRole === 'provider') {
+        fallbackQuery = fallbackQuery.eq('provider_id', user.id)
+      } else if (userRole === 'client') {
+        fallbackQuery = fallbackQuery.eq('client_id', user.id)
+      }
+
+      // Apply status filter
+      if (status) {
+        fallbackQuery = fallbackQuery.eq('status', status)
+      }
+
+      // Apply search filter
+      if (search) {
+        fallbackQuery = fallbackQuery.or(`
+          services.title.ilike.%${search}%,
+          client_profile.full_name.ilike.%${search}%,
+          provider_profile.full_name.ilike.%${search}%
+        `)
+      }
+
+      // Apply sorting
+      switch (sort) {
+        case 'created_at':
+          fallbackQuery = fallbackQuery.order('created_at', { ascending: order === 'asc' })
+          break
+        case 'amount':
+          fallbackQuery = fallbackQuery.order('amount', { ascending: order === 'asc' })
+          break
+        case 'display_status':
+          fallbackQuery = fallbackQuery.order('status', { ascending: order === 'asc' })
+          break
+        default:
+          fallbackQuery = fallbackQuery.order('created_at', { ascending: order === 'asc' })
+      }
+
+      const fallbackResult = await fallbackQuery.range(from, to)
+      
+      if (!fallbackResult.error) {
+        data = fallbackResult.data?.map((booking: any) => ({
+          id: booking.id,
+          booking_id: booking.id,
+          booking_title: booking.services?.title || 'Untitled Booking',
+          service_id: booking.service_id,
+          service_title: booking.services?.title || 'Untitled Service',
+          client_id: booking.client_id,
+          client_name: booking.client_profile?.full_name || 'Unknown Client',
+          provider_id: booking.provider_id,
+          provider_name: booking.provider_profile?.full_name || 'Unknown Provider',
+          progress: 0, // Default progress for fallback
+          display_status: booking.status,
+          booking_status: booking.status,
+          amount: booking.amount,
+          currency: booking.currency,
+          booking_created_at: booking.created_at,
+          booking_updated_at: booking.updated_at,
+          scheduled_date: booking.scheduled_date
+        })) || []
+        count = fallbackResult.count
+        queryError = null
+        console.log('✅ Bookings API: Fallback query successful, returned', data.length, 'bookings')
+      } else {
+        console.error('❌ Bookings API: Fallback query also failed:', fallbackResult.error)
+      }
+    }
 
     if (queryError) {
       // Graceful fallback on timeout to avoid 504 cascade
       if ((queryError as any)?.name === 'AbortError') {
-        const response = NextResponse.json({ data: [], page, pageSize, total: 0 }, { status: 200 })
+        const response = NextResponse.json({ bookings: [], page, pageSize, total: 0 }, { status: 200 })
         Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
         return response
       }
+      console.error('❌ Bookings API: Query error:', queryError)
       const response = NextResponse.json({ error: queryError.message }, { status: 400 })
       Object.entries(corsHeadersFor(request.headers.get('origin'))).forEach(([key, value]) => response.headers.set(key, value))
       return response
