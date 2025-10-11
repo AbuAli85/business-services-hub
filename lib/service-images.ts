@@ -183,12 +183,20 @@ export function getServiceCardImageUrl(
   
   // Add size parameters to Unsplash URLs
   if (config.url.includes('unsplash.com')) {
-    const url = new URL(config.url)
-    url.searchParams.set('w', width.toString())
-    url.searchParams.set('h', height.toString())
-    url.searchParams.set('fit', 'crop')
-    url.searchParams.set('crop', 'center')
-    return url.toString()
+    try {
+      const url = new URL(config.url)
+      url.searchParams.set('w', width.toString())
+      url.searchParams.set('h', height.toString())
+      url.searchParams.set('fit', 'crop')
+      url.searchParams.set('crop', 'center')
+      url.searchParams.set('q', '80') // Add quality parameter
+      url.searchParams.set('auto', 'format') // Auto format optimization
+      return url.toString()
+    } catch (error) {
+      console.warn('Failed to construct Unsplash URL:', error)
+      // Fallback to a reliable default image
+      return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=225&fit=crop&crop=center&q=80&auto=format'
+    }
   }
   
   return config.url

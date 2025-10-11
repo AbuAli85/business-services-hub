@@ -46,6 +46,7 @@ import { DataTable, type ColumnDef } from '@/components/dashboard/DataTable'
 import { FilterDropdown } from '@/components/dashboard/FilterDropdown'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { getServiceCardImageUrl } from '@/lib/service-images'
+import { FallbackImage } from '@/components/ui/fallback-image'
 import { getSupabaseClient } from '@/lib/supabase'
 import { getUserAuth, hasRoleV2, type UserAuthResult } from '@/lib/user-auth'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -800,12 +801,14 @@ export default function ServicesPage() {
                     <Card className="group hover:shadow-2xl transition-all duration-300 border-0 shadow-lg bg-white overflow-hidden rounded-2xl hover:-translate-y-1">
                       {/* Service Image */}
                       <div className="relative h-48 overflow-hidden">
-                        <Image
+                        <FallbackImage
                           src={getServiceCardImageUrl(service.category, service.title, (service as any).cover_image_url, 400, 200)}
-                          alt={service.title}
+                          alt={service.title || 'Service Image'}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="group-hover:scale-105 transition-transform duration-500"
                           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          priority={false}
+                          fallbackSrc="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=200&fit=crop&crop=center&q=80&auto=format"
                         />
                         
                         {/* Gradient Overlay */}
