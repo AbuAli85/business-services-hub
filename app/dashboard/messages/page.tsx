@@ -63,6 +63,7 @@ export default function MessagesPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadingMessages, setLoadingMessages] = useState(false)
   const [user, setUser] = useState<any>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState('all')
@@ -122,6 +123,9 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (selectedConversation) {
+      // Clear messages immediately when switching conversations to avoid showing stale data
+      setMessages([])
+      // Fetch new messages
       fetchMessages(selectedConversation.id)
     }
   }, [selectedConversation])
@@ -274,7 +278,10 @@ export default function MessagesPage() {
 
   const fetchMessages = async (conversationId: string) => {
     try {
+      setLoadingMessages(true)
       const supabase = await getSupabaseClient()
+      
+      console.log('📨 Fetching messages for conversation:', conversationId)
       
       const { data: messagesData, error } = await supabase
         .from('messages')
@@ -282,9 +289,15 @@ export default function MessagesPage() {
         .or(`and(sender_id.eq.${user.id},receiver_id.eq.${conversationId}),and(sender_id.eq.${conversationId},receiver_id.eq.${user.id})`)
         .order('created_at', { ascending: true })
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error fetching messages:', error)
+        throw error
+      }
 
-      logger.debug('Fetched messages:', messagesData)
+      console.log('✅ Fetched messages:', messagesData?.length || 0, 'messages')
+      logger.debug('Message data:', messagesData)
+      
+      // Ensure we always set an array, even if empty
       setMessages(messagesData || [])
       
       // Mark messages as read
@@ -292,6 +305,10 @@ export default function MessagesPage() {
     } catch (error) {
       logger.error('Error fetching messages:', error)
       toast.error('Failed to load messages')
+      // Set empty array on error to show "No messages" instead of stale data
+      setMessages([])
+    } finally {
+      setLoadingMessages(false)
     }
   }
 
@@ -677,7 +694,12 @@ export default function MessagesPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50">
-                {messages.length === 0 ? (
+                {loadingMessages ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500 font-medium">Loading messages...</p>
+                  </div>
+                ) : messages.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 font-medium">No messages yet</p>

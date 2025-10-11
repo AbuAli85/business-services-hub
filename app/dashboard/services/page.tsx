@@ -30,8 +30,27 @@ import { getUserAuth, hasRoleV2, type UserAuthResult } from '@/lib/user-auth'
 import { RoleBasedLayout } from '@/components/dashboard/role-layouts/RoleBasedLayout'
 import { usePermissions } from '@/lib/permissions'
 
+// Loading Skeleton for Stats
+function StatsLoadingSkeleton() {
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {[1, 2, 3, 4].map((i) => (
+        <Card key={i} className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
+              <div className="h-8 bg-gray-200 rounded w-16 mb-1"></div>
+              <div className="h-3 bg-gray-200 rounded w-20"></div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
 // Optimized Services Stats Component
-function ServicesStats({ services, bookings }: { services: any[], bookings: any[] }) {
+function ServicesStats({ services, bookings, loading }: { services: any[], bookings: any[], loading?: boolean }) {
   const stats = useMemo(() => {
     const totalServices = services?.length || 0
     const activeServices = services?.filter(s => s.status === 'active').length || 0
@@ -47,6 +66,11 @@ function ServicesStats({ services, bookings }: { services: any[], bookings: any[
       avgRating
     }
   }, [services, bookings])
+  
+  // Show loading skeleton while data loads
+  if (loading && (!services || services.length === 0)) {
+    return <StatsLoadingSkeleton />
+  }
 
   const statCards = [
     {
@@ -453,7 +477,7 @@ export default function ServicesPage() {
         </div>
 
         {/* Stats */}
-        <ServicesStats services={services} bookings={bookings} />
+        <ServicesStats services={services} bookings={bookings} loading={loading} />
 
         {/* Search and Filters */}
         <Card className="border-0 shadow-sm">
@@ -535,7 +559,7 @@ export default function ServicesPage() {
                   <p className="text-gray-600 mb-6">
                     {searchTerm || statusFilter !== 'all' || categoryFilter !== 'all'
                       ? 'Try adjusting your search or filters to find what you\'re looking for.'
-                      : 'Get started by creating your first service.'}
+                      : 'You haven\'t created any services yet. Start earning by offering your professional services to clients!'}
                   </p>
                   {isProvider && (
                     <Button 

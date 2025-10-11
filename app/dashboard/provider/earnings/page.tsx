@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -98,6 +99,7 @@ interface ChartDataPoint {
 }
 
 export default function EarningsPage() {
+  const router = useRouter()
   const [earnings, setEarnings] = useState<Earning[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [stats, setStats] = useState<EarningStats>({
@@ -588,10 +590,47 @@ export default function EarningsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto"></div>
-          <p className="text-gray-600 font-medium">Loading earnings data...</p>
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Earnings</h1>
+            <p className="text-gray-600">Loading your earnings data...</p>
+          </div>
+        </div>
+        
+        {/* Skeleton for stats cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <Card key={i} className="border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-24 mb-3"></div>
+                  <div className="h-8 bg-gray-200 rounded w-32 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-20"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        
+        {/* Skeleton for charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <div className="animate-pulse h-6 bg-gray-200 rounded w-40"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="animate-pulse h-64 bg-gray-100 rounded"></div>
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-sm">
+            <CardHeader>
+              <div className="animate-pulse h-6 bg-gray-200 rounded w-40"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="animate-pulse h-64 bg-gray-100 rounded"></div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
@@ -1084,14 +1123,24 @@ export default function EarningsPage() {
           </CardHeader>
           <CardContent>
             {filteredEarnings.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
                 <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg font-medium text-gray-900 mb-2">No transactions found</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 mb-4">
                   {searchQuery || statusFilter !== 'all'
-                    ? 'Try adjusting your filters'
-                    : 'Start by completing services and receiving payments'}
+                    ? 'Try adjusting your filters or search term'
+                    : 'You haven\'t earned revenue yet. Start by promoting your services and getting bookings!'}
                 </p>
+                {!(searchQuery || statusFilter !== 'all') && (
+                  <Button 
+                    onClick={() => router.push('/dashboard/services')} 
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Target className="h-4 w-4 mr-2" />
+                    View My Services
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">

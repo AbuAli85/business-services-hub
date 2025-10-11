@@ -581,7 +581,21 @@ export default function ProfilePage() {
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-gray-500">No skills added yet</p>
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                      <Award className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-600 font-medium mb-2">No skills added yet</p>
+                      <p className="text-gray-500 text-sm mb-4">
+                        Add your skills to help clients find and hire you for relevant projects
+                      </p>
+                      <Button 
+                        onClick={() => setEditing(true)} 
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Award className="h-4 w-4 mr-2" />
+                        Add Your First Skill
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -635,7 +649,21 @@ export default function ProfilePage() {
                       </Badge>
                     ))
                   ) : (
-                    <p className="text-gray-500">No languages added yet</p>
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                      <Languages className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-600 font-medium mb-2">No languages added yet</p>
+                      <p className="text-gray-500 text-sm mb-4">
+                        Adding languages helps clients know how to communicate with you effectively
+                      </p>
+                      <Button 
+                        onClick={() => setEditing(true)} 
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Languages className="h-4 w-4 mr-2" />
+                        Add Languages
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -668,7 +696,21 @@ export default function ProfilePage() {
                   {profile?.education ? (
                     <p className="text-gray-600">{profile.education}</p>
                   ) : (
-                    <p className="text-gray-500">No education information added yet</p>
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                      <GraduationCap className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-600 font-medium mb-2">No education information added yet</p>
+                      <p className="text-gray-500 text-sm mb-4">
+                        Share your educational background to build trust with potential clients
+                      </p>
+                      <Button 
+                        onClick={() => setEditing(true)} 
+                        variant="outline"
+                        size="sm"
+                      >
+                        <GraduationCap className="h-4 w-4 mr-2" />
+                        Add Education
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -742,7 +784,21 @@ export default function ProfilePage() {
                     </div>
                   )}
                   {!profile?.portfolio_url && !profile?.linkedin_url && !profile?.website_url && (
-                    <p className="text-gray-500">No professional links added yet</p>
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+                      <Link className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-gray-600 font-medium mb-2">No professional links added yet</p>
+                      <p className="text-gray-500 text-sm mb-4">
+                        Add your portfolio, LinkedIn, or website to showcase your work and credibility
+                      </p>
+                      <Button 
+                        onClick={() => setEditing(true)} 
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Link className="h-4 w-4 mr-2" />
+                        Add Professional Links
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}

@@ -54,7 +54,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
   useEffect(() => {
     loadStats()
-  }, [userId])
+  }, [userId, notifications])
 
   // Group + filter notifications based on active tab and filters
   const filteredNotifications = React.useMemo<GroupedNotification[]>(() => {
@@ -110,6 +110,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
   const loadNotifications = async () => {
     try {
       await refresh()
+      await loadStats()
     } catch (error) {
       console.error('Error loading notifications:', error)
       toast.error('Failed to load notifications')
@@ -118,11 +119,21 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
 
   const loadStats = async () => {
     try {
-      const allNotifications = notificationService.getAllNotifications()
-      const unread = allNotifications.filter(n => !n.read).length
+      // Use notifications from state instead of calling service again
+      const allNotifications = notifications || []
+      
+      console.log('📊 Calculating notification stats from', allNotifications.length, 'notifications')
+      if (allNotifications.length > 0) {
+        console.log('📊 Sample notification:', allNotifications[0])
+      }
+      
+      const unread = allNotifications.filter(n => !n.read && !n.read_at).length
+      console.log('📊 Unread notifications:', unread, 'out of', allNotifications.length)
+      
       const recentCount = allNotifications.filter(n => {
         const twentyFourHoursAgo = Date.now() - 24 * 60 * 60 * 1000
-        return new Date(n.timestamp).getTime() > twentyFourHoursAgo
+        const notifTime = new Date(n.timestamp || n.created_at).getTime()
+        return notifTime > twentyFourHoursAgo
       }).length
       
       const by_type: any = { info: 0, success: 0, warning: 0, error: 0 }
@@ -135,13 +146,16 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
         if (by_priority[n.priority] !== undefined) by_priority[n.priority]++
       })
       
-      setStats({ 
+      const calculatedStats = { 
         total: allNotifications.length, 
         unread, 
         by_type,
         by_priority,
         recent_count: recentCount 
-      })
+      }
+      
+      console.log('✅ Notification stats calculated:', calculatedStats)
+      setStats(calculatedStats)
     } catch (error) {
       console.error('Error loading notification stats:', error)
     }
