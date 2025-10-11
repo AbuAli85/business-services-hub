@@ -242,7 +242,7 @@ export default function ProjectFilesPage() {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(file => 
-        file.original_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (file.original_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (file.description && file.description.toLowerCase().includes(searchTerm.toLowerCase()))
       )
     }

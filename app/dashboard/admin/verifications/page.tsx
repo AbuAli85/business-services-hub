@@ -136,8 +136,8 @@ export default function AdminVerificationsPage() {
   }
 
   const filteredProfiles = profiles.filter(profile => {
-    const matchesSearch = profile.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         profile.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (profile.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (profile.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (profile.company_name && profile.company_name.toLowerCase().includes(searchTerm.toLowerCase()))
     
     const matchesStatus = statusFilter === 'all' || profile.verification_status === statusFilter

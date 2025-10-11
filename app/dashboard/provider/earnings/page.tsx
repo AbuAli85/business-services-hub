@@ -444,8 +444,8 @@ export default function EarningsPage() {
   // Filter earnings based on search and status
   const filteredEarnings = earnings.filter(earning => {
     const matchesSearch = searchQuery === '' || 
-      earning.service_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      earning.client_name.toLowerCase().includes(searchQuery.toLowerCase())
+      (earning.service_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (earning.client_name || '').toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || earning.status === statusFilter
 

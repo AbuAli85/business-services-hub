@@ -268,8 +268,8 @@ export default function AdminReportsPage() {
   const filteredReports = reports.filter(report => {
     const matchesTab = selectedTab === 'all' || report.type === selectedTab
     const matchesSearch = searchQuery === '' || 
-      report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      report.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (report.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.description || '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === 'all' || report.status === statusFilter
     
     return matchesTab && matchesSearch && matchesStatus

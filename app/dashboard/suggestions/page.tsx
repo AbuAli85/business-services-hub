@@ -52,8 +52,8 @@ export default function SuggestionsPage() {
   // Filter suggestions based on search and filters
   const filteredSuggestions = suggestions.filter(suggestion => {
     const matchesSearch = searchQuery === '' || 
-      suggestion.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      suggestion.description.toLowerCase().includes(searchQuery.toLowerCase())
+      (suggestion.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (suggestion.description || '').toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesPriority = selectedPriority === 'all' || suggestion.priority === selectedPriority
     const matchesType = selectedType === 'all' || suggestion.type === selectedType

@@ -426,8 +426,8 @@ export default function MessagesPage() {
 
   const filteredConversations = conversations.filter(conv => {
     const matchesSearch = searchTerm === '' || 
-      conv.participant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      conv.booking_title?.toLowerCase().includes(searchTerm.toLowerCase())
+      (conv.participant_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (conv.booking_title || '').toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesRole = filterRole === 'all' || conv.participant_role === filterRole
     

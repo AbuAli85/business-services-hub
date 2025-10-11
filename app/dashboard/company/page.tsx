@@ -598,8 +598,8 @@ export default function CompanyPage() {
   }
 
   const filteredCompanies = companies.filter(company => {
-    const matchesSearch = company.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         company.industry?.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = (company.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (company.industry || '').toLowerCase().includes(searchQuery.toLowerCase())
     const matchesFilter = filterStatus === 'all' || company.status === filterStatus
     return matchesSearch && matchesFilter
   })

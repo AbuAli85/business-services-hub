@@ -412,10 +412,10 @@ export default function EnhancedServicesPage() {
   const filteredServices = useMemo(() => {
     let filtered = services.filter(service => {
       const matchesSearch = searchTerm === '' || 
-        service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.providerName.toLowerCase().includes(searchTerm.toLowerCase())
+        (service.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.providerName || '').toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesStatus = statusFilter === 'all' || service.status === statusFilter
       const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter

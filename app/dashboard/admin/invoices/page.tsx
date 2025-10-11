@@ -42,9 +42,9 @@ export default function AdminInvoicesPage() {
   const filteredInvoices = useMemo(() => {
     return invoices.filter(invoice => {
       const matchesSearch = searchQuery === '' || 
-        invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        invoice.providerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        invoice.serviceTitle.toLowerCase().includes(searchQuery.toLowerCase())
+        (invoice.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (invoice.providerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (invoice.serviceTitle || '').toLowerCase().includes(searchQuery.toLowerCase())
       
       const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter
       

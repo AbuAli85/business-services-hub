@@ -153,9 +153,9 @@ export default function ManageServicesPage() {
 
     if (searchQuery) {
       filtered = filtered.filter(service =>
-        service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchQuery.toLowerCase())
+        (service.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (service.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (service.category || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     }
 
