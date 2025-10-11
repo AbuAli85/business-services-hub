@@ -120,28 +120,33 @@ export async function GET(request: NextRequest) {
     }
     
     // Transform data for frontend
-    const transformedBookings = bookings?.map(booking => ({
-      id: booking.id,
-      title: booking.title,
-      status: booking.status,
-      operational_status: booking.status, // Use status as operational_status
-      progress: booking.project_progress || 0,
-      amount: booking.total_amount || 0,
-      payment_status: 'pending', // Default since column doesn't exist
-      created_at: booking.created_at,
-      updated_at: booking.updated_at,
-      scheduled_date: booking.scheduled_date,
-      completed_date: null, // Column doesn't exist
-      client_id: booking.client_id,
-      provider_id: booking.provider_id,
-      service_id: booking.service_id,
-      service_title: booking.services?.title || 'Unknown Service',
-      service_category: booking.services?.category || 'Unknown',
-      client_name: booking.client_profile?.full_name || 'Unknown Client',
-      client_company: booking.client_profile?.company_name || '',
-      provider_name: booking.provider_profile?.full_name || 'Unknown Provider',
-      provider_company: booking.provider_profile?.company_name || ''
-    })) || []
+    const transformedBookings = bookings?.map(booking => {
+      // Handle services as array (Supabase returns relations as arrays)
+      const service = Array.isArray(booking.services) ? booking.services[0] : booking.services
+      
+      return {
+        id: booking.id,
+        title: booking.title,
+        status: booking.status,
+        operational_status: booking.status, // Use status as operational_status
+        progress: booking.project_progress || 0,
+        amount: booking.total_amount || 0,
+        payment_status: 'pending', // Default since column doesn't exist
+        created_at: booking.created_at,
+        updated_at: booking.updated_at,
+        scheduled_date: booking.scheduled_date,
+        completed_date: null, // Column doesn't exist
+        client_id: booking.client_id,
+        provider_id: booking.provider_id,
+        service_id: booking.service_id,
+        service_title: service?.title || 'Unknown Service',
+        service_category: service?.category || 'Unknown',
+        client_name: booking.client_profile?.full_name || 'Unknown Client',
+        client_company: booking.client_profile?.company_name || '',
+        provider_name: booking.provider_profile?.full_name || 'Unknown Provider',
+        provider_company: booking.provider_profile?.company_name || ''
+      }
+    }) || []
     
     // Calculate summary statistics
     const totalBookings = transformedBookings.length
