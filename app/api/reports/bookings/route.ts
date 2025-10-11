@@ -93,6 +93,108 @@ export async function GET(request: NextRequest) {
       query = query.eq('id', bookingId)
     }
     
+    // Handle detailed report request
+    if (type === 'detailed' && bookingId) {
+      // For detailed reports, we need to fetch comprehensive data
+      const { data: bookingData, error: bookingError } = await query.single()
+      
+      if (bookingError || !bookingData) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Booking not found',
+          details: bookingError?.message 
+        }, { status: 404 })
+      }
+      
+      // Handle relations as arrays (Supabase returns relations as arrays)
+      const service = Array.isArray(bookingData.services) ? bookingData.services[0] : bookingData.services
+      const clientProfile = Array.isArray(bookingData.client_profile) ? bookingData.client_profile[0] : bookingData.client_profile
+      const providerProfile = Array.isArray(bookingData.provider_profile) ? bookingData.provider_profile[0] : bookingData.provider_profile
+      
+      // Create detailed report data structure
+      const detailedReport = {
+        booking: {
+          id: bookingData.id,
+          title: bookingData.title || 'Professional Service',
+          status: bookingData.status || 'pending',
+          raw_status: bookingData.status || 'pending',
+          progress: bookingData.project_progress || 0,
+          created_at: bookingData.created_at,
+          updated_at: bookingData.updated_at,
+          due_at: bookingData.due_at,
+          scheduled_date: bookingData.scheduled_date,
+          estimated_duration: null,
+          location: null,
+          requirements: null,
+          notes: null
+        },
+        client: {
+          id: bookingData.client_id || '',
+          name: clientProfile?.full_name || 'Unknown Client',
+          email: 'No email',
+          company: clientProfile?.company_name || '',
+          avatar: ''
+        },
+        provider: {
+          id: bookingData.provider_id || '',
+          name: providerProfile?.full_name || 'Unknown Provider',
+          email: 'No email',
+          company: providerProfile?.company_name || '',
+          avatar: ''
+        },
+        service: {
+          id: bookingData.service_id || '',
+          title: service?.title || 'Professional Service',
+          category: service?.category || 'General',
+          description: 'No description available',
+          base_price: bookingData.total_amount || 0,
+          currency: 'OMR'
+        },
+        payment: {
+          amount: bookingData.total_amount || 0,
+          currency: 'OMR',
+          status: 'pending'
+        },
+        invoice: {
+          invoice_number: `INV-${bookingData.id.slice(0, 8)}`,
+          amount: bookingData.total_amount || 0,
+          status: 'pending'
+        },
+        analytics: {
+          overall_progress: bookingData.project_progress || 0,
+          duration_days: null,
+          days_since_created: Math.floor((new Date().getTime() - new Date(bookingData.created_at).getTime()) / (1000 * 60 * 60 * 24)),
+          days_until_due: bookingData.due_at ? Math.floor((new Date(bookingData.due_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null
+        },
+        milestones: {
+          completed: 0,
+          total: 0,
+          completion_rate: 0,
+          details: []
+        },
+        tasks: {
+          completed: 0,
+          total: 0,
+          completion_rate: 0,
+          details: []
+        },
+        communications: {
+          total_messages: 0,
+          details: []
+        },
+        files: {
+          total_files: 0,
+          details: []
+        },
+        timeline: []
+      }
+      
+      return ok({
+        success: true,
+        report: detailedReport
+      })
+    }
+    
     // Apply sorting
     const sortColumn = sort === 'createdAt' ? 'created_at' : 
                       sort === 'updatedAt' ? 'updated_at' :

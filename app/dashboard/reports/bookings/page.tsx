@@ -116,6 +116,7 @@ export default function BookingReportsPage() {
 
     setLoading(true)
     try {
+      console.log('🔍 Loading summary report for user:', user.id)
       const params = new URLSearchParams()
       if (dateFrom) params.append('date_from', dateFrom.toISOString())
       if (dateTo) params.append('date_to', dateTo.toISOString())
@@ -123,8 +124,11 @@ export default function BookingReportsPage() {
 
       const response = await apiRequest(`/api/reports/bookings?${params}`)
       const data = await response.json()
+      
+      console.log('📊 Summary report API response:', data)
 
       if (data.success) {
+        console.log('📋 Raw bookings data:', data.report.bookings)
         // Ensure the report data has the expected structure
         const bookings = (data.report.bookings || []).map((booking: any) => ({
           id: booking.id || '',
@@ -140,16 +144,19 @@ export default function BookingReportsPage() {
           due_at: booking.due_at || null
         }))
         
+        console.log('✅ Processed bookings:', bookings)
         const reportData = {
           ...data.report,
           bookings: bookings
         }
         setSummaryData(reportData)
+        toast.success(`Loaded ${bookings.length} bookings`)
       } else {
-        toast.error('Failed to load reports')
+        console.error('❌ API returned error:', data.error)
+        toast.error(`Failed to load reports: ${data.error}`)
       }
     } catch (error) {
-      console.error('Error loading reports:', error)
+      console.error('❌ Error loading reports:', error)
       // Set empty data structure to prevent crashes
       setSummaryData({
         summary: {
@@ -174,17 +181,23 @@ export default function BookingReportsPage() {
   const loadDetailedReport = async (bookingId: string) => {
     setLoading(true)
     try {
+      console.log('🔍 Loading detailed report for booking:', bookingId)
       const response = await apiRequest(`/api/reports/bookings?booking_id=${bookingId}&type=detailed`)
       const data = await response.json()
+      
+      console.log('📊 Detailed report API response:', data)
 
       if (data.success) {
+        console.log('✅ Setting detailed report data:', data.report)
         setDetailedReport(data.report)
         setShowDetailedReport(true)
+        toast.success('Detailed report loaded successfully')
       } else {
-        toast.error('Failed to load detailed report')
+        console.error('❌ API returned error:', data.error)
+        toast.error(`Failed to load detailed report: ${data.error}`)
       }
     } catch (error) {
-      console.error('Error loading detailed report:', error)
+      console.error('❌ Error loading detailed report:', error)
       toast.error('Failed to load detailed report')
     } finally {
       setLoading(false)
