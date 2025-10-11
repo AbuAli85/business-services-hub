@@ -315,11 +315,11 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <h3 className="font-bold text-xl mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-tight min-h-[56px]">
+                <h3 className="font-bold text-xl mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-tight min-h-[3.5rem] cursor-help">
                   {service?.title || 'Service'}
                 </h3>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
+              <TooltipContent className="max-w-sm bg-gray-900 text-white p-3">
                 <p className="font-semibold">{service?.title || 'Service'}</p>
               </TooltipContent>
             </Tooltip>
@@ -509,6 +509,7 @@ export default function ServicesPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [isProvider, setIsProvider] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
+  const [authInitialized, setAuthInitialized] = useState(false)
   
   // Optimized state management
   const [searchTerm, setSearchTerm] = useState('')
@@ -526,8 +527,14 @@ export default function ServicesPage() {
   // Initialize permissions
   const permissions = usePermissions(userRole, userId)
   
-  // Auth initialization with timeout protection
+  // Auth initialization with timeout protection - only run once
   useEffect(() => {
+    // Prevent re-initialization if already done
+    if (authInitialized) {
+      console.log('✅ Auth already initialized, skipping')
+      return
+    }
+    
     let mounted = true
     let timeoutId: NodeJS.Timeout
     
@@ -552,6 +559,7 @@ export default function ServicesPage() {
         if (!authResult.isAuthenticated || !authResult.user) {
           console.warn('⚠️ Services Page: User not authenticated, redirecting to login')
           setAuthLoading(false)
+          setAuthInitialized(true)
           // Redirect to login page
           router.push('/auth/sign-in?redirect=/dashboard/services')
           return
@@ -565,11 +573,13 @@ export default function ServicesPage() {
         
         // Auth is loaded, now data can be fetched
         setAuthLoading(false)
+        setAuthInitialized(true)
         console.log('✅ Services Page: Auth loaded - userId:', authResult.user.id, 'role:', authResult.role)
       } catch (e) {
         console.error('❌ Services Page: Error getting user auth:', e)
         clearTimeout(timeoutId)
         setAuthLoading(false)
+        setAuthInitialized(true)
         // Error is logged, user will see loading state with manual refresh option
         // Only redirect if it's a clear auth failure, not a network issue
         const errorMessage = e instanceof Error ? e.message : String(e)
@@ -587,7 +597,7 @@ export default function ServicesPage() {
       mounted = false
       clearTimeout(timeoutId)
     }
-  }, [router])
+  }, [authInitialized, router])
 
   // Debug: Log when services data changes
   useEffect(() => {
@@ -768,7 +778,7 @@ export default function ServicesPage() {
         <ServicesStats services={services} bookings={bookings} loading={loading} />
 
         {/* Search and Filters */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm mt-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
