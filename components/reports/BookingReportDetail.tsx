@@ -417,12 +417,12 @@ export function BookingReportDetail({
                 <div key={milestone.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">{milestone?.title || 'Milestone'}</p>
-                    {milestone.description && (
+                    {milestone?.description && (
                       <p className="text-sm text-gray-600">{milestone.description}</p>
                     )}
                   </div>
-                  <Badge className={getStatusColor(milestone.status)}>
-                    {milestone.status}
+                  <Badge className={getStatusColor(milestone?.status || 'pending')}>
+                    {milestone?.status || 'pending'}
                   </Badge>
                 </div>
               ))}
@@ -444,16 +444,16 @@ export function BookingReportDetail({
                 <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">{task?.title || 'Task'}</p>
-                    {task.description && (
+                    {task?.description && (
                       <p className="text-sm text-gray-600">{task.description}</p>
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <Badge className={getPriorityColor(task.priority)}>
-                      {task.priority}
+                    <Badge className={getPriorityColor(task?.priority || 'medium')}>
+                      {task?.priority || 'medium'}
                     </Badge>
-                    <Badge className={getStatusColor(task.status)}>
-                      {task.status}
+                    <Badge className={getStatusColor(task?.status || 'pending')}>
+                      {task?.status || 'pending'}
                     </Badge>
                   </div>
                 </div>
@@ -474,9 +474,9 @@ export function BookingReportDetail({
             <div className="space-y-3">
               {(data.communications?.details || []).slice(0, 5).map((message) => (
                 <div key={message.id} className="p-3 border rounded-lg">
-                  <p className="text-sm text-gray-900">{message.content}</p>
+                  <p className="text-sm text-gray-900">{message?.content || 'No content'}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {formatMuscat(message.created_at)}
+                    {formatMuscat(message?.created_at || new Date().toISOString())}
                   </p>
                 </div>
               ))}
@@ -502,13 +502,13 @@ export function BookingReportDetail({
               {(data.files?.details || []).map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <p className="font-medium">{file.filename}</p>
+                    <p className="font-medium">{file?.filename || 'Unknown file'}</p>
                     <p className="text-sm text-gray-600">
-                      {file.file_type} • {(file.file_size / 1024).toFixed(1)} KB
+                      {file?.file_type || 'Unknown'} • {((file?.file_size || 0) / 1024).toFixed(1)} KB
                     </p>
                   </div>
                   <p className="text-xs text-gray-500">
-                    {formatMuscat(file.uploaded_at)}
+                    {formatMuscat(file?.uploaded_at || new Date().toISOString())}
                   </p>
                 </div>
               ))}
