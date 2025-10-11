@@ -17,6 +17,7 @@ interface SessionManagerProps {
 export function SessionManager({ children, config = {} }: SessionManagerProps) {
   const [showModal, setShowModal] = useState(false)
   const [lastWarningTime, setLastWarningTime] = useState(0)
+  const [autoRefreshAttempted, setAutoRefreshAttempted] = useState(false)
 
   const {
     isWarning,
@@ -29,19 +30,35 @@ export function SessionManager({ children, config = {} }: SessionManagerProps) {
     formatTime
   } = useSessionTimeout(config)
 
-  // Show modal when warning or inactivity detected
+  // Auto-refresh session silently when warning first appears
   useEffect(() => {
-    const shouldShowModal = (isWarning || isInactive) && !isExpired
+    if (isWarning && !autoRefreshAttempted && timeRemaining > 60) {
+      setAutoRefreshAttempted(true)
+      console.log('🔄 Auto-refreshing session silently...')
+      refreshSession().then(success => {
+        if (success) {
+          console.log('✅ Session auto-refreshed successfully')
+          resetActivity()
+        } else {
+          console.log('❌ Auto-refresh failed, will show modal')
+        }
+      })
+    }
+  }, [isWarning, timeRemaining, autoRefreshAttempted, refreshSession, resetActivity])
+
+  // Show modal only for critical situations (under 2 minutes or auto-refresh failed)
+  useEffect(() => {
+    const shouldShowModal = (isWarning || isInactive) && !isExpired && timeRemaining <= 120
     const now = Date.now()
     
-    // Prevent modal spam - only show once per warning cycle
-    if (shouldShowModal && (now - lastWarningTime) > 10000) { // 10 seconds cooldown
+    // Prevent modal spam - only show once per 30 seconds
+    if (shouldShowModal && (now - lastWarningTime) > 30000) {
       setShowModal(true)
       setLastWarningTime(now)
     } else if (!shouldShowModal) {
       setShowModal(false)
     }
-  }, [isWarning, isInactive, isExpired, lastWarningTime])
+  }, [isWarning, isInactive, isExpired, timeRemaining, lastWarningTime])
 
   // Handle session refresh
   const handleRefresh = async () => {
@@ -49,6 +66,10 @@ export function SessionManager({ children, config = {} }: SessionManagerProps) {
     if (success) {
       setShowModal(false)
       resetActivity()
+      setAutoRefreshAttempted(false)
+      toast.success('Session refreshed successfully', {
+        duration: 2000
+      })
     }
   }
 
@@ -65,24 +86,19 @@ export function SessionManager({ children, config = {} }: SessionManagerProps) {
     resetActivity()
   }
 
-  // Show toast notifications for critical warnings
+  // Subtle toast notification only for very critical warnings (under 1 minute)
   useEffect(() => {
-    if (isWarning && timeRemaining <= 60) {
-      toast.error(`Session expires in ${formatTime(timeRemaining)}!`, {
-        duration: 5000,
-        position: 'top-center'
+    if (isWarning && timeRemaining <= 60 && timeRemaining > 0) {
+      toast.warning(`Session expires in ${formatTime(timeRemaining)}`, {
+        duration: 3000,
+        position: 'bottom-right',
+        description: 'Click to refresh your session'
       })
     }
   }, [isWarning, timeRemaining, formatTime])
 
-  useEffect(() => {
-    if (isInactive && inactivityTimeRemaining <= 30) {
-      toast.error(`Inactivity timeout in ${formatTime(inactivityTimeRemaining)}!`, {
-        duration: 5000,
-        position: 'top-center'
-      })
-    }
-  }, [isInactive, inactivityTimeRemaining, formatTime])
+  // Don't show inactivity warnings via toast - let the modal handle it
+  // This reduces notification spam
 
   return (
     <>

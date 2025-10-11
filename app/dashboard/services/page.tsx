@@ -526,13 +526,26 @@ export default function ServicesPage() {
   // Initialize permissions
   const permissions = usePermissions(userRole, userId)
   
-  // Auth initialization
+  // Auth initialization with timeout protection
   useEffect(() => {
     let mounted = true
+    let timeoutId: NodeJS.Timeout
     
     const initAuth = async () => {
       try {
+        // Set a timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          if (mounted && authLoading) {
+            console.warn('⚠️ Services Page: Auth timeout, attempting recovery')
+            setAuthLoading(false)
+            console.error('Authentication timeout. Please refresh the page.')
+          }
+        }, 10000) // 10 second timeout
+        
         const authResult: UserAuthResult = await getUserAuth()
+        
+        // Clear timeout on successful auth
+        clearTimeout(timeoutId)
         
         if (!mounted) return
         
@@ -555,10 +568,15 @@ export default function ServicesPage() {
         console.log('✅ Services Page: Auth loaded - userId:', authResult.user.id, 'role:', authResult.role)
       } catch (e) {
         console.error('❌ Services Page: Error getting user auth:', e)
+        clearTimeout(timeoutId)
         setAuthLoading(false)
-        // Redirect to login on auth error
-        if (mounted) {
-          router.push('/auth/sign-in?redirect=/dashboard/services')
+        // Error is logged, user will see loading state with manual refresh option
+        // Only redirect if it's a clear auth failure, not a network issue
+        const errorMessage = e instanceof Error ? e.message : String(e)
+        if (errorMessage.includes('not authenticated') && mounted) {
+          setTimeout(() => {
+            router.push('/auth/sign-in?redirect=/dashboard/services')
+          }, 2000) // Give user time to see error
         }
       }
     }
@@ -567,6 +585,7 @@ export default function ServicesPage() {
     
     return () => {
       mounted = false
+      clearTimeout(timeoutId)
     }
   }, [router])
 
@@ -651,15 +670,18 @@ export default function ServicesPage() {
     return cats.sort()
   }, [services])
 
-  // Loading state
+  // Loading state with timeout indicator
   if (authLoading || loading) {
     return (
       <RoleBasedLayout role={userRole} onNavigate={handleNavigate} onLogout={handleLogout}>
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
+          <div className="text-center max-w-md">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 mb-2">
               {authLoading ? 'Authenticating...' : 'Loading services...'}
+            </p>
+            <p className="text-xs text-gray-500">
+              Taking too long? <button onClick={() => window.location.reload()} className="text-blue-600 hover:underline">Click here to refresh</button>
             </p>
           </div>
         </div>
