@@ -153,7 +153,7 @@ export function ComprehensiveNotificationSettings() {
       if (!user) return
 
       // Save notification settings
-      // Only save fields that exist in the database
+      // Only save fields that we know exist and work in the database
       const settingsToSave: any = {
         id: notificationSettings.id,
         user_id: notificationSettings.user_id,
@@ -169,14 +169,15 @@ export function ComprehensiveNotificationSettings() {
         document_notifications: notificationSettings.document_notifications,
         request_notifications: (notificationSettings as any).request_notifications ?? true,
         project_notifications: (notificationSettings as any).project_notifications ?? true,
-        // Handle the database typo: use syste_notifications instead of system_notifications
-        syste_notifications: notificationSettings.system_notifications,
+        // Skip system_notifications due to database typo and schema cache issues
         quiet_hours_start: notificationSettings.quiet_hours_start,
         quiet_hours_end: notificationSettings.quiet_hours_end,
         digest_frequency: notificationSettings.digest_frequency,
-        // Exclude fields that don't exist in database: digest_types, timezone, thresholds
+        // Excluded: digest_types, timezone, thresholds, syste_notifications (schema cache issue)
         updated_at: new Date().toISOString()
       }
+      
+      console.log('💾 Saving notification settings:', Object.keys(settingsToSave))
       
       const { error: notifError } = await supabaseClient
         .from('notification_settings')
