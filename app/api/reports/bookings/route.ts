@@ -172,26 +172,140 @@ export async function GET(request: NextRequest) {
           days_until_due: bookingData.due_at ? Math.floor((new Date(bookingData.due_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null
         },
         milestones: {
-          completed: 0, // Default since milestones columns don't exist
+          completed: 0, // Will be updated below with real data
           total: 0,
           completion_rate: 0,
-          details: []
+          details: [] as any[]
         },
         tasks: {
-          completed: 0, // Default since tasks columns don't exist
+          completed: 0, // Will be updated below with real data
           total: 0,
           completion_rate: 0,
-          details: []
+          details: [] as any[]
         },
         communications: {
-          total_messages: 0, // Default since total_messages column doesn't exist
-          details: []
+          total_messages: 0, // Will be updated below with real data
+          details: [] as any[]
         },
         files: {
-          total_files: 0, // Default since total_files column doesn't exist
-          details: []
+          total_files: 0, // Will be updated below with real data
+          details: [] as any[]
         },
         timeline: []
+      }
+      
+      // Fetch real data for milestones, tasks, communications, and files
+      try {
+        // Fetch milestones for this booking
+        const { data: milestonesData, error: milestonesError } = await supabase
+          .from('milestones')
+          .select('*')
+          .eq('booking_id', bookingId)
+          .order('created_at', { ascending: true })
+        
+        if (!milestonesError && milestonesData) {
+          const completedMilestones = milestonesData.filter(m => m.status === 'completed').length
+          const totalMilestones = milestonesData.length
+          const completionRate = totalMilestones > 0 ? (completedMilestones / totalMilestones * 100) : 0
+          
+          detailedReport.milestones = {
+            completed: completedMilestones,
+            total: totalMilestones,
+            completion_rate: completionRate,
+            details: milestonesData.map(m => ({
+              id: m.id,
+              title: m.title || 'Milestone',
+              description: m.description || '',
+              status: m.status || 'pending',
+              due_date: m.due_date,
+              completed_at: m.completed_at,
+              progress_percentage: m.progress_percentage || 0
+            }))
+          }
+        }
+        
+        // Fetch tasks for milestones of this booking
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            milestones!inner(booking_id)
+          `)
+          .eq('milestones.booking_id', bookingId)
+          .order('created_at', { ascending: true })
+        
+        if (!tasksError && tasksData) {
+          const completedTasks = tasksData.filter(t => t.status === 'completed').length
+          const totalTasks = tasksData.length
+          const completionRate = totalTasks > 0 ? (completedTasks / totalTasks * 100) : 0
+          
+          detailedReport.tasks = {
+            completed: completedTasks,
+            total: totalTasks,
+            completion_rate: completionRate,
+            details: tasksData.map(t => ({
+              id: t.id,
+              title: t.title || 'Task',
+              description: t.description || '',
+              status: t.status || 'pending',
+              priority: t.priority || 'medium',
+              due_date: t.due_date,
+              completed_at: t.completed_at,
+              progress_percentage: t.progress_percentage || 0
+            }))
+          }
+        }
+        
+        // Fetch messages for this booking
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('booking_messages')
+          .select('*')
+          .eq('booking_id', bookingId)
+          .order('created_at', { ascending: true })
+        
+        if (!messagesError && messagesData) {
+          detailedReport.communications = {
+            total_messages: messagesData.length,
+            details: messagesData.map(m => ({
+              id: m.id,
+              content: m.content || 'No content',
+              sender_role: m.sender_role || 'client',
+              message_type: m.message_type || 'text',
+              created_at: m.created_at || new Date().toISOString(),
+              read_at: m.read_at
+            }))
+          }
+        }
+        
+        // Fetch file attachments for this booking
+        const { data: attachmentsData, error: attachmentsError } = await supabase
+          .from('message_attachments')
+          .select(`
+            *,
+            booking_messages!inner(booking_id)
+          `)
+          .eq('booking_messages.booking_id', bookingId)
+          .order('created_at', { ascending: true })
+        
+        if (!attachmentsError && attachmentsData) {
+          detailedReport.files = {
+            total_files: attachmentsData.length,
+            details: attachmentsData.map(a => ({
+              id: a.id,
+              filename: a.file_name || 'Unknown file',
+              file_type: a.file_type || 'Unknown',
+              file_size: a.file_size || 0,
+              file_url: a.file_url || '',
+              uploaded_at: a.created_at || new Date().toISOString()
+            }))
+          }
+        }
+        
+        console.log('✅ Fetched real data - Milestones:', detailedReport.milestones, 'Tasks:', detailedReport.tasks, 'Messages:', detailedReport.communications.total_messages, 'Files:', detailedReport.files.total_files)
+        
+      } catch (fetchError) {
+        console.error('❌ Error fetching related data:', fetchError)
+        // Keep the default values if fetching fails
       }
       
       console.log('📊 Final detailed report structure:', detailedReport)
