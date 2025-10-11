@@ -115,7 +115,12 @@ export function ComprehensiveNotificationSettings() {
           urgent_priority_threshold: 1
         })
       } else {
-        setNotificationSettings(notifSettings)
+        // Map database typo field to correct field name
+        const mappedSettings = {
+          ...notifSettings,
+          system_notifications: (notifSettings as any).syste_notifications ?? notifSettings.system_notifications ?? true
+        }
+        setNotificationSettings(mappedSettings)
       }
 
       if (!emailPrefs) {
@@ -148,12 +153,21 @@ export function ComprehensiveNotificationSettings() {
       if (!user) return
 
       // Save notification settings
+      // Map system_notifications to syste_notifications (database typo) temporarily
+      const settingsToSave = {
+        ...notificationSettings,
+        updated_at: new Date().toISOString()
+      }
+      
+      // Handle the database typo: map system_notifications to syste_notifications
+      if ('system_notifications' in settingsToSave) {
+        (settingsToSave as any).syste_notifications = settingsToSave.system_notifications
+        delete (settingsToSave as any).system_notifications
+      }
+      
       const { error: notifError } = await supabaseClient
         .from('notification_settings')
-        .upsert({
-          ...notificationSettings,
-          updated_at: new Date().toISOString()
-        })
+        .upsert(settingsToSave)
 
       if (notifError) {
         console.error('Error saving notification settings:', notifError)
