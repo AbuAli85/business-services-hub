@@ -486,17 +486,33 @@ export default function CompanyPage() {
       const supabase = await getSupabaseClient()
       
       // Get services count for all companies
-      const companyIds = companies.map(c => c.id)
-      const { data: servicesData } = await supabase
+      // Services are linked to provider_id (owner_id), not company_id
+      const ownerIds = companies.map(c => c.owner_id).filter(Boolean)
+      
+      console.log('📊 Fetching services for owner IDs:', ownerIds)
+      
+      const { data: servicesData, error: servicesError } = await supabase
         .from('services')
-        .select('id, company_id')
-        .in('company_id', companyIds)
+        .select('id, provider_id')
+        .in('provider_id', ownerIds)
+      
+      if (servicesError) {
+        console.error('❌ Error fetching services:', servicesError)
+      } else {
+        console.log('✅ Found services:', servicesData?.length || 0)
+      }
 
       // Get bookings count for all companies
-      const { data: bookingsData } = await supabase
+      const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('id, total_amount')
-        .in('provider_id', companies.map(c => c.owner_id).filter(Boolean))
+        .in('provider_id', ownerIds)
+      
+      if (bookingsError) {
+        console.error('❌ Error fetching bookings:', bookingsError)
+      } else {
+        console.log('✅ Found bookings:', bookingsData?.length || 0)
+      }
 
       const totalServices = servicesData?.length || 0
       const totalBookings = bookingsData?.length || 0

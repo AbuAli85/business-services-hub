@@ -172,10 +172,28 @@ export default function BookingsPage() {
     return m
   }, [invoices])
   
-  // Calculate statistics. If there are no bookings, prefer zeroed stats to avoid confusing mismatches.
+  // Calculate statistics. Show loading state instead of zeros while data loads.
   const stats = useMemo(() => {
-    if (!bookings || bookings.length === 0) {
-      console.log('📊 No bookings data, returning zero stats')
+    // If data is still loading and we have summaryStats from API, use those
+    if (dataLoading && summaryStats) {
+      console.log('📊 Data loading, using summaryStats:', summaryStats)
+      return {
+        total: summaryStats.total || 0,
+        completed: summaryStats.completed || 0,
+        inProgress: summaryStats.inProgress || 0,
+        pending: summaryStats.pending || 0,
+        approved: summaryStats.approved || 0,
+        totalRevenue: summaryStats.totalRevenue || 0,
+        projectedBillings: summaryStats.projectedBillings || 0,
+        avgCompletionTime: summaryStats.avgCompletionTime || 0,
+        pendingApproval: summaryStats.pendingApproval || 0,
+        readyToLaunch: summaryStats.readyToLaunch || 0
+      }
+    }
+    
+    // If not loading and no bookings, return zeros (user truly has no bookings)
+    if (!dataLoading && (!bookings || bookings.length === 0)) {
+      console.log('📊 Not loading and no bookings data, returning zero stats')
       return {
         total: 0,
         completed: 0,
@@ -208,7 +226,7 @@ export default function BookingsPage() {
     console.log('📊 Calculated stats:', calculatedStats)
     
     return calculatedStats
-  }, [bookings, invoices, summaryStats])
+  }, [bookings, invoices, summaryStats, dataLoading])
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))

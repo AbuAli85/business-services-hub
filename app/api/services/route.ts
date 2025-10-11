@@ -118,8 +118,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fetch booking counts and review stats for all services
+    // Fetch booking counts, revenues, and review stats for all services
     let bookingCounts: Map<string, number> = new Map()
+    let revenues: Map<string, number> = new Map()
     let reviewCounts: Map<string, number> = new Map()
     let avgRatings: Map<string, number> = new Map()
     
@@ -129,10 +130,10 @@ export async function GET(request: NextRequest) {
         if (serviceIds.length > 0) {
           console.log('📊 Services API: Calculating stats for', serviceIds.length, 'services')
           
-          // Fetch bookings and count them per service
+          // Fetch bookings with amounts and count them per service
           const { data: bookings, error: bookingsError } = await supabase
             .from('bookings')
-            .select('service_id')
+            .select('service_id, total_amount, amount')
             .in('service_id', serviceIds)
           
           if (bookingsError) {
@@ -149,6 +150,15 @@ export async function GET(request: NextRequest) {
             })
             console.log('✅ Services API: Calculated booking counts for', bookingCounts.size, 'services with bookings')
             console.log('📊 Services API: Booking counts map:', Object.fromEntries(bookingCounts))
+            
+            // Also calculate total revenue per service from the same bookings
+            bookings.forEach((booking: any) => {
+              const amount = booking.total_amount || booking.amount || 0
+              const currentRevenue = revenues.get(booking.service_id) || 0
+              revenues.set(booking.service_id, currentRevenue + amount)
+            })
+            console.log('✅ Services API: Calculated revenue for', revenues.size, 'services')
+            console.log('📊 Services API: Revenue map:', Object.fromEntries(revenues))
           } else {
             console.log('📊 Services API: No bookings found for services:', serviceIds)
             
@@ -210,6 +220,7 @@ export async function GET(request: NextRequest) {
       avg_rating: avgRatings.get(service.id) || service.avg_rating || 0,
       review_count: reviewCounts.get(service.id) || service.review_count || 0,
       booking_count: bookingCounts.get(service.id) || service.booking_count || 0,
+      total_revenue: revenues.get(service.id) || service.total_revenue || 0,
       approval_status: service.approval_status || 'approved',
       provider_name: null
     }))

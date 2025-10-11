@@ -254,6 +254,79 @@ export default function EarningsPage() {
       
       setInvoices(enrichedInvoices as any)
 
+      // If no payments exist, calculate earnings from invoices and bookings
+      if (liveEarnings.length === 0 && enrichedInvoices.length > 0) {
+        console.log('⚠️ No payments found, calculating earnings from invoices')
+        
+        // Use invoices as earnings source
+        liveEarnings = enrichedInvoices.map((invoice: any) => ({
+          id: invoice.id,
+          amount: invoice.amount || 0,
+          currency: (invoice.currency || 'OMR').toUpperCase(),
+          status: invoice.status === 'paid' ? 'completed' : (invoice.status === 'issued' ? 'pending' : 'failed'),
+          source: 'service' as const,
+          booking_id: invoice.booking_id,
+          created_at: invoice.created_at,
+          service_title: invoice.service_title || 'Service',
+          client_name: invoice.client_name || 'Client'
+        }))
+        
+        setEarnings(liveEarnings)
+      }
+      
+      // If still no earnings, try to get from bookings with amounts
+      if (liveEarnings.length === 0) {
+        console.log('⚠️ No invoices found, checking bookings for amounts')
+        
+        const { data: bookingsData } = await supabase
+          .from('bookings')
+          .select('id, total_amount, amount, currency, status, created_at, service_id, client_id')
+          .eq('provider_id', user.id)
+          .order('created_at', { ascending: false })
+        
+        if (bookingsData && bookingsData.length > 0) {
+          console.log('✅ Found', bookingsData.length, 'bookings with amounts')
+          
+          const earningsFromBookings = await Promise.all(
+            bookingsData.map(async (booking: any) => {
+              try {
+                const { data: service } = await supabase
+                  .from('services')
+                  .select('title')
+                  .eq('id', booking.service_id)
+                  .single()
+                
+                const { data: client } = await supabase
+                  .from('profiles')
+                  .select('full_name')
+                  .eq('id', booking.client_id)
+                  .single()
+                
+                return {
+                  id: booking.id,
+                  amount: booking.total_amount || booking.amount || 0,
+                  currency: (booking.currency || 'OMR').toUpperCase(),
+                  status: booking.status === 'completed' ? 'completed' : (booking.status === 'pending' ? 'pending' : 'completed') as 'completed' | 'pending' | 'failed',
+                  source: 'service' as const,
+                  booking_id: booking.id,
+                  created_at: booking.created_at,
+                  service_title: service?.title || 'Service',
+                  client_name: client?.full_name || 'Client'
+                }
+              } catch (error) {
+                console.error('Error processing booking:', error)
+                return null
+              }
+            })
+          )
+          
+          const validEarnings = earningsFromBookings.filter(e => e !== null && e.amount > 0) as Earning[]
+          liveEarnings = validEarnings
+          setEarnings(liveEarnings)
+          console.log('✅ Set earnings from bookings:', liveEarnings.length, 'items')
+        }
+      }
+
       // Calculate comprehensive stats
       const now = new Date()
       const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
@@ -264,6 +337,8 @@ export default function EarningsPage() {
       const totalEarnings = liveEarnings
         .filter(e => e.status === 'completed')
         .reduce((sum, e) => sum + e.amount, 0)
+      
+      console.log('📊 Total earnings calculated:', totalEarnings, 'from', liveEarnings.length, 'earnings')
 
       const monthlyEarnings = liveEarnings
         .filter(e => e.status === 'completed' && new Date(e.created_at) > last30Days)
