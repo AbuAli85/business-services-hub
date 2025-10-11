@@ -535,7 +535,26 @@ export default function CreateServicePage() {
 
       if (serviceError) {
         console.error('Error creating service:', serviceError)
-        toast.error('Failed to create service: ' + serviceError.message)
+        
+        // Provide specific error messages based on error type
+        let errorMessage = 'Failed to create service'
+        let errorDescription = serviceError.message
+        
+        if (serviceError.code === '23505') {
+          errorMessage = 'Duplicate service'
+          errorDescription = 'A service with this title already exists. Please choose a different title.'
+        } else if (serviceError.code === '23503') {
+          errorMessage = 'Invalid reference'
+          errorDescription = 'Please ensure all required fields are properly selected.'
+        } else if (serviceError.message.includes('permission')) {
+          errorMessage = 'Permission denied'
+          errorDescription = 'You do not have permission to create services. Please contact support.'
+        }
+        
+        toast.error(errorMessage, {
+          description: errorDescription,
+          duration: 5000
+        })
         return
       }
 
@@ -579,11 +598,43 @@ export default function CreateServicePage() {
         }
       }
 
-      toast.success('Service created successfully!')
-      router.push('/dashboard/services')
+      // Show success notification with appropriate message based on status
+      const statusMessage = 
+        formData.status === 'draft' 
+          ? 'Service saved as draft' 
+          : formData.status === 'pending_approval'
+          ? 'Service submitted for approval'
+          : 'Service published successfully'
+      
+      toast.success(statusMessage, {
+        description: formData.status === 'draft' 
+          ? 'You can edit and publish it later from your services dashboard.'
+          : formData.status === 'pending_approval'
+          ? 'Your service will be reviewed by an admin before going live.'
+          : 'Your service is now visible to clients.',
+        action: {
+          label: 'View Service',
+          onClick: () => router.push(`/services/${service.id}`)
+        },
+        duration: 5000
+      })
+      
+      // Add a small delay to ensure user sees the notification
+      setTimeout(() => {
+        router.push('/dashboard/services?refresh=true')
+      }, 1000)
     } catch (error) {
       console.error('Error creating service:', error)
-      toast.error('An unexpected error occurred')
+      
+      // Handle network errors or unexpected errors
+      const isNetworkError = error instanceof TypeError && error.message.includes('fetch')
+      
+      toast.error(isNetworkError ? 'Network error' : 'An unexpected error occurred', {
+        description: isNetworkError 
+          ? 'Please check your internet connection and try again.'
+          : 'Something went wrong while creating your service. Please try again.',
+        duration: 5000
+      })
     } finally {
       setLoading(false)
     }

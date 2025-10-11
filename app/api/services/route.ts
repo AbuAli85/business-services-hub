@@ -66,7 +66,11 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
     
     // Apply status filter
-    if (!isPublicMode && requestedStatus) {
+    // In public mode, only show active services
+    // In authenticated mode, respect the requested status filter
+    if (isPublicMode) {
+      query = query.eq('status', 'active')
+    } else if (requestedStatus && requestedStatus !== 'all') {
       query = query.eq('status', requestedStatus)
     }
     

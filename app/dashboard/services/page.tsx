@@ -19,11 +19,15 @@ import {
   Calendar,
   User,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  Trash2
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
+import { toast } from 'sonner'
+import { getSupabaseClient } from '@/lib/supabase'
 import { getServiceCardImageUrl } from '@/lib/service-images'
 import { FallbackImage } from '@/components/ui/fallback-image'
 import { getUserAuth, hasRoleV2, type UserAuthResult } from '@/lib/user-auth'
@@ -54,6 +58,8 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
   const stats = useMemo(() => {
     const totalServices = services?.length || 0
     const activeServices = services?.filter(s => s.status === 'active').length || 0
+    const draftServices = services?.filter(s => s.status === 'draft').length || 0
+    const pendingServices = services?.filter(s => s.status === 'pending_approval').length || 0
     
     // Calculate total bookings from services (which now have booking_count from API)
     const totalBookingsFromServices = services?.reduce((sum, s) => sum + (s.booking_count || s.bookingCount || 0), 0) || 0
@@ -90,6 +96,8 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
     return {
       totalServices,
       activeServices,
+      draftServices,
+      pendingServices,
       totalBookings,
       totalRevenue,
       avgRating
@@ -105,7 +113,7 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
     {
       title: 'Total Services',
       value: stats.totalServices,
-      subtitle: `${stats.activeServices} active`,
+      subtitle: `${stats.activeServices} active, ${stats.draftServices} draft`,
       icon: '📦',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
@@ -159,8 +167,9 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
 }
 
 // Optimized Service Card Component
-function ServiceCard({ service, isProvider, router }: { service: any, isProvider: boolean, router: any }) {
+function ServiceCard({ service, isProvider, router, onStatusChange }: { service: any, isProvider: boolean, router: any, onStatusChange?: () => void }) {
   const imageUrl = getServiceCardImageUrl(service.cover_image_url, service.category)
+  const [isUpdating, setIsUpdating] = useState(false)
   
   // Debug: Log service data to see if booking_count and total_revenue are present
   useEffect(() => {
@@ -176,11 +185,73 @@ function ServiceCard({ service, isProvider, router }: { service: any, isProvider
     }
   }, [service])
   
+  const handlePublishService = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!service.id) return
+    
+    setIsUpdating(true)
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('services')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', service.id)
+      
+      if (error) throw error
+      
+      toast.success('Service published successfully!', {
+        description: 'Your service is now visible to clients.'
+      })
+      
+      if (onStatusChange) onStatusChange()
+    } catch (error) {
+      console.error('Error publishing service:', error)
+      toast.error('Failed to publish service', {
+        description: 'Please try again later.'
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteService = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!service.id) return
+    
+    if (!confirm('Are you sure you want to delete this service? This action cannot be undone.')) {
+      return
+    }
+    
+    setIsUpdating(true)
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', service.id)
+      
+      if (error) throw error
+      
+      toast.success('Service deleted successfully!')
+      
+      if (onStatusChange) onStatusChange()
+    } catch (error) {
+      console.error('Error deleting service:', error)
+      toast.error('Failed to delete service', {
+        description: 'Please try again later.'
+      })
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+  
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       active: { color: 'bg-green-100 text-green-800', text: 'Active' },
       inactive: { color: 'bg-gray-100 text-gray-800', text: 'Inactive' },
-      pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending' }
+      pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
+      pending_approval: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending Approval' },
+      draft: { color: 'bg-blue-100 text-blue-800', text: 'Draft' }
     }
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.active
     return <Badge className={`${config.color} border-0 text-xs`}>{config.text}</Badge>
@@ -267,8 +338,49 @@ function ServiceCard({ service, isProvider, router }: { service: any, isProvider
             <span className="text-xs text-gray-500 font-medium">Starting price</span>
           </div>
           
-          <div className="flex gap-2">
-            {isProvider && (
+          <div className="flex gap-2 flex-wrap">
+            {isProvider && (service.status === 'draft' || service.status === 'pending_approval') && (
+              <>
+                {service.status === 'draft' && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handlePublishService}
+                    disabled={isUpdating}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Publish
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (service.id) {
+                      router.push(`/dashboard/services/${service.id}/edit`)
+                    }
+                  }}
+                  disabled={isUpdating}
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteService}
+                  disabled={isUpdating}
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
+                </Button>
+              </>
+            )}
+            
+            {isProvider && service.status === 'active' && (
               <Button
                 variant="outline"
                 size="sm"
@@ -383,6 +495,17 @@ export default function ServicesPage() {
       console.log('📊 Services Page: First service:', services?.[0])
     }
   }, [services, authLoading, loading])
+
+  // Auto-refresh when returning from service creation
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('refresh') === 'true' && !loading && !authLoading) {
+      console.log('🔄 Auto-refreshing services list after creation')
+      handleRefresh()
+      // Clean up URL parameter
+      window.history.replaceState({}, '', '/dashboard/services')
+    }
+  }, [loading, authLoading])
 
   // Optimized refresh handler
   const handleRefresh = useCallback(async () => {
@@ -523,7 +646,11 @@ export default function ServicesPage() {
             
             {isProvider && (
               <Button 
-                onClick={() => router.push('/dashboard/provider/create-service')}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  router.push('/dashboard/provider/create-service')
+                }}
                 className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -559,6 +686,8 @@ export default function ServicesPage() {
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending_approval">Pending</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -642,6 +771,7 @@ export default function ServicesPage() {
                   service={service}
                   isProvider={isProvider}
                   router={router}
+                  onStatusChange={handleRefresh}
                 />
               ))}
             </div>

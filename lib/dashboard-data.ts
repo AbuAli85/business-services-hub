@@ -260,9 +260,9 @@ class DashboardDataManager {
     try {
       let apiUrl = '/api/services?status=active&limit=100'
       
-      // For providers, only fetch their own services
+      // For providers, fetch all their services regardless of status (including drafts and pending)
       if (userRole === 'provider' && userId) {
-        apiUrl = `/api/services?provider_id=${userId}&limit=100`
+        apiUrl = `/api/services?provider_id=${userId}&status=all&limit=100`
       }
       
       console.log('📊 Dashboard Data: Fetching services from:', apiUrl)
