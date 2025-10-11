@@ -121,8 +121,10 @@ export async function GET(request: NextRequest) {
     
     // Transform data for frontend
     const transformedBookings = bookings?.map(booking => {
-      // Handle services as array (Supabase returns relations as arrays)
+      // Handle relations as arrays (Supabase returns relations as arrays)
       const service = Array.isArray(booking.services) ? booking.services[0] : booking.services
+      const clientProfile = Array.isArray(booking.client_profile) ? booking.client_profile[0] : booking.client_profile
+      const providerProfile = Array.isArray(booking.provider_profile) ? booking.provider_profile[0] : booking.provider_profile
       
       return {
         id: booking.id,
@@ -141,10 +143,10 @@ export async function GET(request: NextRequest) {
         service_id: booking.service_id,
         service_title: service?.title || 'Unknown Service',
         service_category: service?.category || 'Unknown',
-        client_name: booking.client_profile?.full_name || 'Unknown Client',
-        client_company: booking.client_profile?.company_name || '',
-        provider_name: booking.provider_profile?.full_name || 'Unknown Provider',
-        provider_company: booking.provider_profile?.company_name || ''
+        client_name: clientProfile?.full_name || 'Unknown Client',
+        client_company: clientProfile?.company_name || '',
+        provider_name: providerProfile?.full_name || 'Unknown Provider',
+        provider_company: providerProfile?.company_name || ''
       }
     }) || []
     
