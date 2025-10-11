@@ -16,26 +16,62 @@ export async function GET(req: NextRequest) {
     }
 
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', details: 'No authentication token found' }), 
+        { 
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Create Supabase client with service role for full query capabilities
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('❌ Missing Supabase environment variables')
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error', details: 'Missing database configuration' }), 
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
         }
-      }
-    })
+      )
+    }
+    
+    let supabase
+    try {
+      supabase = createClient(supabaseUrl, supabaseKey, {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      })
+    } catch (clientError) {
+      console.error('❌ Failed to create Supabase client:', clientError)
+      return new Response(
+        JSON.stringify({ error: 'Database connection error', details: 'Failed to initialize database client' }), 
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
+    }
 
     // Verify user authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
     if (authError || !user) {
       console.warn('⚠️ Profile search auth error:', authError?.message || 'No user found')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized', details: authError?.message || 'User not authenticated' }), 
+        { 
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     const url = new URL(req.url)
@@ -56,10 +92,22 @@ export async function GET(req: NextRequest) {
       if (profileError) {
         if (profileError.code === 'PGRST116') {
           // No profile found
-          return NextResponse.json({ profiles: [] })
+          return new Response(
+            JSON.stringify({ profiles: [] }), 
+            { 
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            }
+          )
         }
         console.error('⚠️ Profile fetch error:', profileError)
-        return NextResponse.json({ error: profileError.message }, { status: 500 })
+        return new Response(
+          JSON.stringify({ error: profileError.message, details: 'Failed to fetch profile' }), 
+          { 
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          }
+        )
       }
 
       // Now fetch company data where owner_id matches this profile
@@ -99,7 +147,13 @@ export async function GET(req: NextRequest) {
         })
       }
 
-      return NextResponse.json({ profiles: [enrichedProfile] })
+      return new Response(
+        JSON.stringify({ profiles: [enrichedProfile] }), 
+        { 
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Otherwise, search by query string
@@ -118,11 +172,39 @@ export async function GET(req: NextRequest) {
     }
 
     const { data: searchData, error: searchError } = await query
-    if (searchError) return NextResponse.json({ error: searchError.message }, { status: 500 })
+    if (searchError) {
+      console.error('⚠️ Profile search error:', searchError)
+      return new Response(
+        JSON.stringify({ error: searchError.message, details: 'Failed to search profiles' }), 
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
+    }
 
-    return NextResponse.json({ results: searchData || [] })
+    return new Response(
+      JSON.stringify({ results: searchData || [] }), 
+      { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    )
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 })
+    console.error('❌ Critical error in profiles search API:', e)
+    // Ensure we always return JSON, never HTML
+    return new Response(
+      JSON.stringify({ 
+        error: e?.message || 'Internal error',
+        details: 'An unexpected error occurred while searching profiles'
+      }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    )
   }
 }
 
