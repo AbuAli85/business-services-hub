@@ -133,7 +133,7 @@ export function TopServices({ services, className }: TopServicesProps) {
                         <div className="flex items-center space-x-2">
                           <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
                           <h4 className="text-sm font-medium text-gray-900 truncate">
-                            {service.title}
+                            {service?.title || 'Service'}
                           </h4>
                         </div>
                         <Badge className={`${getStatusColor(service.status)} text-xs`}>

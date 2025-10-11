@@ -223,7 +223,7 @@ function TopServices({ services }: { services: TopService[] }) {
                   <span className="text-sm font-bold text-purple-600">#{index + 1}</span>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900">{service.title}</h4>
+                  <h4 className="font-semibold text-gray-900">{service?.title || 'Service'}</h4>
                   <p className="text-sm text-gray-600">Service</p>
                 </div>
               </div>

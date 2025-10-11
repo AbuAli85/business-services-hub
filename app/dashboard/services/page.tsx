@@ -125,7 +125,7 @@ function ServiceCard({ service, isProvider, router }: { service: any, isProvider
       <div className="relative h-48 overflow-hidden">
         <FallbackImage
           src={imageUrl}
-          alt={service.title}
+          alt={service?.title || 'Service'}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -151,7 +151,7 @@ function ServiceCard({ service, isProvider, router }: { service: any, isProvider
         {/* Service Title and Provider */}
         <div className="mb-4">
           <h3 className="font-bold text-xl mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">
-            {service.title}
+            {service?.title || 'Service'}
           </h3>
           <div className="flex items-center text-gray-600">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mr-2">
@@ -590,7 +590,7 @@ export default function ServicesPage() {
                           <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{service.title}</p>
+                          <p className="font-semibold text-gray-900">{service?.title || 'Service'}</p>
                           <p className="text-sm text-gray-500">{service.category}</p>
                         </div>
                       </div>

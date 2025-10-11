@@ -197,7 +197,7 @@ export default function ServiceDetail() {
                   __html: JSON.stringify({
                     '@context': 'https://schema.org',
                     '@type': 'Service',
-                    name: service.title,
+                    name: service?.title || 'Service',
                     description: service.description || undefined,
                     category: service.category || undefined,
                     provider: service.provider?.company_name || service.provider?.full_name
@@ -222,7 +222,7 @@ export default function ServiceDetail() {
                 <div className="relative h-64 w-full">
                   <Image
                     src={service.cover_image_url}
-                    alt={service.title}
+                    alt={service?.title || 'Service'}
                     fill
                     sizes="100vw"
                     className="object-cover"
@@ -231,7 +231,7 @@ export default function ServiceDetail() {
                       const target = e.target as any
                       if (target && !target.dataset.fallback) {
                         target.dataset.fallback = '1'
-                        target.src = getFallbackImage(service.category, service.title)
+                        target.src = getFallbackImage(service?.category, service?.title || 'Service')
                       }
                     }}
                   />
@@ -239,7 +239,7 @@ export default function ServiceDetail() {
                 </div>
               ) : (
                 <div className="relative h-64 w-full">
-                  <Image src={getFallbackImage(service.category, service.title)} alt={service.title} fill sizes="100vw" className="object-cover" />
+                  <Image src={getFallbackImage(service?.category, service?.title || 'Service')} alt={service?.title || 'Service'} fill sizes="100vw" className="object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                 </div>
               )}
@@ -252,7 +252,7 @@ export default function ServiceDetail() {
                         <Package className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{service.title}</h1>
+                        <h1 className="text-3xl font-bold text-gray-900">{service?.title || 'Service'}</h1>
                         <div className="flex items-center gap-2 mt-2">
                           <Star className="h-4 w-4 text-yellow-500 fill-current" />
                           <span className="text-sm text-gray-600">
@@ -291,7 +291,7 @@ export default function ServiceDetail() {
                       onClick={async () => {
                         try {
                           if (navigator.share) {
-                            await navigator.share({ title: service.title, url: window.location.href })
+                            await navigator.share({ title: service?.title || 'Service', url: window.location.href })
                           } else {
                             await navigator.clipboard.writeText(window.location.href)
                             alert('Link copied to clipboard')
@@ -366,7 +366,7 @@ export default function ServiceDetail() {
                           <div className="flex flex-col sm:flex-row gap-3">
                             {service.provider.email && (
                               <Button asChild variant="outline" className="bg-white/80 backdrop-blur-md border-white/30 shadow-lg hover:bg-white/90">
-                                <a href={`mailto:${service.provider.email}?subject=Inquiry about ${encodeURIComponent(service.title)}`} className="flex items-center gap-2">
+                                <a href={`mailto:${service.provider.email}?subject=Inquiry about ${encodeURIComponent(service?.title || 'Service')}`} className="flex items-center gap-2">
                                   <Mail className="h-4 w-4" />
                                   Email
                                 </a>

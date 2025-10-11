@@ -73,7 +73,7 @@ export default function EnhancedServiceCard({
         {service.cover_image_url ? (
           <Image
             src={service.cover_image_url}
-            alt={service.title}
+            alt={service?.title || 'Service'}
             fill
             className="object-cover"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -141,7 +141,7 @@ export default function EnhancedServiceCard({
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
-              {service.title}
+              {service?.title || 'Service'}
             </CardTitle>
             <CardDescription className="mt-2 text-gray-600 line-clamp-2">
               {service.description}
