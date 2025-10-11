@@ -41,10 +41,11 @@ export default function AdminInvoicesPage() {
   // Filter invoices
   const filteredInvoices = useMemo(() => {
     return invoices.filter(invoice => {
+      const searchLower = (searchQuery || '').toLowerCase()
       const matchesSearch = searchQuery === '' || 
-        (invoice.clientName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (invoice.providerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (invoice.serviceTitle || '').toLowerCase().includes(searchQuery.toLowerCase())
+        (invoice.clientName?.toLowerCase() ?? '').includes(searchLower) ||
+        (invoice.providerName?.toLowerCase() ?? '').includes(searchLower) ||
+        (invoice.serviceTitle?.toLowerCase() ?? '').includes(searchLower)
       
       const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter
       
@@ -272,15 +273,15 @@ export default function AdminInvoicesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{invoice.clientName}</div>
-                          <div className="text-sm text-gray-500">ID: {invoice.clientId}</div>
+                          <div className="font-medium">{invoice.clientName ?? 'N/A'}</div>
+                          <div className="text-sm text-gray-500">ID: {invoice.clientId ?? 'N/A'}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{invoice.providerName}</div>
-                          <div className="text-sm text-gray-500">ID: {invoice.providerId}</div>
+                          <div className="font-medium">{invoice.providerName ?? 'N/A'}</div>
+                          <div className="text-sm text-gray-500">ID: {invoice.providerId ?? 'N/A'}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">{invoice.serviceTitle}</div>
+                          <div className="font-medium">{invoice.serviceTitle ?? 'N/A'}</div>
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{formatCurrency(invoice.amount, invoice.currency)}</div>
