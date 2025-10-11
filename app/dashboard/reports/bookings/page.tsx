@@ -106,7 +106,12 @@ export default function BookingReportsPage() {
       const data = await response.json()
 
       if (data.success) {
-        setSummaryData(data.report)
+        // Ensure the report data has the expected structure
+        const reportData = {
+          ...data.report,
+          bookings: data.report.bookings || []
+        }
+        setSummaryData(reportData)
       } else {
         toast.error('Failed to load reports')
       }
@@ -406,15 +411,15 @@ export default function BookingReportsPage() {
               </div>
             ) : (
             <div className="space-y-4">
-              {summaryData.bookings
-                .filter(booking => booking && booking.id && (booking.title || booking.service_title))
+              {(summaryData.bookings || [])
+                .filter(booking => booking && typeof booking === 'object' && booking.id && (booking.title || booking.service_title))
                 .filter(booking => 
                   searchQuery === '' || 
                   (booking.title || booking.service_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                   (booking.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                   (booking.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase())
                 )
-                .map((booking) => (
+                .map((booking) => booking && typeof booking === 'object' ? (
                 <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -455,7 +460,7 @@ export default function BookingReportsPage() {
                     </Button>
                   </div>
                 </div>
-              ))}
+              ) : null)}
             </div>
             )}
           </CardContent>
