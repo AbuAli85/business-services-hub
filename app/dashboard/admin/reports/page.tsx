@@ -38,6 +38,7 @@ import { getSupabaseClient } from '@/lib/supabase'
 import { useDashboardData } from '@/hooks/useDashboardData'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { toast } from 'sonner'
+import { DashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
 
 interface Report {
   id: string
@@ -81,7 +82,7 @@ interface AnalyticsData {
   }>
 }
 
-export default function AdminReportsPage() {
+function AdminReportsPageContent() {
   const { users, services, bookings, invoices, loading, error, refresh } = useDashboardData()
   const [reports, setReports] = useState<Report[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
@@ -279,15 +280,21 @@ export default function AdminReportsPage() {
   const getTabAnalytics = () => {
     if (!analytics) return null
     
+    // Safe access to analytics properties with fallbacks
+    const safeTotalRevenue = analytics?.totalRevenue || 0
+    const safeTotalBookings = analytics?.totalBookings || 0
+    const safeTotalUsers = analytics?.totalUsers || 0
+    const safeTopServices = analytics?.topServices || []
+    
     switch (selectedTab) {
       case 'financial':
         return {
           title: 'Financial Overview',
           description: 'Revenue, expenses, and profit analysis',
           metrics: [
-            { label: 'Total Revenue', value: formatCurrency(analytics.totalRevenue), icon: DollarSign },
-            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar },
-            { label: 'Avg Revenue/Booking', value: formatCurrency(analytics.totalRevenue / analytics.totalBookings), icon: TrendingUp }
+            { label: 'Total Revenue', value: formatCurrency(safeTotalRevenue), icon: DollarSign },
+            { label: 'Total Bookings', value: safeTotalBookings.toString(), icon: Calendar },
+            { label: 'Avg Revenue/Booking', value: formatCurrency(safeTotalBookings > 0 ? safeTotalRevenue / safeTotalBookings : 0), icon: TrendingUp }
           ]
         }
       case 'user':
@@ -295,8 +302,8 @@ export default function AdminReportsPage() {
           title: 'User Analytics',
           description: 'User registrations, roles, and engagement',
           metrics: [
-            { label: 'Total Users', value: analytics.totalUsers.toString(), icon: Users },
-            { label: 'Active Users', value: Math.floor(analytics.totalUsers * 0.8).toString(), icon: UserCheck },
+            { label: 'Total Users', value: safeTotalUsers.toString(), icon: Users },
+            { label: 'Active Users', value: Math.floor(safeTotalUsers * 0.8).toString(), icon: UserCheck },
             { label: 'Growth Rate', value: '+12.5%', icon: TrendingUp }
           ]
         }
@@ -305,8 +312,8 @@ export default function AdminReportsPage() {
           title: 'Service Performance',
           description: 'Service bookings, ratings, and provider performance',
           metrics: [
-            { label: 'Total Services', value: analytics.topServices.length.toString(), icon: BarChart3 },
-            { label: 'Top Service', value: analytics.topServices[0]?.name || 'N/A', icon: Building2 },
+            { label: 'Total Services', value: safeTopServices.length.toString(), icon: BarChart3 },
+            { label: 'Top Service', value: safeTopServices[0]?.name || 'N/A', icon: Building2 },
             { label: 'Avg Rating', value: '4.8/5', icon: Activity }
           ]
         }
@@ -315,9 +322,9 @@ export default function AdminReportsPage() {
           title: 'Booking Analytics',
           description: 'Booking trends, completion rates, and client insights',
           metrics: [
-            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar },
+            { label: 'Total Bookings', value: safeTotalBookings.toString(), icon: Calendar },
             { label: 'Completion Rate', value: '87.5%', icon: CheckCircle },
-            { label: 'Avg Booking Value', value: formatCurrency(analytics.totalRevenue / analytics.totalBookings), icon: DollarSign }
+            { label: 'Avg Booking Value', value: formatCurrency(safeTotalBookings > 0 ? safeTotalRevenue / safeTotalBookings : 0), icon: DollarSign }
           ]
         }
       case 'analytics':
@@ -325,9 +332,9 @@ export default function AdminReportsPage() {
           title: 'Platform Analytics',
           description: 'Overall platform performance and growth metrics',
           metrics: [
-            { label: 'Total Users', value: analytics.totalUsers.toString(), icon: Users },
-            { label: 'Total Revenue', value: formatCurrency(analytics.totalRevenue), icon: DollarSign },
-            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar }
+            { label: 'Total Users', value: safeTotalUsers.toString(), icon: Users },
+            { label: 'Total Revenue', value: formatCurrency(safeTotalRevenue), icon: DollarSign },
+            { label: 'Total Bookings', value: safeTotalBookings.toString(), icon: Calendar }
           ]
         }
       default:
@@ -335,9 +342,9 @@ export default function AdminReportsPage() {
           title: 'All Reports Overview',
           description: 'Comprehensive platform analytics and insights',
           metrics: [
-            { label: 'Total Users', value: analytics.totalUsers.toString(), icon: Users },
-            { label: 'Total Revenue', value: formatCurrency(analytics.totalRevenue), icon: DollarSign },
-            { label: 'Total Bookings', value: analytics.totalBookings.toString(), icon: Calendar }
+            { label: 'Total Users', value: safeTotalUsers.toString(), icon: Users },
+            { label: 'Total Revenue', value: formatCurrency(safeTotalRevenue), icon: DollarSign },
+            { label: 'Total Bookings', value: safeTotalBookings.toString(), icon: Calendar }
           ]
         }
     }
@@ -513,27 +520,30 @@ export default function AdminReportsPage() {
       </div>
 
       {/* Tab-specific Analytics */}
-      {getTabAnalytics() && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{getTabAnalytics()?.title}</CardTitle>
-            <CardDescription>{getTabAnalytics()?.description}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {getTabAnalytics()?.metrics.map((metric, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <metric.icon className="h-6 w-6 text-blue-600" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">{metric.label}</p>
-                    <p className="text-lg font-bold text-gray-900">{metric.value}</p>
+      {(() => {
+        const tabAnalytics = getTabAnalytics()
+        return tabAnalytics && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{tabAnalytics.title}</CardTitle>
+              <CardDescription>{tabAnalytics.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {tabAnalytics.metrics.map((metric, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <metric.icon className="h-6 w-6 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">{metric.label}</p>
+                      <p className="text-lg font-bold text-gray-900">{metric.value}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       {/* Top Services & User Roles */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -760,5 +770,16 @@ export default function AdminReportsPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AdminReportsPage() {
+  return (
+    <DashboardErrorBoundary 
+      dashboardName="Reports" 
+      onRetry={() => window.location.reload()}
+    >
+      <AdminReportsPageContent />
+    </DashboardErrorBoundary>
   )
 }

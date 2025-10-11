@@ -37,19 +37,28 @@ export function useDashboardData(userRole?: string, userId?: string) {
         console.log('🔄 useDashboardData: Loading data for user:', userId, 'role:', userRole)
         await dashboardData.loadData(userRole, userId)
         
-        // Update state directly instead of calling updateData
-        setMetrics(dashboardData.getMetrics())
-        setBookings(dashboardData.getBookings())
-        setInvoices(dashboardData.getInvoices())
-        setUsers(dashboardData.getUsers())
-        setServices(dashboardData.getServices())
-        setMilestoneEvents(dashboardData.getMilestoneEvents())
-        setSystemEvents(dashboardData.getSystemEvents())
+        // Update state directly instead of calling updateData with safe fallbacks
+        setMetrics(dashboardData.getMetrics() || null)
+        setBookings(dashboardData.getBookings() || [])
+        setInvoices(dashboardData.getInvoices() || [])
+        setUsers(dashboardData.getUsers() || [])
+        setServices(dashboardData.getServices() || [])
+        setMilestoneEvents(dashboardData.getMilestoneEvents() || [])
+        setSystemEvents(dashboardData.getSystemEvents() || [])
         
-        console.log('✅ useDashboardData: Data loaded successfully - Services:', dashboardData.getServices().length)
+        console.log('✅ useDashboardData: Data loaded successfully - Services:', dashboardData.getServices()?.length || 0)
       } catch (err) {
         console.error('❌ useDashboardData: Error loading data:', err)
         setError(err instanceof Error ? err.message : 'Failed to load data')
+        
+        // Set safe fallback values on error
+        setMetrics(null)
+        setBookings([])
+        setInvoices([])
+        setUsers([])
+        setServices([])
+        setMilestoneEvents([])
+        setSystemEvents([])
       } finally {
         setLoading(false)
       }

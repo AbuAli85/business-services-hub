@@ -290,27 +290,27 @@ class DashboardDataManager {
         
         // Map the API response to our Service interface
         this.services = services.map((service: any) => ({
-          id: service.id,
-          title: service.title,
-          description: service.description || '',
-          category: service.category || 'Uncategorized',
-          basePrice: service.base_price || 0,
-          currency: service.currency || 'OMR',
-          providerId: service.provider_id,
-          providerName: service.provider?.full_name || service.provider_name || 'Service Provider',
-          provider_name: service.provider?.full_name || service.provider_name || 'Service Provider', // Keep both for compatibility
-          status: service.status || 'active',
-          approvalStatus: service.approval_status || 'approved',
-          featured: service.featured || false,
-          rating: service.avg_rating || service.rating || 0,
-          avg_rating: service.avg_rating || service.rating || 0, // Keep both for compatibility
-          reviewCount: service.review_count || 0,
-          review_count: service.review_count || 0, // Keep both for compatibility
-          bookingCount: service.booking_count || service.bookingCount || 0,
-          booking_count: service.booking_count || service.bookingCount || 0, // Keep both for compatibility
-          createdAt: service.created_at || new Date().toISOString(),
-          updatedAt: service.updated_at || new Date().toISOString(),
-          cover_image_url: service.cover_image_url
+          id: service?.id || '',
+          title: service?.title || 'Untitled Service',
+          description: service?.description || '',
+          category: service?.category || 'Uncategorized',
+          basePrice: service?.base_price || 0,
+          currency: service?.currency || 'OMR',
+          providerId: service?.provider_id,
+          providerName: service?.provider?.full_name || service?.provider_name || 'Service Provider',
+          provider_name: service?.provider?.full_name || service?.provider_name || 'Service Provider', // Keep both for compatibility
+          status: service?.status || 'active',
+          approvalStatus: service?.approval_status || 'approved',
+          featured: service?.featured || false,
+          rating: service?.avg_rating || service?.rating || 0,
+          avg_rating: service?.avg_rating || service?.rating || 0, // Keep both for compatibility
+          reviewCount: service?.review_count || 0,
+          review_count: service?.review_count || 0, // Keep both for compatibility
+          bookingCount: service?.booking_count || service?.bookingCount || 0,
+          booking_count: service?.booking_count || service?.bookingCount || 0, // Keep both for compatibility
+          createdAt: service?.created_at || new Date().toISOString(),
+          updatedAt: service?.updated_at || new Date().toISOString(),
+          cover_image_url: service?.cover_image_url
         }))
         console.log('📊 Dashboard Data: Mapped services:', this.services.length, 'services with provider names')
       } else {
