@@ -204,6 +204,9 @@ class DashboardDataManager {
       await this.loadMilestoneEvents()
       await this.loadSystemEvents(userId)
       
+      // Calculate booking counts for services after both services and bookings are loaded
+      this.calculateServiceBookingCounts()
+      
       // Calculate metrics from loaded data
       this.metrics = this.calculateMetrics()
       this.notify()
@@ -715,6 +718,18 @@ class DashboardDataManager {
     return this.services.find(service => service.id === id)
   }
 
+  // Calculate booking counts for each service
+  private calculateServiceBookingCounts() {
+    this.services = this.services.map(service => {
+      const serviceBookings = this.bookings.filter(booking => booking.serviceId === service.id)
+      return {
+        ...service,
+        bookingCount: serviceBookings.length,
+        booking_count: serviceBookings.length // Also set the API field name
+      }
+    })
+  }
+
   // Add new booking
   addBooking(booking: Omit<Booking, 'id' | 'createdAt' | 'updatedAt'>) {
     const newBooking: Booking = {
@@ -724,6 +739,10 @@ class DashboardDataManager {
       updatedAt: new Date().toISOString()
     }
     this.bookings.push(newBooking)
+    
+    // Recalculate booking counts for services
+    this.calculateServiceBookingCounts()
+    
     this.metrics = this.calculateMetrics()
     this.notify()
     return newBooking
@@ -752,6 +771,10 @@ class DashboardDataManager {
     if (booking) {
       booking.status = status
       booking.updatedAt = new Date().toISOString()
+      
+      // Recalculate booking counts for services
+      this.calculateServiceBookingCounts()
+      
       this.metrics = this.calculateMetrics()
       this.notify()
     }

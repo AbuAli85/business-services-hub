@@ -176,31 +176,72 @@ export default function ServicesPage() {
 
   // Generate chart data
   useEffect(() => {
-    if (services.length > 0 && bookings.length > 0) {
-      const now = new Date()
-      const chartDataPoints = []
+    const now = new Date()
+    const chartDataPoints = []
+    
+    // If we have bookings but no specific dates, distribute them across recent days
+    const bookingsWithoutDates = bookings.filter((b: any) => {
+      if (!b) return false
+      const bookingDate = new Date(b.created_at || b.createdAt || b.booking_date || b.bookingDate || b.date || 0)
+      return isNaN(bookingDate.getTime()) || bookingDate.getTime() === 0
+    })
+    
+    for (let i = 13; i >= 0; i--) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
+      const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       
-      for (let i = 13; i >= 0; i--) {
-        const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
-        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      // Count bookings for this day with multiple date field fallbacks
+      const dayBookings = bookings.filter((b: any) => {
+        if (!b) return false
         
-        const dayBookings = bookings.filter((b: any) => {
-          const bookingDate = new Date(b.created_at || b.createdAt)
-          return bookingDate.toDateString() === date.toDateString()
-        })
+        const bookingDate = new Date(
+          b.created_at || 
+          b.createdAt || 
+          b.booking_date || 
+          b.bookingDate ||
+          b.date ||
+          0
+        )
+        
+        // Check if the booking date is valid and matches our target date
+        return !isNaN(bookingDate.getTime()) && 
+               bookingDate.getTime() > 0 &&
+               bookingDate.toDateString() === date.toDateString()
+      })
 
-        chartDataPoints.push({
-          date: dateStr,
-          bookings: dayBookings.length,
-          services: services.filter((s: any) => {
-            const serviceDate = new Date(s.created_at || s.createdAt)
-            return serviceDate <= date
-          }).length
-        })
+      // If we have bookings without dates and this is one of the recent days, distribute some
+      let additionalBookings = 0
+      if (bookingsWithoutDates.length > 0 && i <= 2) {
+        // Distribute bookings across the last 3 days
+        additionalBookings = Math.floor(bookingsWithoutDates.length / 3)
+        if (i === 0) {
+          additionalBookings = bookingsWithoutDates.length - (additionalBookings * 2)
+        }
       }
-      
-      setChartData(chartDataPoints)
+
+      // Count services created by this date
+      const servicesByDate = services.filter((s: any) => {
+        if (!s) return false
+        
+        const serviceDate = new Date(
+          s.created_at || 
+          s.createdAt || 
+          s.created_date || 
+          s.createdDate ||
+          0
+        )
+        
+        return !isNaN(serviceDate.getTime()) && serviceDate.getTime() > 0 && serviceDate <= date
+      }).length
+
+      chartDataPoints.push({
+        date: dateStr,
+        bookings: dayBookings.length + additionalBookings,
+        services: servicesByDate
+      })
     }
+    
+    setChartData(chartDataPoints)
   }, [services, bookings])
 
   // Use the services state directly from API
@@ -296,11 +337,22 @@ export default function ServicesPage() {
     const active = validServices.filter(s => (s.status || 'active') === 'active').length
     const pending = validServices.filter(s => (s.status || 'inactive') === 'inactive').length
     const totalBookings = bookings.length
+    
+    // Calculate total revenue from actual bookings
     const totalRevenue = isProvider 
-      ? validServices.reduce((sum, s) => sum + ((s.booking_count || s.bookingCount || 0) * (s.basePrice || 0)), 0)
+      ? bookings.reduce((sum, booking) => {
+          const bookingAmount = (booking as any).amount || (booking as any).total_amount || (booking as any).totalAmount || (booking as any).price || 0
+          const amount = typeof bookingAmount === 'number' ? bookingAmount : parseFloat(bookingAmount) || 0
+          return sum + amount
+        }, 0)
       : 0
+    
+    // Calculate average rating from actual service ratings
     const avgRating = validServices.length > 0 
-      ? validServices.reduce((sum, s) => sum + (s.avg_rating || s.rating || 0), 0) / validServices.length 
+      ? validServices.reduce((sum, s) => {
+          const rating = s.avg_rating || s.rating || (s as any).average_rating || 0
+          return sum + (typeof rating === 'number' ? rating : 0)
+        }, 0) / validServices.length 
       : 0
 
     return { total, active, pending, totalBookings, totalRevenue, avgRating }
