@@ -193,11 +193,26 @@ export function ComprehensiveNotificationSettings() {
       }
 
       // Save email preferences
+      // Only save core fields that exist in database
+      const emailToSave: any = {
+        id: emailPreferences.id,
+        user_id: emailPreferences.user_id,
+        email_enabled: emailPreferences.email_enabled,
+        template_style: emailPreferences.template_style,
+        delivery_frequency: emailPreferences.delivery_frequency,
+        disabled_types: emailPreferences.disabled_types,
+        include_unsubscribe: emailPreferences.include_unsubscribe,
+        // Exclude include_company_branding - doesn't exist in DB
+        updated_at: new Date().toISOString()
+      }
+      
+      console.log('💾 Saving email preferences:', Object.keys(emailToSave))
+      
       const { error: emailError } = await supabaseClient
         .from('user_email_preferences')
-        .upsert({
-          ...emailPreferences,
-          updated_at: new Date().toISOString()
+        .upsert(emailToSave, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
         })
 
       if (emailError) {
