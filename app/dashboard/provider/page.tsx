@@ -1,37 +1,318 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-// Layout-level sidebar and header are provided by app/dashboard/layout.tsx
-import { EnhancedKPIGrid, EnhancedPerformanceMetrics } from '@/components/dashboard/enhanced-kpi-cards'
-import { AdvancedEarningsChart } from '@/components/dashboard/advanced-earnings-chart'
-import { PremiumRecentBookings } from '@/components/dashboard/premium-recent-bookings'
-import { EliteTopServices } from '@/components/dashboard/elite-top-services'
-import { MonthlyGoals } from '@/components/dashboard/monthly-goals'
-import { ProviderDashboardService, ProviderDashboardStats, RecentBooking, TopService, MonthlyEarnings } from '@/lib/provider-dashboard'
-import { getSupabaseClient } from '@/lib/supabase'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { 
   RefreshCw, 
   AlertCircle,
   TrendingUp,
-  Award,
+  DollarSign,
+  Calendar,
+  Star,
+  Users,
+  Activity,
   Target,
-  Zap
+  Award,
+  BarChart3,
+  Eye,
+  Plus,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
-import { SessionStatusIndicator } from '@/components/ui/session-status-indicator'
-import { ProviderDashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
+import { getSupabaseClient } from '@/lib/supabase'
+import { ProviderDashboardService, ProviderDashboardStats, RecentBooking, TopService, MonthlyEarnings } from '@/lib/provider-dashboard'
 import { logger } from '@/lib/logger'
-import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
-import { LiveModeToggle } from '@/components/dashboard/LiveModeToggle'
 
+// Optimized Stats Cards Component
+function StatsCards({ stats }: { stats: ProviderDashboardStats | null }) {
+  if (!stats) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="border-0 shadow-sm">
+            <CardContent className="p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  const statCards = [
+    {
+      title: 'Total Earnings',
+      value: formatCurrency(stats.total_earnings || 0),
+      subtitle: 'This month',
+      icon: DollarSign,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-200'
+    },
+    {
+      title: 'Active Bookings',
+      value: stats.active_bookings || 0,
+      subtitle: 'In progress',
+      icon: Calendar,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200'
+    },
+    {
+      title: 'Active Services',
+      value: stats.active_services || 0,
+      subtitle: 'Available',
+      icon: Target,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200'
+    },
+    {
+      title: 'Average Rating',
+      value: stats.avg_rating ? stats.avg_rating.toFixed(1) : 'N/A',
+      subtitle: 'Customer satisfaction',
+      icon: Star,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200'
+    }
+  ]
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {statCards.map((stat, index) => (
+        <Card key={index} className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
+                <p className={`text-2xl font-bold ${stat.color} mb-1`}>{stat.value}</p>
+                <p className="text-xs text-gray-500">{stat.subtitle}</p>
+              </div>
+              <div className={`w-12 h-12 ${stat.bgColor} ${stat.borderColor} border rounded-lg flex items-center justify-center`}>
+                <stat.icon className={`h-6 w-6 ${stat.color}`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+// Optimized Recent Bookings Component
+function RecentBookings({ bookings }: { bookings: RecentBooking[] }) {
+  if (!bookings || bookings.length === 0) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-blue-600" />
+            Recent Bookings
+          </CardTitle>
+          <CardDescription>Your latest service bookings</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">No recent bookings found</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
+      approved: { color: 'bg-green-100 text-green-800', text: 'Approved' },
+      in_progress: { color: 'bg-blue-100 text-blue-800', text: 'In Progress' },
+      completed: { color: 'bg-gray-100 text-gray-800', text: 'Completed' },
+      cancelled: { color: 'bg-red-100 text-red-800', text: 'Cancelled' }
+    }
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+    return <Badge className={`${config.color} border-0 text-xs`}>{config.text}</Badge>
+  }
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-blue-600" />
+          Recent Bookings
+        </CardTitle>
+        <CardDescription>Your latest service bookings</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {bookings.slice(0, 5).map((booking) => (
+            <div key={booking.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h4 className="font-semibold text-gray-900">{booking.service_title || booking.title || 'Untitled Service'}</h4>
+                  {getStatusBadge(booking.status)}
+                </div>
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    {booking.client_name || 'Unknown Client'}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <DollarSign className="h-4 w-4" />
+                    {formatCurrency(booking.total_amount || 0)}
+                  </span>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm">
+                <Eye className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Optimized Top Services Component
+function TopServices({ services }: { services: TopService[] }) {
+  if (!services || services.length === 0) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Award className="h-5 w-5 text-purple-600" />
+            Top Services
+          </CardTitle>
+          <CardDescription>Your best performing services</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <Award className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">No services data available</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Award className="h-5 w-5 text-purple-600" />
+          Top Services
+        </CardTitle>
+        <CardDescription>Your best performing services</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {services.slice(0, 5).map((service, index) => (
+            <div key={service.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <span className="text-sm font-bold text-purple-600">#{index + 1}</span>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900">{service.title}</h4>
+                  <p className="text-sm text-gray-600">Service</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-gray-900">{service.booking_count || 0} bookings</p>
+                <p className="text-sm text-green-600">
+                  {formatCurrency(service.total_earnings || 0)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Simple Earnings Chart Component
+function SimpleEarningsChart({ earnings }: { earnings: MonthlyEarnings[] }) {
+  if (!earnings || earnings.length === 0) {
+    return (
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-green-600" />
+            Earnings Overview
+          </CardTitle>
+          <CardDescription>Monthly earnings trend</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">
+            <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">No earnings data available</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const maxEarnings = Math.max(...earnings.map(e => e.earnings || 0))
+  const totalEarnings = earnings.reduce((sum, e) => sum + (e.earnings || 0), 0)
+
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BarChart3 className="h-5 w-5 text-green-600" />
+          Earnings Overview
+        </CardTitle>
+        <CardDescription>Monthly earnings trend</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <div className="text-center p-4 bg-green-50 rounded-lg">
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(totalEarnings)}</p>
+            <p className="text-sm text-gray-600">Total earnings</p>
+          </div>
+          
+          <div className="space-y-3">
+            {earnings.slice(0, 6).map((earning) => {
+              const percentage = maxEarnings > 0 ? (earning.earnings || 0) / maxEarnings * 100 : 0
+              return (
+                <div key={earning.month_year} className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-gray-900">{earning.month_year}</span>
+                      <span className="text-sm text-gray-600">{formatCurrency(earning.earnings || 0)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Main Optimized Provider Dashboard
 export default function ProviderDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [redirecting, setRedirecting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -44,145 +325,71 @@ export default function ProviderDashboard() {
 
   // Refs to prevent duplicate initialization
   const initializingRef = useRef(false)
-  const initializedRef = useRef(false)
   const cleanupFunctionsRef = useRef<Array<() => void>>([])
 
-  // Register with auto-refresh system
-  // Temporarily disabled to prevent excessive reloads
-  // useRefreshCallback(async () => {
-  //   if (userId) {
-  //     await loadDashboardData(userId)
-  //   }
-  // }, [userId])
-
-  // Check auth and load data on mount with mounted guard
+  // Auth and data loading
   useEffect(() => {
-    // Prevent duplicate initialization (React Strict Mode runs effects twice in dev)
-    if (initializingRef.current || initializedRef.current) {
-      console.log('⏭️ Already initializing or initialized, skipping')
-      return
-    }
+    if (initializingRef.current) return
     
     initializingRef.current = true
-    console.log('🏠 Provider dashboard mounted')
     let isMounted = true
-    const controller = new AbortController()
 
     const init = async () => {
       try {
-        console.log('🔐 Checking authentication...')
         const supabase = await getSupabaseClient()
         
-        // Add timeout safety (5s for auth)
-        const authTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Auth timeout')), 5000)
-        )
-        
-        const { data: { user }, error: userError } = (await Promise.race([
-          supabase.auth.getUser(),
-          authTimeout
-        ])) as any
-
+        // Get user
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (!isMounted) return
 
         if (userError || !user) {
-          console.log('❌ No user found, redirecting to sign-in')
-          if (isMounted) router.replace('/auth/sign-in')
+          console.log('No user found, redirecting to sign-in')
+          router.replace('/auth/sign-in')
           return
         }
 
-        // Determine role
-        let userRole = user.user_metadata?.role
-        if (!userRole) {
+        // Check role
           const { data: profile } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', user.id)
             .single()
-          userRole = profile?.role || 'provider'
-        }
 
+        const userRole = profile?.role || user.user_metadata?.role || 'provider'
         if (!isMounted) return
 
-        console.log('✅ User authenticated:', user.email, '| Role:', userRole)
-
-        // Handle redirect logic cleanly
         if (userRole !== 'provider') {
-          console.log(`🔄 Redirecting ${userRole} to their dashboard`)
-          if (isMounted) {
-            setRedirecting(true)
-            const dashboardUrl = userRole === 'client' 
-              ? '/dashboard/client'
-              : '/dashboard'
-            // Use router.replace for client-side navigation (no page reload)
+          console.log(`Redirecting ${userRole} to their dashboard`)
+          const dashboardUrl = userRole === 'client' ? '/dashboard/client' : '/dashboard'
             router.replace(dashboardUrl)
-          }
           return
         }
 
-      // Provider user - set user and load data
-      console.log('👤 Provider user confirmed, loading data...')
-      if (isMounted) {
+        // Set user and load data
         setUserId(user.id)
-      }
-
-        // Load data with timeout safety (8s for data)
-        const dataTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Data timeout')), 8000)
-        )
-
-        try {
-          await Promise.race([loadDashboardData(user.id), dataTimeout])
-          if (isMounted) {
-            console.log('✅ Data loaded successfully')
-            // Mark as initialized
-            initializedRef.current = true
-            // Set up real-time subscriptions and store cleanup
-            const cleanup = await setupRealtimeSubscriptions(user.id)
-            cleanupFunctionsRef.current.push(cleanup)
-          }
-        } catch (dataError) {
-          if (!isMounted) return
-          logger.warn('⚠️ Error fetching provider data:', dataError)
-          setStats({
-            total_earnings: 0,
-            active_bookings: 0,
-            active_services: 0,
-            avg_rating: 0
-          } as any)
-          toast.error('Some data could not be loaded')
-        } finally {
-          if (isMounted) setLoading(false)
-        }
+        await loadDashboardData(user.id)
+        
       } catch (error) {
         if (!isMounted) return
-        logger.error('❌ Auth check failed:', error)
+        logger.error('❌ Provider dashboard init failed:', error)
         setError('Failed to load dashboard')
         toast.error('Failed to load dashboard')
-        setLoading(false)
       } finally {
         if (isMounted) setLoading(false)
-        controller.abort()
       }
     }
 
     init()
 
     return () => {
-      console.log('🧹 Provider dashboard cleanup')
       isMounted = false
-      controller.abort()
-      // Call all cleanup functions (subscriptions, etc.)
       cleanupFunctionsRef.current.forEach(cleanup => cleanup())
       cleanupFunctionsRef.current = []
-      // Reset refs for potential remount
       initializingRef.current = false
-      initializedRef.current = false
     }
-  }, [])
+  }, [router])
 
-
-  const loadDashboardData = async (providerId: string) => {
+  const loadDashboardData = useCallback(async (providerId: string) => {
     try {
       const data = await ProviderDashboardService.getAllDashboardData(providerId)
       setStats(data.stats)
@@ -194,13 +401,13 @@ export default function ProviderDashboard() {
       logger.error('Error loading dashboard data:', err)
       throw err
     }
-  }
+  }, [])
 
-  const handleRefresh = async () => {
-    if (!userId) return
+  const handleRefresh = useCallback(async () => {
+    if (!userId || refreshing) return
     
+    setRefreshing(true)
     try {
-      setRefreshing(true)
       await loadDashboardData(userId)
       toast.success('Dashboard refreshed')
     } catch (err) {
@@ -209,120 +416,16 @@ export default function ProviderDashboard() {
     } finally {
       setRefreshing(false)
     }
-  }
+  }, [userId, refreshing, loadDashboardData])
 
-  // Set up real-time subscriptions for live data updates
-  const setupRealtimeSubscriptions = async (providerId: string) => {
-    const supabase = await getSupabaseClient()
-    
-    // Debounce to prevent rapid refreshes - INCREASED from 1s to 5s for stability
-    let refreshTimeout: NodeJS.Timeout | null = null
-    let lastRefreshTime = 0
-    const MIN_REFRESH_INTERVAL = 5000 // Minimum 5 seconds between refreshes
-    
-    const debouncedRefresh = () => {
-      if (refreshTimeout) clearTimeout(refreshTimeout)
-      
-      refreshTimeout = setTimeout(() => {
-        const now = Date.now()
-        const timeSinceLastRefresh = now - lastRefreshTime
-        
-        // Throttle: ensure minimum interval between refreshes
-        if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-          console.log(`⏸️ Skipping refresh, only ${timeSinceLastRefresh}ms since last refresh`)
-          return
-        }
-        
-        console.log('📡 Data change detected, refreshing...')
-        lastRefreshTime = now
-        loadDashboardData(providerId).catch(err => 
-          console.error('Failed to refresh data:', err)
-        )
-      }, 5000) // Wait 5 seconds before refreshing (increased from 1s)
-    }
-    
-    // Subscribe to booking changes
-    const bookingsSubscription = supabase
-      .channel(`provider-bookings-${providerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'bookings',
-          filter: `provider_id=eq.${providerId}`
-        },
-        () => debouncedRefresh()
-      )
-      .subscribe()
-
-    // Subscribe to service changes
-    const servicesSubscription = supabase
-      .channel(`provider-services-${providerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'services',
-          filter: `provider_id=eq.${providerId}`
-        },
-        () => debouncedRefresh()
-      )
-      .subscribe()
-
-    // Subscribe to milestone changes (affects booking progress)
-    const milestonesSubscription = supabase
-      .channel(`provider-milestones-${providerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'milestones'
-        },
-        (payload: any) => {
-          // Only refresh if milestone belongs to provider's booking
-          if (payload.new?.booking_id) {
-            debouncedRefresh()
-          }
-        }
-      )
-      .subscribe()
-
-    // Cleanup function
-    return () => {
-      if (refreshTimeout) clearTimeout(refreshTimeout)
-      supabase.removeChannel(bookingsSubscription)
-      supabase.removeChannel(servicesSubscription)
-      supabase.removeChannel(milestonesSubscription)
-    }
-  }
-
-  // Show redirecting state
-  if (redirecting) {
-    return (
-      <main className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-screen">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-sm text-gray-600">Redirecting to your dashboard...</p>
-            </div>
-          </div>
-        </div>
-      </main>
-    )
-  }
-
-  // Show loading state
+  // Loading state
   if (loading) {
     return (
       <main className="p-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-screen">
+          <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-sm text-gray-600">Loading dashboard...</p>
             </div>
           </div>
@@ -331,19 +434,21 @@ export default function ProviderDashboard() {
     )
   }
 
-  // Show error state
+  // Error state
   if (error || !stats) {
     return (
       <main className="p-6">
-        <div className="flex items-center justify-center h-screen text-red-600">
-          <div className="text-center">
-            <p className="mb-4">{error || 'Failed to load dashboard data'}</p>
-            <Button
-              onClick={() => location.reload()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Retry
-            </Button>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-red-600 mb-2">Error Loading Dashboard</h3>
+              <p className="text-gray-600 mb-4">{error || 'Failed to load dashboard data'}</p>
+              <div className="space-x-2">
+                <Button onClick={handleRefresh} variant="outline">Retry</Button>
+                <Button onClick={() => window.location.reload()}>Reload Page</Button>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -351,123 +456,50 @@ export default function ProviderDashboard() {
   }
 
   return (
-    <ProviderDashboardErrorBoundary>
       <main className="p-4 sm:p-6 lg:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
         
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl border border-blue-200/50 shadow-lg p-6 lg:p-8">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <TrendingUp className="h-6 w-6 text-white" />
-                      </div>
-                      <div>
-                        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                          Business Overview
-                        </h1>
-                        <p className="text-gray-600 mt-1 text-sm sm:text-base lg:text-lg">Monitor your performance and grow your business</p>
-                      </div>
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Provider Dashboard</h1>
+            <p className="text-gray-600 mt-1">Welcome back! Here's what's happening with your business.</p>
                     </div>
                     
-                    {/* Quick Stats Row */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                      <div className="text-center p-4 bg-white/80 rounded-xl border border-white/60 shadow-md">
-                        <div className="text-xl font-bold text-blue-600 mb-1">
-                          {stats?.total_earnings ? formatCurrency(stats.total_earnings) : 'OMR 0'}
-                        </div>
-                        <div className="text-sm font-medium text-gray-700">Total Earnings</div>
-                      </div>
-                      <div className="text-center p-4 bg-white/80 rounded-xl border border-white/60 shadow-md">
-                        <div className="text-xl font-bold text-green-600 mb-1">{stats?.active_bookings || 0}</div>
-                        <div className="text-sm font-medium text-gray-700">Active Bookings</div>
-                      </div>
-                      <div className="text-center p-4 bg-white/80 rounded-xl border border-white/60 shadow-md">
-                        <div className="text-xl font-bold text-purple-600 mb-1">{stats?.active_services || 0}</div>
-                        <div className="text-sm font-medium text-gray-700">Active Services</div>
-                      </div>
-                      <div className="text-center p-4 bg-white/80 rounded-xl border border-white/60 shadow-md">
-                        <div className="text-xl font-bold text-orange-600 mb-1">{stats?.avg_rating ? stats.avg_rating.toFixed(1) : 'N/A'}</div>
-                        <div className="text-sm font-medium text-gray-700">Avg Rating</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <LiveModeToggle 
-                      showLabel={true}
-                      variant="outline"
-                      size="sm"
-                    />
-                    <Button 
-                      onClick={handleRefresh} 
-                      disabled={refreshing}
-                      variant="outline"
-                      size="sm"
-                      className="bg-white/80 hover:bg-white/90"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                      {refreshing ? 'Refreshing...' : 'Refresh Data'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={handleRefresh} 
+              disabled={refreshing}
+              variant="outline"
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+            
+            <Button 
+              onClick={() => router.push('/dashboard/services/new')}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Service
+            </Button>
           </div>
+        </div>
 
-          {/* KPI Grid */}
-          <section className="mb-8">
-            <EnhancedKPIGrid 
-              data={stats} 
-              alerts={{
-                unreadMessages: undefined,
-                pendingBookings: recentBookings.filter(b => b.status === 'pending').length,
-                hasServices: (stats.active_services || 0) > 0
-              }}
-            />
-          </section>
+        {/* Stats Cards */}
+        <StatsCards stats={stats} />
 
-          {/* Performance Metrics */}
-          <section className="mb-8">
-            <EnhancedPerformanceMetrics 
-              data={stats}
-              breakdown={topServices.map(s => ({
-                service: s.title,
-                completion_rate: s.completion_rate || 0,
-                response_rate: undefined,
-              }))}
-              insights={[
-                ...topServices
-                  .filter(s => (s.completion_rate || 0) < 0.7)
-                  .slice(0, 2)
-                  .map(s => `Low completion rate for ${s.title} – improve delivery timelines.`),
-                ...topServices
-                  .filter(s => (s.avg_rating || 0) < 3.5)
-                  .slice(0, 1)
-                  .map(s => `Satisfaction is below target for ${s.title} – collect feedback and optimize scope.`)
-              ]}
-            />
-          </section>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <RecentBookings bookings={recentBookings} />
+          <TopServices services={topServices} />
+            </div>
 
           {/* Earnings Chart */}
-          <section className="mb-8">
-            <AdvancedEarningsChart data={monthlyEarnings} />
-          </section>
-
-          {/* Recent Bookings + Top Services */}
-          <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
-            <PremiumRecentBookings bookings={recentBookings} />
-            <EliteTopServices services={topServices} />
-          </section>
-
-          {/* Monthly Goals */}
-          <section className="mb-8">
-            <MonthlyGoals data={stats} />
-          </section>
+        <SimpleEarningsChart earnings={monthlyEarnings} />
 
       </div>
     </main>
-    </ProviderDashboardErrorBoundary>
   )
 }
