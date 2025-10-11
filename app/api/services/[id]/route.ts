@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient, getSupabaseAdminClient } from '@/lib/supabase'
+import { createClient } from '@/utils/supabase/server'
+import { getSupabaseAdminClient } from '@/lib/supabase'
+import { ok, notFound } from '@/lib/api-helpers'
 
-function isValidUuid(value: unknown): value is string {
-  if (typeof value !== 'string') return false
-  const trimmed = value.trim()
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
-  return uuidRegex.test(trimmed)
-}
+export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
@@ -16,77 +13,101 @@ export async function GET(
     const serviceId = params.id
     
     if (!serviceId) {
-      return NextResponse.json(
-        { error: 'Service ID is required' },
-        { status: 400 }
-      )
+      return notFound('Service ID is required')
     }
-
-    if (!isValidUuid(serviceId)) {
-      return NextResponse.json(
-        { error: 'Invalid service ID. UUID expected', details: { received: serviceId } },
-        { status: 400 }
-      )
+    
+    console.log('📥 Service Detail API: GET request for service:', serviceId)
+    
+    // Try admin client first, fall back to regular client
+    let supabase
+    try {
+      supabase = await getSupabaseAdminClient()
+      console.log('✅ Service Detail API: Using admin client')
+    } catch (adminError) {
+      console.log('⚠️ Service Detail API: Admin client unavailable, using regular client')
+      supabase = await createClient()
     }
-
-    const supabase = await getSupabaseClient()
-
-    // Fetch service with packages
-    const { data: serviceRow, error } = await supabase
+    
+    // Fetch service with all related data
+    const { data: service, error } = await supabase
       .from('services')
       .select(`
         *,
+        provider:profiles!services_provider_id_fkey(
+          id,
+          full_name,
+          email,
+          phone,
+          company_name,
+          avatar_url,
+          bio
+        ),
         service_packages(
           id,
           name,
           description,
           price,
-          features
+          features,
+          duration_days
         )
       `)
       .eq('id', serviceId)
       .single()
-
-    if (error || !serviceRow) {
-      console.error('Error fetching service:', error)
+    
+    if (error) {
+      console.error('❌ Service Detail API: Error fetching service:', error)
+      
+      if (error.code === 'PGRST116') {
+        return notFound('Service not found')
+      }
+      
       return NextResponse.json(
-        { error: 'Service not found' },
-        { status: 404 }
+        { error: 'Failed to fetch service', details: error.message },
+        { status: 500 }
       )
     }
-
-    // Enrich with provider profile (use admin client to bypass RLS for public view)
-    let provider: any = null
-    try {
-      const admin = await getSupabaseAdminClient()
-      const { data: providerRow } = await admin
-        .from('profiles')
-        .select('id, full_name, email, phone, company_name, avatar_url')
-        .eq('id', serviceRow.provider_id)
-        .single()
-      provider = providerRow || null
-    } catch (e) {
-      // Ignore enrichment errors; still return service
-      provider = null
+    
+    if (!service) {
+      return notFound('Service not found')
     }
-
-    // Ensure all array fields are properly initialized
-    const sanitizedService = {
-      ...serviceRow,
-      provider,
-      requirements: Array.isArray(serviceRow.requirements) ? serviceRow.requirements : [],
-      deliverables: Array.isArray(serviceRow.deliverables) ? serviceRow.deliverables : [],
-      service_packages: Array.isArray(serviceRow.service_packages) ? serviceRow.service_packages.map((pkg: any) => ({
-        ...pkg,
-        features: Array.isArray(pkg.features) ? pkg.features : []
-      })) : []
+    
+    // Fetch booking count for this service
+    const { count: bookingCount } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('service_id', serviceId)
+    
+    // Fetch reviews for this service
+    const { data: reviews } = await supabase
+      .from('reviews')
+      .select('rating, comment, created_at, client_id, profiles(full_name, avatar_url)')
+      .eq('service_id', serviceId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    
+    // Calculate average rating
+    const avgRating = reviews && reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+      : 0
+    
+    // Enrich service data
+    const enrichedService = {
+      ...service,
+      bookings_count: bookingCount || 0,
+      rating: avgRating,
+      reviews: reviews || []
     }
-
-    return NextResponse.json({ service: sanitizedService })
-  } catch (error) {
-    console.error('API error:', error)
+    
+    console.log('✅ Service Detail API: Returning service:', enrichedService.title)
+    
+    return ok({
+      service: enrichedService
+    })
+    
+  } catch (error: any) {
+    console.error('❌ Service Detail API: Unexpected error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error?.message },
       { status: 500 }
     )
   }
