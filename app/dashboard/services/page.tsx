@@ -377,124 +377,92 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
             {isProvider && (service.status === 'draft' || service.status === 'pending_approval') && (
               <>
                 {service.status === 'draft' && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={handlePublishService}
-                          disabled={isUpdating}
-                          className="bg-green-600 hover:bg-green-700 flex-1"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Publish
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Make service visible to clients</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handlePublishService}
+                    disabled={isUpdating}
+                    className="bg-green-600 hover:bg-green-700 flex-1"
+                    title="Make service visible to clients"
+                  >
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Publish
+                  </Button>
                 )}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (service.id) {
-                            router.push(`/dashboard/services/${service.id}/edit`)
-                          }
-                        }}
-                        disabled={isUpdating}
-                        className="flex-1"
-                      >
-                        <Edit className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Edit service details</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleDeleteService}
-                        disabled={isUpdating}
-                        className="border-red-300 text-red-700 hover:bg-red-50 flex-1"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Delete this service</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    e.preventDefault()
+                    if (service.id) {
+                      console.log('📝 Navigating to edit service:', service.id)
+                      router.push(`/dashboard/services/${service.id}/edit`)
+                    } else {
+                      console.error('Service ID is missing')
+                    }
+                  }}
+                  disabled={isUpdating}
+                  className="flex-1"
+                  title="Edit service details"
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteService}
+                  disabled={isUpdating}
+                  className="border-red-300 text-red-700 hover:bg-red-50 flex-1"
+                  title="Delete this service"
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
+                </Button>
               </>
             )}
             
             {isProvider && service.status === 'active' && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (service.id) {
-                          router.push(`/dashboard/services/${service.id}/edit`)
-                        } else {
-                          console.error('Service ID is missing for edit')
-                        }
-                      }}
-                      className="flex-1"
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Edit service details</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  if (service.id) {
+                    console.log('📝 Navigating to edit service:', service.id)
+                    router.push(`/dashboard/services/${service.id}/edit`)
+                  } else {
+                    console.error('Service ID is missing for edit')
+                  }
+                }}
+                className="flex-1"
+                title="Edit service details"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
             )}
             
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (service.id) {
-                        router.push(`/services/${service.id}`)
-                      } else {
-                        console.error('Service ID is missing')
-                      }
-                    }}
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 flex-1"
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>View service details</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Button
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+                if (service.id) {
+                  console.log('👁️ Navigating to view service:', service.id)
+                  router.push(`/services/${service.id}`)
+                } else {
+                  console.error('Service ID is missing')
+                }
+              }}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 flex-1"
+              title="View service details"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -607,17 +575,6 @@ export default function ServicesPage() {
     }
   }, [services, authLoading, loading])
 
-  // Auto-refresh when returning from service creation
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('refresh') === 'true' && !loading && !authLoading) {
-      console.log('🔄 Auto-refreshing services list after creation')
-      handleRefresh()
-      // Clean up URL parameter
-      window.history.replaceState({}, '', '/dashboard/services')
-    }
-  }, [loading, authLoading])
-
   // Optimized refresh handler
   const handleRefresh = useCallback(async () => {
     if (refreshing) return
@@ -631,6 +588,17 @@ export default function ServicesPage() {
       setRefreshing(false)
     }
   }, [refresh, refreshing])
+
+  // Auto-refresh when returning from service creation
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('refresh') === 'true' && !loading && !authLoading) {
+      console.log('🔄 Auto-refreshing services list after creation')
+      handleRefresh()
+      // Clean up URL parameter
+      window.history.replaceState({}, '', '/dashboard/services')
+    }
+  }, [loading, authLoading, handleRefresh])
 
   // Optimized filtering and sorting
   const filteredServices = useMemo(() => {
@@ -681,7 +649,8 @@ export default function ServicesPage() {
   }, [services])
 
   // Loading state with timeout indicator
-  if (authLoading || loading) {
+  // Only show full loading screen on initial auth load or when we have no data
+  if (authLoading || (loading && (!services || services.length === 0))) {
     return (
       <RoleBasedLayout role={userRole} onNavigate={handleNavigate} onLogout={handleLogout}>
         <div className="flex items-center justify-center h-64">
@@ -817,42 +786,36 @@ export default function ServicesPage() {
                   </SelectContent>
                 </Select>
 
-                <TooltipProvider>
-                  <div className="flex border rounded-lg">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                          size="sm"
-                          onClick={() => setViewMode('grid')}
-                          className="rounded-r-none h-11 px-3"
-                          aria-label="Grid view"
-                        >
-                          <Grid3X3 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Grid view</p>
-                      </TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={viewMode === 'list' ? 'default' : 'ghost'}
-                          size="sm"
-                          onClick={() => setViewMode('list')}
-                          className="rounded-l-none h-11 px-3"
-                          aria-label="List view"
-                        >
-                          <List className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>List view</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </TooltipProvider>
+                <div className="flex border rounded-lg" role="group" aria-label="View mode toggle">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      console.log('🔲 Switching to grid view')
+                      setViewMode('grid')
+                    }}
+                    className="rounded-r-none h-11 px-3"
+                    aria-label="Grid view"
+                    title="Grid view"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      console.log('📋 Switching to list view')
+                      setViewMode('list')
+                    }}
+                    className="rounded-l-none h-11 px-3"
+                    aria-label="List view"
+                    title="List view"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>

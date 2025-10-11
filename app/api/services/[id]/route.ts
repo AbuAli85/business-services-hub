@@ -28,8 +28,12 @@ export async function GET(
       supabase = await createClient()
     }
     
+    // Check if user is authenticated to determine what to show
+    const { data: { user } } = await supabase.auth.getUser()
+    const isAuthenticated = !!user
+    
     // Fetch service with all related data
-    const { data: service, error } = await supabase
+    let query = supabase
       .from('services')
       .select(`
         *,
@@ -52,7 +56,13 @@ export async function GET(
         )
       `)
       .eq('id', serviceId)
-      .single()
+    
+    // Only show active services to public, show all to authenticated users (especially service owners)
+    if (!isAuthenticated) {
+      query = query.eq('status', 'active')
+    }
+    
+    const { data: service, error } = await query.single()
     
     if (error) {
       console.error('❌ Service Detail API: Error fetching service:', error)
