@@ -52,13 +52,12 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
     
     // Minimal fields for fast dashboard render
+    // Try with provider join, but fallback to basic query if it fails
+    let selectQuery = `id, title, description, category, status, base_price, currency, cover_image_url, featured, created_at, provider_id, avg_rating, review_count, booking_count, approval_status`
+    
     let query = supabase
       .from('services')
-      .select(
-        `id, title, description, category, status, base_price, currency, cover_image_url, featured, created_at, provider_id,
-         provider:profiles!services_provider_id_fkey(id, full_name, email),
-         avg_rating, review_count, booking_count, approval_status`
-      )
+      .select(selectQuery)
       .eq('status', isPublicMode ? 'approved' : requestedStatus)
       .order('created_at', { ascending: false })
     
@@ -82,7 +81,12 @@ export async function GET(request: NextRequest) {
     const { data: services, error } = await query
 
     if (error) {
-      console.error('Error fetching services:', error)
+      console.error('Error fetching services:', error, {
+        provider_id,
+        category,
+        requestedStatus,
+        isPublicMode
+      })
       if ((error as any)?.message?.includes('AbortError') || (error as any)?.name === 'AbortError') {
         return ok({ services: [], pagination: { page, limit, total: 0, pages: 0 } })
       }
@@ -92,13 +96,49 @@ export async function GET(request: NextRequest) {
       return withCors(NextResponse.json({ error: 'Failed to fetch services' }, { status: 500 }))
     }
 
+    // Fetch provider information separately if we have services
+    let servicesWithProviders = services || []
+    if (services && services.length > 0 && !isPublicMode) {
+      try {
+        // Get unique provider IDs
+        const providerIds = Array.from(new Set(services.map((s: any) => s.provider_id).filter(Boolean)))
+        console.log('📊 Services API: Fetching provider info for', providerIds.length, 'providers')
+        
+        if (providerIds.length > 0) {
+          // Fetch provider names
+          const { data: providers } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', providerIds)
+          
+          if (providers) {
+            // Create a map of provider ID to provider info
+            const providerMap = new Map(providers.map((p: any) => [p.id, p]))
+            
+            // Add provider info to services
+            servicesWithProviders = services.map((service: any) => ({
+              ...service,
+              provider: providerMap.get(service.provider_id) || null,
+              provider_name: providerMap.get(service.provider_id)?.full_name || null
+            }))
+            console.log('✅ Services API: Enriched', servicesWithProviders.length, 'services with provider names')
+          }
+        }
+      } catch (providerError) {
+        console.warn('⚠️ Services API: Failed to fetch provider names:', providerError)
+        // Continue without provider names
+      }
+    }
+    
+    console.log('📤 Services API: Returning', servicesWithProviders.length, 'services')
+
     return ok({
-      services: services || [],
+      services: servicesWithProviders,
       pagination: {
         page,
         limit,
-        total: services ? services.length : 0,
-        pages: services ? (services.length > 0 ? page + (services.length === limit ? 1 : 0) : page) : page
+        total: servicesWithProviders.length,
+        pages: servicesWithProviders.length > 0 ? page + (servicesWithProviders.length === limit ? 1 : 0) : page
       }
     })
     
