@@ -336,28 +336,44 @@ export default function EarningsPage() {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const last60Days = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000)
 
-      const totalEarnings = liveEarnings
+      // Calculate completed earnings (payments received)
+      const completedEarnings = liveEarnings
         .filter(e => e.status === 'completed')
         .reduce((sum, e) => sum + e.amount, 0)
       
-      console.log('📊 Total earnings calculated:', totalEarnings, 'from', liveEarnings.length, 'earnings')
+      // Calculate total revenue (all bookings including pending)
+      const totalRevenue = liveEarnings
+        .reduce((sum, e) => sum + e.amount, 0)
+      
+      // Use total revenue to match dashboard (includes pending)
+      const totalEarnings = totalRevenue
+      
+      console.log('📊 Earnings breakdown:', {
+        completed: completedEarnings,
+        totalRevenue: totalRevenue,
+        totalEarnings: totalEarnings,
+        earningsCount: liveEarnings.length
+      })
 
+      // Monthly earnings - include all bookings (completed + pending) to match dashboard
       const monthlyEarnings = liveEarnings
-        .filter(e => e.status === 'completed' && new Date(e.created_at) > last30Days)
+        .filter(e => new Date(e.created_at) > last30Days)
         .reduce((sum, e) => sum + e.amount, 0)
 
       const previousMonthEarnings = liveEarnings
-        .filter(e => e.status === 'completed' && 
+        .filter(e => 
           new Date(e.created_at) > last60Days && 
           new Date(e.created_at) <= last30Days)
         .reduce((sum, e) => sum + e.amount, 0)
 
+      // Weekly earnings - include all bookings to match dashboard
       const weeklyEarnings = liveEarnings
-        .filter(e => e.status === 'completed' && new Date(e.created_at) > last7Days)
+        .filter(e => new Date(e.created_at) > last7Days)
         .reduce((sum, e) => sum + e.amount, 0)
 
+      // Today's earnings - include all bookings to match dashboard
       const todayEarnings = liveEarnings
-        .filter(e => e.status === 'completed' && new Date(e.created_at) >= today)
+        .filter(e => new Date(e.created_at) >= today)
         .reduce((sum, e) => sum + e.amount, 0)
 
       const pendingPayments = liveEarnings
