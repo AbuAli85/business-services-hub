@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { 
   Plus, 
   Edit, 
@@ -37,19 +38,42 @@ import { usePermissions } from '@/lib/permissions'
 // Loading Skeleton for Stats
 function StatsLoadingSkeleton() {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       {[1, 2, 3, 4].map((i) => (
         <Card key={i} className="border-0 shadow-sm">
           <CardContent className="p-6">
             <div className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-              <div className="h-8 bg-gray-200 rounded w-16 mb-1"></div>
+              <div className="h-4 bg-gray-200 rounded w-24 mb-3"></div>
+              <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
               <div className="h-3 bg-gray-200 rounded w-20"></div>
             </div>
           </CardContent>
         </Card>
       ))}
     </div>
+  )
+}
+
+// Loading Skeleton for Service Cards
+function ServiceCardSkeleton() {
+  return (
+    <Card className="border-0 shadow-sm overflow-hidden">
+      <div className="relative h-48 bg-gray-200 animate-pulse"></div>
+      <CardContent className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 rounded w-full"></div>
+          <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          <div className="flex justify-between items-center pt-4">
+            <div className="h-8 bg-gray-200 rounded w-24"></div>
+            <div className="flex gap-2">
+              <div className="h-9 bg-gray-200 rounded w-16"></div>
+              <div className="h-9 bg-gray-200 rounded w-16"></div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -145,17 +169,17 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       {statCards.map((stat, index) => (
-        <Card key={index} className="border-0 shadow-sm">
+        <Card key={index} className="border-0 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                <p className={`text-2xl font-bold ${stat.color} mb-1`}>{stat.value}</p>
-                <p className="text-xs text-gray-500">{stat.subtitle}</p>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-700 mb-2">{stat.title}</p>
+                <p className={`text-3xl font-bold ${stat.color} mb-2`}>{stat.value}</p>
+                <p className="text-xs font-medium text-gray-600">{stat.subtitle}</p>
               </div>
-              <div className={`w-12 h-12 ${stat.bgColor} rounded-lg flex items-center justify-center text-2xl`}>
+              <div className={`w-14 h-14 ${stat.bgColor} rounded-xl flex items-center justify-center text-2xl flex-shrink-0 ml-4`}>
                 {stat.icon}
               </div>
             </div>
@@ -258,9 +282,9 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
   }
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 border-0 shadow-sm overflow-hidden">
+    <Card className="group hover:shadow-lg transition-all duration-200 border-0 shadow-sm overflow-hidden h-full flex flex-col">
       {/* Image Section */}
-      <div className="relative h-48 overflow-hidden">
+      <div className="relative h-48 overflow-hidden flex-shrink-0">
         <FallbackImage
           src={imageUrl}
           alt={service?.title || 'Service'}
@@ -285,12 +309,21 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
         )}
       </div>
 
-      <CardContent className="p-6">
+      <CardContent className="p-6 flex flex-col flex-1">
         {/* Service Title and Provider */}
         <div className="mb-4">
-          <h3 className="font-bold text-xl mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">
-            {service?.title || 'Service'}
-          </h3>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <h3 className="font-bold text-xl mb-2 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-tight min-h-[56px]">
+                  {service?.title || 'Service'}
+                </h3>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                <p className="font-semibold">{service?.title || 'Service'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <div className="flex items-center text-gray-600">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mr-2">
               <User className="h-4 w-4 text-white" />
@@ -305,12 +338,12 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
         </div>
 
         {/* Service Description */}
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+        <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed min-h-[40px]">
           {service.description}
         </p>
 
         {/* Service Stats */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-3 mb-4 flex-1">
           <div className="flex items-center justify-between">
             <Badge variant="secondary">{service.category}</Badge>
             {(service.avg_rating || service.rating || 0) > 0 && (
@@ -330,89 +363,138 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
         </div>
 
         {/* Price and Action */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-          <div className="flex flex-col">
-            <span className="text-2xl font-bold text-gray-900">
-              {formatCurrency(service.basePrice || 0, service.currency)}
-            </span>
-            <span className="text-xs text-gray-500 font-medium">Starting price</span>
+        <div className="flex flex-col gap-3 pt-4 border-t border-gray-100 mt-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-gray-900">
+                {formatCurrency(service.basePrice || 0, service.currency)}
+              </span>
+              <span className="text-xs text-gray-500 font-medium">Starting price</span>
+            </div>
           </div>
           
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap justify-end">
             {isProvider && (service.status === 'draft' || service.status === 'pending_approval') && (
               <>
                 {service.status === 'draft' && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={handlePublishService}
-                    disabled={isUpdating}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    Publish
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={handlePublishService}
+                          disabled={isUpdating}
+                          className="bg-green-600 hover:bg-green-700 flex-1"
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Publish
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Make service visible to clients</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (service.id) {
-                      router.push(`/dashboard/services/${service.id}/edit`)
-                    }
-                  }}
-                  disabled={isUpdating}
-                >
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDeleteService}
-                  disabled={isUpdating}
-                  className="border-red-300 text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Delete
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (service.id) {
+                            router.push(`/dashboard/services/${service.id}/edit`)
+                          }
+                        }}
+                        disabled={isUpdating}
+                        className="flex-1"
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Edit service details</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteService}
+                        disabled={isUpdating}
+                        className="border-red-300 text-red-700 hover:bg-red-50 flex-1"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Delete
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Delete this service</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </>
             )}
             
             {isProvider && service.status === 'active' && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (service.id) {
-                    router.push(`/dashboard/services/${service.id}/edit`)
-                  } else {
-                    console.error('Service ID is missing for edit')
-                  }
-                }}
-              >
-                <Edit className="h-3 w-3 mr-1" />
-                Edit
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (service.id) {
+                          router.push(`/dashboard/services/${service.id}/edit`)
+                        } else {
+                          console.error('Service ID is missing for edit')
+                        }
+                      }}
+                      className="flex-1"
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Edit service details</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             
-            <Button
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (service.id) {
-                  router.push(`/services/${service.id}`)
-                } else {
-                  console.error('Service ID is missing')
-                }
-              }}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              View
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (service.id) {
+                        router.push(`/services/${service.id}`)
+                      } else {
+                        console.error('Service ID is missing')
+                      }
+                    }}
+                    className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 flex-1"
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    View
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>View service details</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </CardContent>
@@ -620,9 +702,9 @@ export default function ServicesPage() {
 
   return (
     <RoleBasedLayout role={userRole} onNavigate={handleNavigate} onLogout={handleLogout}>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Services</h1>
             <p className="text-gray-600 mt-1">
@@ -666,7 +748,7 @@ export default function ServicesPage() {
         {/* Search and Filters */}
         <Card className="border-0 shadow-sm">
           <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
@@ -679,7 +761,7 @@ export default function ServicesPage() {
               
               <div className="flex gap-2 flex-wrap">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-36 h-11">
+                  <SelectTrigger className="w-full sm:w-40 h-11">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -692,7 +774,7 @@ export default function ServicesPage() {
                 </Select>
 
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-40 h-11">
+                  <SelectTrigger className="w-full sm:w-44 h-11">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -703,38 +785,66 @@ export default function ServicesPage() {
                   </SelectContent>
                 </Select>
 
-                <div className="flex border rounded-lg">
-                  <Button
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('grid')}
-                    className="rounded-r-none"
-                  >
-                    <Grid3X3 className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === 'list' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('list')}
-                    className="rounded-l-none"
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
+                <TooltipProvider>
+                  <div className="flex border rounded-lg">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setViewMode('grid')}
+                          className="rounded-r-none h-11 px-3"
+                          aria-label="Grid view"
+                        >
+                          <Grid3X3 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Grid view</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={viewMode === 'list' ? 'default' : 'ghost'}
+                          size="sm"
+                          onClick={() => setViewMode('list')}
+                          className="rounded-l-none h-11 px-3"
+                          aria-label="List view"
+                        >
+                          <List className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>List view</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Services Grid/List */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Showing {filteredServices.length} of {services?.length || 0} services
+            <p className="text-sm font-medium text-gray-700">
+              Showing <span className="font-bold text-gray-900">{filteredServices.length}</span> of <span className="font-bold text-gray-900">{services?.length || 0}</span> services
             </p>
           </div>
 
-          {filteredServices.length === 0 ? (
+          {loading && filteredServices.length === 0 ? (
+            <div className={
+              viewMode === 'grid' 
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' 
+                : 'space-y-4'
+            }>
+              {[1, 2, 3].map((i) => (
+                <ServiceCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : filteredServices.length === 0 ? (
             <Card className="border-0 shadow-sm">
               <CardContent className="p-12 text-center">
                 <div className="max-w-md mx-auto">
