@@ -25,7 +25,13 @@ export async function GET(request: Request) {
     
     try {
       // Use standard SSR client for cookie-based authentication
-      const supabase = await createClient()
+      let supabase
+      try {
+        supabase = await createClient()
+      } catch (clientError) {
+        console.error('❌ Failed to create Supabase client:', clientError)
+        return jsonError(500, 'CLIENT_ERROR', 'Failed to initialize database connection')
+      }
       
       // Get the current user
       const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -93,6 +99,22 @@ export async function GET(request: Request) {
     }
   } catch (error: any) {
     console.error('❌ Critical error in invoice API:', error)
-    return jsonError(500, 'CRITICAL_ERROR', 'A critical error occurred', { hint: error.message })
+    // Ensure we always return JSON, never HTML
+    return new Response(
+      JSON.stringify({ 
+        error: { 
+          code: 'CRITICAL_ERROR', 
+          message: 'A critical error occurred', 
+          details: { hint: error?.message || 'Unknown error' } 
+        } 
+      }), 
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders
+        }
+      }
+    )
   }
 }

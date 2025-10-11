@@ -177,6 +177,14 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
             throw new Error(`HTTP error! status: ${response.status}`)
           }
           
+          // Check if response is JSON before parsing
+          const contentType = response.headers.get('content-type')
+          if (!contentType || !contentType.includes('application/json')) {
+            const textResponse = await response.text()
+            logger.error('❌ Invoice API returned non-JSON response:', textResponse.substring(0, 200))
+            throw new Error('API returned non-JSON response (possibly an HTML error page)')
+          }
+          
           const data = await response.json()
           const invoicesData = data.invoices || []
           
