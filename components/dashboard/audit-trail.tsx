@@ -114,11 +114,11 @@ export function AuditTrail({ bookingId, className }: AuditTrailProps) {
       // Apply search filter
       const filteredEntries = searchTerm
         ? entries?.filter(entry => 
-            entry.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entry.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            entry.entity_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            JSON.stringify(entry.old_values).toLowerCase().includes(searchTerm.toLowerCase()) ||
-            JSON.stringify(entry.new_values).toLowerCase().includes(searchTerm.toLowerCase())
+            (entry.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (entry.action || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (entry.entity_type || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            JSON.stringify(entry.old_values || {}).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            JSON.stringify(entry.new_values || {}).toLowerCase().includes(searchTerm.toLowerCase())
           ) || []
         : entries || []
 

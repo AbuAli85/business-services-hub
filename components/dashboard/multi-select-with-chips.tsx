@@ -123,7 +123,7 @@ export function MultiSelectWithChips({
   const availableOptions = options.filter(option => {
     const isNotSelected = !selectedValues.includes(option.value)
     const matchesSearch = searchQuery === '' || 
-      option.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (option.label || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (option.description && option.description.toLowerCase().includes(searchQuery.toLowerCase()))
     
     return isNotSelected && matchesSearch

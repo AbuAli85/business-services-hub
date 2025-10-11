@@ -300,8 +300,8 @@ export function ClientMilestoneViewer({
 
   // Filter and sort
   const filteredMilestones = milestones.filter(milestone => {
-    const matchesSearch = milestone.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         milestone.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = (milestone.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (milestone.description || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = filterStatus === 'all' || milestone.status === filterStatus
     return matchesSearch && matchesStatus
   })

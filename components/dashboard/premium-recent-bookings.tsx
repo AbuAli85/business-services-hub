@@ -83,9 +83,9 @@ export function PremiumRecentBookings({ bookings, className }: PremiumRecentBook
   const [statusFilter, setStatusFilter] = useState('all')
 
   const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = booking.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         booking.service_title.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = (booking.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (booking.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (booking.service_title || '').toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
     

@@ -113,7 +113,7 @@ export function getServiceImage(category: string, title?: string): ServiceImageC
   }
 
   // Try to find partial match
-  const normalizedCategory = category.toLowerCase()
+  const normalizedCategory = (category || '').toLowerCase()
   for (const [key, config] of Object.entries(SERVICE_IMAGES)) {
     if (key.toLowerCase().includes(normalizedCategory) || normalizedCategory.includes(key.toLowerCase())) {
       return config
@@ -122,7 +122,7 @@ export function getServiceImage(category: string, title?: string): ServiceImageC
 
   // Try to match based on title keywords
   if (title) {
-    const titleLower = title.toLowerCase()
+    const titleLower = (title || '').toLowerCase()
     for (const [key, config] of Object.entries(SERVICE_IMAGES)) {
       const keywords = key.toLowerCase().split(' ')
       if (keywords.some(keyword => titleLower.includes(keyword))) {

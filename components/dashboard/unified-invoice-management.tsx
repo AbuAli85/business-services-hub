@@ -383,7 +383,7 @@ export default function UnifiedInvoiceManagement({ userRole, userId }: UnifiedIn
         invoice.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         invoice.providerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         invoice.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.id.toLowerCase().includes(searchTerm.toLowerCase())
+        (invoice.id || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 

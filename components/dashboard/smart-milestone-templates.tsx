@@ -571,9 +571,9 @@ export function SmartMilestoneTemplates({ onSelectTemplate, onTemplateSelect, on
   const filteredTemplates = templates.filter(template => {
     const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory
     const matchesSearch = searchQuery === '' || 
-      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+      (template.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (template.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.tags.some(tag => (tag || '').toLowerCase().includes(searchQuery.toLowerCase()))
     return matchesCategory && matchesSearch
   })
 

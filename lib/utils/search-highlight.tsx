@@ -1,6 +1,6 @@
 export function highlight(text: string, q: string) {
   if (!q) return text
-  const idx = text.toLowerCase().indexOf(q.toLowerCase())
+  const idx = (text || '').toLowerCase().indexOf((q || '').toLowerCase())
   if (idx === -1) return text
   return (
     <>

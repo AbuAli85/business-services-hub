@@ -57,8 +57,8 @@ export function SmartTaskGenerator({
   // Smart task generation based on milestone context
   const generateSmartTasks = () => {
     const tasks: TaskTemplate[] = []
-    const title = milestoneTitle.toLowerCase()
-    const description = milestoneDescription?.toLowerCase() || ''
+    const title = (milestoneTitle || '').toLowerCase()
+    const description = (milestoneDescription || '').toLowerCase()
 
     // Development-related tasks
     if (title.includes('development') || title.includes('coding') || title.includes('programming')) {
@@ -120,7 +120,7 @@ export function SmartTaskGenerator({
     // Filter out tasks that are similar to existing ones
     const filteredTasks = tasks.filter(task => 
       !existingTasks.some(existing => 
-        existing.title.toLowerCase().includes(task.title.toLowerCase().split(' ')[0])
+        (existing.title || '').toLowerCase().includes((task.title || '').toLowerCase().split(' ')[0])
       )
     )
 

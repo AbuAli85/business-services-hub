@@ -70,8 +70,8 @@ export function BulkOperationsView({
   // Filter tasks based on search and filters
   const filteredTasks = useMemo(() => {
     return allTasks.filter(task => {
-      const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          task.milestoneTitle.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesSearch = (task.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (task.milestoneTitle || '').toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesStatus = statusFilter === 'all' || task.status === statusFilter
       const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter

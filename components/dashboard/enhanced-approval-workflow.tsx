@@ -230,8 +230,8 @@ export function EnhancedApprovalWorkflow({
 
   const filteredRequests = approvalRequests.filter(request => {
     const matchesStatus = filterStatus === 'all' || request.status === filterStatus
-    const matchesSearch = request.milestoneTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         request.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesSearch = (request.milestoneTitle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (request.description || '').toLowerCase().includes(searchQuery.toLowerCase())
     return matchesStatus && matchesSearch
   })
 

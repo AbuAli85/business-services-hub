@@ -46,7 +46,7 @@ export function BookingReportCard({
 }: BookingReportCardProps) {
   
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch ((status || '').toLowerCase()) {
       case 'completed':
         return 'bg-green-100 text-green-800 border-green-200'
       case 'in_progress':

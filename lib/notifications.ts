@@ -198,9 +198,9 @@ class NotificationService {
     const highStatuses = ['completed', 'delivered', 'approved']
     const normalStatuses = ['in_progress', 'review', 'pending']
     
-    if (urgentStatuses.includes(status.toLowerCase())) return 'urgent'
-    if (highStatuses.includes(status.toLowerCase())) return 'high'
-    if (normalStatuses.includes(status.toLowerCase())) return 'normal'
+    if (urgentStatuses.includes((status || '').toLowerCase())) return 'urgent'
+    if (highStatuses.includes((status || '').toLowerCase())) return 'high'
+    if (normalStatuses.includes((status || '').toLowerCase())) return 'normal'
     return 'low'
   }
 

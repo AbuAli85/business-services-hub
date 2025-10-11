@@ -468,7 +468,7 @@ export function DocumentManager({
 
   const filteredDocuments = documents
     .filter(doc => {
-      const matchesText = doc.original_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesText = (doc.original_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
       const matchesStatus = statusFilter === 'all' ? true : doc.status === statusFilter
       const matchesType = typeFilter === 'all' ? true : (doc.file_type || '').toLowerCase().includes(typeFilter)
@@ -499,7 +499,7 @@ export function DocumentManager({
 
   const filteredRequests = requests
     .filter(req => {
-      const matchesText = req.title.toLowerCase().includes(searchTerm.toLowerCase()) || (req.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+      const matchesText = (req.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || (req.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
       const matchesStatus = requestStatusFilter === 'all' ? true : req.status === requestStatusFilter
       const matchesPriority = requestPriorityFilter === 'all' ? true : req.priority === requestPriorityFilter
       const created = new Date(req.created_at).getTime()

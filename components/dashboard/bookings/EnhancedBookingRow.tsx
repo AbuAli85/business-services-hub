@@ -88,7 +88,7 @@ export function EnhancedBookingRow({
   const getPaymentStatusDisplay = () => {
     const paymentStatus = booking.payment_status || booking.invoice_status || 'pending'
     
-    switch (paymentStatus.toLowerCase()) {
+    switch ((paymentStatus || '').toLowerCase()) {
       case 'paid':
         return {
           label: 'Paid',

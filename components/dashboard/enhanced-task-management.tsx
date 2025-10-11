@@ -202,7 +202,7 @@ export function EnhancedTaskManagement({
     .filter(task => {
       if (filterStatus !== 'all' && task.status !== filterStatus) return false
       if (filterPriority !== 'all' && task.priority !== filterPriority) return false
-      if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+      if (searchQuery && !(task.title || '').toLowerCase().includes(searchQuery.toLowerCase())) return false
       if (!showCompleted && task.status === 'completed') return false
       return true
     })

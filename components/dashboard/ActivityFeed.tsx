@@ -59,8 +59,8 @@ export function ActivityFeed(props: ActivityFeedProps) {
         const diff = (now.getTime() - ts.getTime()) / (1000 * 60 * 60 * 24)
         dateOk = diff <= 31
       }
-      const q = activityQ.toLowerCase()
-      const searchOk = !q || a.description.toLowerCase().includes(q)
+      const q = (activityQ || '').toLowerCase()
+      const searchOk = !q || (a.description || '').toLowerCase().includes(q)
       return typeOk && statusOk && dateOk && searchOk
     })
   }, [items, activityType, activityStatus, activityDateRange, activityQ])

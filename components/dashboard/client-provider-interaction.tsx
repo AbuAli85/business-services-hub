@@ -96,7 +96,7 @@ export function ClientProviderInteraction({
   // Filter comments based on type and search
   const filteredComments = comments.filter(comment => {
     // Comment.type is not part of the schema; we filter only by search for now
-    if (searchQuery && !comment.content.toLowerCase().includes(searchQuery.toLowerCase())) return false
+    if (searchQuery && !(comment.content || '').toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 

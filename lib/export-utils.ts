@@ -221,7 +221,7 @@ function getStatusColor(status: string): string {
     'on_hold': '#6b7280',
     'rescheduled': '#8b5cf6'
   }
-  return colors[status.toLowerCase()] || '#6b7280'
+  return colors[(status || '').toLowerCase()] || '#6b7280'
 }
 
 /**
