@@ -398,13 +398,21 @@ export default function BookingReportsPage() {
             <CardTitle>Recent Bookings</CardTitle>
           </CardHeader>
           <CardContent>
+            {!summaryData.bookings || summaryData.bookings.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium mb-2">No bookings found</p>
+                <p className="text-sm">Try adjusting your filters or date range</p>
+              </div>
+            ) : (
             <div className="space-y-4">
               {summaryData.bookings
+                .filter(booking => booking && booking.id && booking.title)
                 .filter(booking => 
                   searchQuery === '' || 
-                  booking.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  booking.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  booking.provider_name.toLowerCase().includes(searchQuery.toLowerCase())
+                  (booking.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (booking.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (booking.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase())
                 )
                 .map((booking) => (
                 <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
@@ -449,6 +457,7 @@ export default function BookingReportsPage() {
                 </div>
               ))}
             </div>
+            )}
           </CardContent>
         </Card>
       )}
