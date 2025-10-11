@@ -41,6 +41,9 @@ interface BookingSummary {
   currency: string
   created_at: string
   due_at?: string
+  // Additional properties for compatibility
+  booking_title?: string
+  total_amount?: number
 }
 
 interface ReportSummary {
@@ -82,6 +85,22 @@ export default function BookingReportsPage() {
   const { user, userRole } = useAuth()
   const [loading, setLoading] = useState(false)
   const [summaryData, setSummaryData] = useState<SummaryReportData | null>(null)
+  
+  // Safe getter for summaryData
+  const safeSummaryData = summaryData || {
+    summary: {
+      total_bookings: 0,
+      total_revenue: 0,
+      average_progress: 0,
+      period: { from: null, to: null }
+    },
+    breakdown: {
+      by_status: {},
+      by_category: {},
+      by_month: {}
+    },
+    bookings: []
+  }
   const [selectedBooking, setSelectedBooking] = useState<string | null>(null)
   const [detailedReport, setDetailedReport] = useState<any>(null)
   const [showDetailedReport, setShowDetailedReport] = useState(false)
@@ -107,9 +126,23 @@ export default function BookingReportsPage() {
 
       if (data.success) {
         // Ensure the report data has the expected structure
+        const bookings = (data.report.bookings || []).map((booking: any) => ({
+          id: booking.id || '',
+          title: booking.title || booking.booking_title || booking.service_title || 'Untitled Booking',
+          status: booking.status || 'unknown',
+          client_name: booking.client_name || 'Unknown Client',
+          provider_name: booking.provider_name || 'Unknown Provider',
+          service_title: booking.service_title || booking.title || 'Untitled Service',
+          progress: booking.progress || 0,
+          amount: booking.amount || booking.total_amount || 0,
+          currency: booking.currency || 'OMR',
+          created_at: booking.created_at || new Date().toISOString(),
+          due_at: booking.due_at || null
+        }))
+        
         const reportData = {
           ...data.report,
-          bookings: data.report.bookings || []
+          bookings: bookings
         }
         setSummaryData(reportData)
       } else {
@@ -117,6 +150,21 @@ export default function BookingReportsPage() {
       }
     } catch (error) {
       console.error('Error loading reports:', error)
+      // Set empty data structure to prevent crashes
+      setSummaryData({
+        summary: {
+          total_bookings: 0,
+          total_revenue: 0,
+          average_progress: 0,
+          period: { from: null, to: null }
+        },
+        breakdown: {
+          by_status: {},
+          by_category: {},
+          by_month: {}
+        },
+        bookings: []
+      })
       toast.error('Failed to load reports')
     } finally {
       setLoading(false)
@@ -309,7 +357,7 @@ export default function BookingReportsPage() {
       </Card>
 
       {/* Summary Cards */}
-      {summaryData && (
+      {safeSummaryData && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -317,10 +365,10 @@ export default function BookingReportsPage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summaryData.summary.total_bookings}</div>
+              <div className="text-2xl font-bold">{safeSummaryData.summary.total_bookings}</div>
               <p className="text-xs text-muted-foreground">
-                {summaryData.summary.period.from && summaryData.summary.period.to
-                  ? `${formatMuscat(summaryData.summary.period.from)} - ${formatMuscat(summaryData.summary.period.to)}`
+                {safeSummaryData.summary.period.from && safeSummaryData.summary.period.to
+                  ? `${formatMuscat(safeSummaryData.summary.period.from)} - ${formatMuscat(safeSummaryData.summary.period.to)}`
                   : 'All time'
                 }
               </p>
@@ -334,10 +382,10 @@ export default function BookingReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(summaryData.summary.total_revenue, 'USD')}
+                {formatCurrency(safeSummaryData.summary.total_revenue, 'USD')}
               </div>
               <p className="text-xs text-muted-foreground">
-                Average: {formatCurrency(summaryData.summary.total_revenue / Math.max(summaryData.summary.total_bookings, 1), 'USD')}
+                Average: {formatCurrency(safeSummaryData.summary.total_revenue / Math.max(safeSummaryData.summary.total_bookings, 1), 'USD')}
               </p>
             </CardContent>
           </Card>
@@ -348,7 +396,7 @@ export default function BookingReportsPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{summaryData.summary.average_progress.toFixed(1)}%</div>
+              <div className="text-2xl font-bold">{safeSummaryData.summary.average_progress.toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground">
                 Across all active bookings
               </p>
@@ -362,11 +410,11 @@ export default function BookingReportsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {summaryData.breakdown.by_status.completed || 0}
+                {safeSummaryData.breakdown.by_status.completed || 0}
               </div>
               <p className="text-xs text-muted-foreground">
-                {summaryData.summary.total_bookings > 0 
-                  ? ((summaryData.breakdown.by_status.completed || 0) / summaryData.summary.total_bookings * 100).toFixed(1)
+                {safeSummaryData.summary.total_bookings > 0 
+                  ? ((safeSummaryData.breakdown.by_status.completed || 0) / safeSummaryData.summary.total_bookings * 100).toFixed(1)
                   : 0
                 }% of total bookings
               </p>
@@ -376,14 +424,14 @@ export default function BookingReportsPage() {
       )}
 
       {/* Status Breakdown */}
-      {summaryData && (
+      {safeSummaryData && (
         <Card>
           <CardHeader>
             <CardTitle>Status Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {Object.entries(summaryData.breakdown.by_status).map(([status, count]) => (
+              {Object.entries(safeSummaryData.breakdown.by_status).map(([status, count]) => (
                 <div key={status} className="text-center p-4 border rounded-lg">
                   <div className="text-2xl font-bold">{count}</div>
                   <Badge variant="secondary" className="mt-2">
@@ -397,13 +445,13 @@ export default function BookingReportsPage() {
       )}
 
       {/* Bookings List */}
-      {summaryData && (
+      {safeSummaryData && (
         <Card>
           <CardHeader>
             <CardTitle>Recent Bookings</CardTitle>
           </CardHeader>
           <CardContent>
-            {!summaryData.bookings || summaryData.bookings.length === 0 ? (
+            {!safeSummaryData.bookings || safeSummaryData.bookings.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-lg font-medium mb-2">No bookings found</p>
@@ -411,15 +459,41 @@ export default function BookingReportsPage() {
               </div>
             ) : (
             <div className="space-y-4">
-              {(summaryData.bookings || [])
-                .filter(booking => booking && typeof booking === 'object' && booking.id && (booking.title || booking.service_title))
-                .filter(booking => 
-                  searchQuery === '' || 
-                  (booking.title || booking.service_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (booking.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  (booking.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase())
-                )
-                .map((booking) => booking && typeof booking === 'object' ? (
+              {(() => {
+                try {
+                  return (safeSummaryData.bookings || [])
+                    .filter(booking => {
+                      // Comprehensive safety check
+                      if (!booking || typeof booking !== 'object' || !booking.id) return false
+                      
+                      // Ensure all required properties exist with fallbacks
+                      const safeBooking = {
+                        id: booking.id || '',
+                        title: booking.title || booking.booking_title || booking.service_title || 'Untitled Booking',
+                        service_title: booking.service_title || booking.title || 'Untitled Service',
+                        client_name: booking.client_name || 'Unknown Client',
+                        provider_name: booking.provider_name || 'Unknown Provider',
+                        status: booking.status || 'unknown',
+                        amount: booking.amount || booking.total_amount || 0,
+                        currency: booking.currency || 'OMR',
+                        progress: booking.progress || 0,
+                        created_at: booking.created_at || new Date().toISOString(),
+                        due_at: booking.due_at || null
+                      }
+                      
+                      // Replace the booking object with the safe version
+                      Object.assign(booking, safeBooking)
+                      
+                      return true
+                    })
+                    .filter(booking => 
+                      searchQuery === '' || 
+                      (booking.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (booking.service_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (booking.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      (booking.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map((booking) => booking && typeof booking === 'object' ? (
                 <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
@@ -460,7 +534,27 @@ export default function BookingReportsPage() {
                     </Button>
                   </div>
                 </div>
-              ) : null)}
+              ) : null)
+                } catch (error) {
+                  console.error('Error rendering bookings:', error)
+                  return (
+                    <div className="text-center py-12 text-red-500">
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-red-300" />
+                      <p className="text-lg font-medium mb-2">Error displaying bookings</p>
+                      <p className="text-sm">Please refresh the page and try again</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => window.location.reload()}
+                        className="mt-4"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Refresh Page
+                      </Button>
+                    </div>
+                  )
+                }
+              })()}
             </div>
             )}
           </CardContent>
