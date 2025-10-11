@@ -230,7 +230,7 @@ function AdminReportsPageContent() {
   const downloadReport = (report: Report) => {
     if (report.file_url) {
       // In a real implementation, this would download the actual file
-      toast.success(`Downloading ${report.title}...`)
+      toast.success(`Downloading ${report?.title || 'Report'}...`)
     } else {
       toast.error('Report file not available')
     }
@@ -525,8 +525,8 @@ function AdminReportsPageContent() {
         return tabAnalytics && (
           <Card>
             <CardHeader>
-              <CardTitle>{tabAnalytics.title}</CardTitle>
-              <CardDescription>{tabAnalytics.description}</CardDescription>
+              <CardTitle>{tabAnalytics?.title || 'Analytics'}</CardTitle>
+              <CardDescription>{tabAnalytics?.description || 'Overview metrics'}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -709,7 +709,7 @@ function AdminReportsPageContent() {
                     <TableCell>
                       <div className="flex items-center space-x-2">
                         {getReportIcon(report.type)}
-                        <span className="font-medium">{report.title}</span>
+                        <span className="font-medium">{report?.title || 'Report'}</span>
                       </div>
                     </TableCell>
                     <TableCell>

@@ -504,7 +504,7 @@ export default function CreateBookingPage() {
                         <div className="relative w-16 h-16 flex-shrink-0">
                           <Image
                             src={service.cover_image_url}
-                            alt={service.title}
+                            alt={service?.title || 'Service'}
                             fill
                             className="object-cover rounded-lg"
                             sizes="64px"
@@ -514,7 +514,7 @@ export default function CreateBookingPage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-lg font-semibold text-gray-900">
-                            {service.title}
+                            {service?.title || 'Service'}
                           </h3>
                           <Badge variant="outline">{service.category}</Badge>
                         </div>

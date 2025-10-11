@@ -140,9 +140,9 @@ export function EnhancedServiceTable({
 
   const filteredAndSortedServices = services
     .filter(service => {
-      const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           service.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           service.provider?.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesSearch = (service?.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (service?.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (service?.provider?.full_name || '').toLowerCase().includes(searchQuery.toLowerCase())
       const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
       const matchesStatus = statusFilter === 'all' || service.status === statusFilter
       return matchesSearch && matchesCategory && matchesStatus
@@ -374,22 +374,22 @@ export function EnhancedServiceTable({
                   <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     {selectable && (
                       <td className="py-4 px-4 align-middle">
-                        <Checkbox checked={isSelected(service.id)} onCheckedChange={() => toggleRow(service.id)} aria-label={`Select ${service.title}`} />
+                        <Checkbox checked={isSelected(service.id)} onCheckedChange={() => toggleRow(service.id)} aria-label={`Select ${service?.title || 'Service'}`} />
                       </td>
                     )}
                     <td className="py-4 px-4 align-top">
                       <div className="flex items-center space-x-3">
                         <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
                           <Image
-                            src={getServiceCardImageUrl(service.category, service.title, service.cover_image_url, 48, 48)}
-                            alt={`${service.title} - ${service.category} service`}
+                            src={getServiceCardImageUrl(service.category, service?.title || 'Service', service.cover_image_url, 48, 48)}
+                            alt={`${service?.title || 'Service'} - ${service.category} service`}
                             fill
                             className="object-cover"
                             sizes="48px"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 truncate">{service.title}</div>
+                          <div className="font-medium text-gray-900 truncate">{service?.title || 'Service'}</div>
                           <div className="text-sm text-gray-500 line-clamp-1 sm:line-clamp-2">{service.description}</div>
                           {service.featured && (
                             <Badge variant="outline" className="text-xs text-yellow-600 border-yellow-200 bg-yellow-50 mt-1">

@@ -195,9 +195,9 @@ export default async function ServicesPage({ searchParams }: { searchParams: Rec
               <Card key={service.id} className="hover:shadow-lg transition-shadow">
                 <div className="relative aspect-video bg-gray-200 rounded-t-lg overflow-hidden">
                   {service.cover_image_url ? (
-                    <Image src={service.cover_image_url} alt={`${service.title} - ${service.category} service`} fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                    <Image src={service.cover_image_url} alt={`${service?.title || 'Service'} - ${service.category} service`} fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                   ) : (
-                    <Image src={getServiceImage(service.category, service.title)} alt={`${service.title} - ${service.category} service`} fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
+                    <Image src={getServiceImage(service.category, service?.title || 'Service')} alt={`${service?.title || 'Service'} - ${service.category} service`} fill className="object-cover hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" />
                   )}
                 </div>
                 <CardHeader className="pb-3">

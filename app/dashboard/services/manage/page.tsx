@@ -444,7 +444,7 @@ export default function ManageServicesPage() {
                         <TableCell>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-medium">{service.title}</p>
+                              <p className="font-medium">{service?.title || 'Service'}</p>
                               {service.featured && (
                                 <Star className="h-4 w-4 text-yellow-500 fill-current" />
                               )}

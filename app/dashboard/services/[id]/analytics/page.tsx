@@ -146,7 +146,7 @@ export default function ServiceAnalyticsPage() {
 
       setAnalytics({
         id: service.id,
-        title: service.title,
+        title: service?.title || 'Service',
         totalViews,
         totalBookings,
         totalRevenue,

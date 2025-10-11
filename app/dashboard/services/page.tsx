@@ -322,7 +322,7 @@ export default function ServicesPage() {
     if (!services) return []
     
     let filtered = services.filter(service => {
-      if (!service || !service.id || !service.title) return false
+      if (!service || !service.id) return false
       
       const searchLower = (searchTerm || '').toLowerCase()
       const matchesSearch = searchTerm === '' || 

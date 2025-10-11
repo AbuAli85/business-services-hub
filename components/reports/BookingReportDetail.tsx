@@ -180,7 +180,7 @@ export function BookingReportDetail({
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Booking Report</h1>
           <p className="text-gray-600 mt-2">
-            Detailed report for booking: {data.booking.title}
+            Detailed report for booking: {data.booking?.title || 'Booking'}
           </p>
           <p className="text-sm text-gray-500">
             Generated on {formatMuscat(new Date().toISOString())}
@@ -416,7 +416,7 @@ export function BookingReportDetail({
               {data.milestones.details.map((milestone) => (
                 <div key={milestone.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <p className="font-medium">{milestone.title}</p>
+                    <p className="font-medium">{milestone?.title || 'Milestone'}</p>
                     {milestone.description && (
                       <p className="text-sm text-gray-600">{milestone.description}</p>
                     )}
@@ -443,7 +443,7 @@ export function BookingReportDetail({
               {data.tasks.details.map((task) => (
                 <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
-                    <p className="font-medium">{task.title}</p>
+                    <p className="font-medium">{task?.title || 'Task'}</p>
                     {task.description && (
                       <p className="text-sm text-gray-600">{task.description}</p>
                     )}

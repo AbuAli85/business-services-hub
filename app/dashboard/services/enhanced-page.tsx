@@ -232,7 +232,7 @@ export default function EnhancedServicesPage() {
         
         return {
           id: service.id,
-          title: service.title,
+          title: service?.title || 'Service',
           description: service.description,
           category: service.category,
           basePrice: service.base_price || 0,
