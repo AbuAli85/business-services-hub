@@ -407,10 +407,10 @@ export default function BookingReportsPage() {
             ) : (
             <div className="space-y-4">
               {summaryData.bookings
-                .filter(booking => booking && booking.id && (booking.title || booking.booking_title || booking.service_title))
+                .filter(booking => booking && booking.id && (booking.title || booking.service_title))
                 .filter(booking => 
                   searchQuery === '' || 
-                  (booking.title || booking.booking_title || booking.service_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (booking.title || booking.service_title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                   (booking.client_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                   (booking.provider_name || '').toLowerCase().includes(searchQuery.toLowerCase())
                 )
@@ -418,7 +418,7 @@ export default function BookingReportsPage() {
                 <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-medium">{booking.title || booking.booking_title || booking.service_title || 'Untitled Booking'}</h3>
+                      <h3 className="font-medium">{booking.title || booking.service_title || 'Untitled Booking'}</h3>
                       <Badge variant="secondary">{booking.status || 'unknown'}</Badge>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">

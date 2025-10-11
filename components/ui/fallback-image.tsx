@@ -74,7 +74,6 @@ export function FallbackImage({
 
   const imageProps = {
     src: imgSrc,
-    alt,
     className: cn("object-cover", className),
     sizes,
     priority,
@@ -83,13 +82,14 @@ export function FallbackImage({
   }
 
   if (fill) {
-    return <Image fill {...imageProps} />
+    return <Image fill alt={alt} {...imageProps} />
   }
 
   return (
     <Image 
       width={width} 
-      height={height} 
+      height={height}
+      alt={alt}
       {...imageProps} 
     />
   )
