@@ -467,12 +467,12 @@ export function BookingReportDetail({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
-              Communications ({data.communications.total_messages})
+              Communications ({data.communications?.total_messages || 0})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.communications.details.slice(0, 5).map((message) => (
+              {(data.communications?.details || []).slice(0, 5).map((message) => (
                 <div key={message.id} className="p-3 border rounded-lg">
                   <p className="text-sm text-gray-900">{message.content}</p>
                   <p className="text-xs text-gray-500 mt-1">
@@ -480,9 +480,9 @@ export function BookingReportDetail({
                   </p>
                 </div>
               ))}
-              {data.communications.total_messages > 5 && (
+              {(data.communications?.total_messages || 0) > 5 && (
                 <p className="text-sm text-gray-500 text-center">
-                  ... and {data.communications.total_messages - 5} more messages
+                  ... and {(data.communications?.total_messages || 0) - 5} more messages
                 </p>
               )}
             </div>
@@ -494,12 +494,12 @@ export function BookingReportDetail({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Files ({data.files.total_files})
+              Files ({data.files?.total_files || 0})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.files.details.map((file) => (
+              {(data.files?.details || []).map((file) => (
                 <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">{file.filename}</p>
@@ -530,7 +530,7 @@ export function BookingReportDetail({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700">Invoice Number</label>
-                <p className="text-sm text-gray-900">{data.invoice.invoice_number}</p>
+                <p className="text-sm text-gray-900">{data.invoice?.invoice_number || 'N/A'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Amount</label>
@@ -538,8 +538,8 @@ export function BookingReportDetail({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Status</label>
-                <Badge className={getStatusColor(data.invoice.status)}>
-                  {data.invoice.status}
+                <Badge className={getStatusColor(data.invoice?.status || 'pending')}>
+                  {data.invoice?.status || 'pending'}
                 </Badge>
               </div>
             </div>

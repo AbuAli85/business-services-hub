@@ -382,21 +382,21 @@ export default function SmartCommunicationCenter({
           <div className="grid grid-cols-4 gap-4 text-center">
             <div>
               <p className="text-xs text-gray-600">Messages</p>
-              <p className="font-semibold text-blue-600">{communicationStats.total_messages}</p>
+              <p className="font-semibold text-blue-600">{communicationStats?.total_messages || 0}</p>
             </div>
             <div>
               <p className="text-xs text-gray-600">Response Rate</p>
-              <p className="font-semibold text-green-600">{communicationStats.response_rate}%</p>
+              <p className="font-semibold text-green-600">{communicationStats?.response_rate || 0}%</p>
             </div>
             <div>
               <p className="text-xs text-gray-600">Avg Response</p>
-              <p className="font-semibold text-purple-600">{communicationStats.avg_response_time}</p>
+              <p className="font-semibold text-purple-600">{communicationStats?.avg_response_time || 'N/A'}</p>
             </div>
             <div>
               <p className="text-xs text-gray-600">Satisfaction</p>
               <div className="flex items-center justify-center">
                 <Star className="h-3 w-3 text-yellow-400 fill-current mr-1" />
-                <p className="font-semibold text-yellow-600">{communicationStats.satisfaction_score}</p>
+                <p className="font-semibold text-yellow-600">{communicationStats?.satisfaction_score || 0}</p>
               </div>
             </div>
           </div>
