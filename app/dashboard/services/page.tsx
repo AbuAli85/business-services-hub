@@ -209,11 +209,14 @@ export default function ServicesPage() {
   // Filter and sort services
   const filteredServices = useMemo(() => {
     let filtered = sourceServices.filter(service => {
+      // Safety check: ensure service exists and has required properties
+      if (!service || !service.id || !service.title) return false
+      
       const matchesSearch = searchTerm === '' || 
-        service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.providerName.toLowerCase().includes(searchTerm.toLowerCase())
+        (service.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.category || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (service.providerName || '').toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesStatus = statusFilter === 'all' || (service.status || 'active') === statusFilter
       const matchesCategory = categoryFilter === 'all' || service.category === categoryFilter
@@ -286,15 +289,18 @@ export default function ServicesPage() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    const total = sourceServices.length
-    const active = sourceServices.filter(s => (s.status || 'active') === 'active').length
-    const pending = sourceServices.filter(s => (s.status || 'inactive') === 'inactive').length
+    // Filter out null/undefined services
+    const validServices = sourceServices.filter(s => s && s.id)
+    
+    const total = validServices.length
+    const active = validServices.filter(s => (s.status || 'active') === 'active').length
+    const pending = validServices.filter(s => (s.status || 'inactive') === 'inactive').length
     const totalBookings = bookings.length
     const totalRevenue = isProvider 
-      ? sourceServices.reduce((sum, s) => sum + ((s.booking_count || s.bookingCount || 0) * (s.basePrice || 0)), 0)
+      ? validServices.reduce((sum, s) => sum + ((s.booking_count || s.bookingCount || 0) * (s.basePrice || 0)), 0)
       : 0
-    const avgRating = sourceServices.length > 0 
-      ? sourceServices.reduce((sum, s) => sum + (s.avg_rating || s.rating || 0), 0) / sourceServices.length 
+    const avgRating = validServices.length > 0 
+      ? validServices.reduce((sum, s) => sum + (s.avg_rating || s.rating || 0), 0) / validServices.length 
       : 0
 
     return { total, active, pending, totalBookings, totalRevenue, avgRating }
@@ -302,7 +308,11 @@ export default function ServicesPage() {
 
   // Get unique categories
   const categories = useMemo(() => {
-    const uniqueCategories = new Set(sourceServices.map((s: any) => s.category).filter(Boolean))
+    const uniqueCategories = new Set(
+      sourceServices
+        .filter((s: any) => s && s.category)
+        .map((s: any) => s.category)
+    )
     return Array.from(uniqueCategories).sort()
   }, [sourceServices])
 
@@ -727,7 +737,7 @@ export default function ServicesPage() {
           viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <AnimatePresence>
-                {filteredServices.map((service, index) => (
+                {filteredServices.filter(service => service && service.id).map((service, index) => (
                   <motion.div
                     key={service.id}
                     initial={{ opacity: 0, y: 20 }}
@@ -907,6 +917,7 @@ export default function ServicesPage() {
               <CardContent>
                 <div className="space-y-3">
                   {filteredServices
+                    .filter(service => service && service.id)
                     .sort((a, b) => (b.booking_count || b.bookingCount || 0) - (a.booking_count || a.bookingCount || 0))
                     .slice(0, 3)
                     .map((service, index) => (
