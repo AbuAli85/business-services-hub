@@ -153,21 +153,37 @@ export function ComprehensiveNotificationSettings() {
       if (!user) return
 
       // Save notification settings
-      // Map system_notifications to syste_notifications (database typo) temporarily
-      const settingsToSave = {
-        ...notificationSettings,
+      // Only save fields that exist in the database
+      const settingsToSave: any = {
+        id: notificationSettings.id,
+        user_id: notificationSettings.user_id,
+        email_notifications: notificationSettings.email_notifications,
+        push_notifications: notificationSettings.push_notifications,
+        sms_notifications: notificationSettings.sms_notifications,
+        booking_notifications: notificationSettings.booking_notifications,
+        payment_notifications: notificationSettings.payment_notifications,
+        invoice_notifications: notificationSettings.invoice_notifications,
+        message_notifications: notificationSettings.message_notifications,
+        task_notifications: notificationSettings.task_notifications,
+        milestone_notifications: notificationSettings.milestone_notifications,
+        document_notifications: notificationSettings.document_notifications,
+        request_notifications: (notificationSettings as any).request_notifications ?? true,
+        project_notifications: (notificationSettings as any).project_notifications ?? true,
+        // Handle the database typo: use syste_notifications instead of system_notifications
+        syste_notifications: notificationSettings.system_notifications,
+        quiet_hours_start: notificationSettings.quiet_hours_start,
+        quiet_hours_end: notificationSettings.quiet_hours_end,
+        digest_frequency: notificationSettings.digest_frequency,
+        // Exclude fields that don't exist in database: digest_types, timezone, thresholds
         updated_at: new Date().toISOString()
-      }
-      
-      // Handle the database typo: map system_notifications to syste_notifications
-      if ('system_notifications' in settingsToSave) {
-        (settingsToSave as any).syste_notifications = settingsToSave.system_notifications
-        delete (settingsToSave as any).system_notifications
       }
       
       const { error: notifError } = await supabaseClient
         .from('notification_settings')
-        .upsert(settingsToSave)
+        .upsert(settingsToSave, {
+          onConflict: 'user_id',
+          ignoreDuplicates: false
+        })
 
       if (notifError) {
         console.error('Error saving notification settings:', notifError)
