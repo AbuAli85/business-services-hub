@@ -214,8 +214,8 @@ export function BookingReportDetail({
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.analytics.overall_progress}%</div>
-            <Progress value={data.analytics.overall_progress} className="mt-2" />
+            <div className="text-2xl font-bold">{data.analytics?.overall_progress || 0}%</div>
+            <Progress value={data.analytics?.overall_progress || 0} className="mt-2" />
           </CardContent>
         </Card>
 
@@ -226,10 +226,10 @@ export function BookingReportDetail({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(data.payment.amount, data.payment.currency)}
+              {formatCurrency(data.payment?.amount || 0, data.payment?.currency || 'OMR')}
             </div>
-            <Badge className={getStatusColor(data.payment.status)}>
-              {data.payment.status}
+            <Badge className={getStatusColor(data.payment?.status || 'pending')}>
+              {data.payment?.status || 'pending'}
             </Badge>
           </CardContent>
         </Card>
@@ -241,10 +241,10 @@ export function BookingReportDetail({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.milestones.completed}/{data.milestones.total}
+              {data.milestones?.completed || 0}/{data.milestones?.total || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {data.milestones.completion_rate.toFixed(1)}% completed
+              {(data.milestones?.completion_rate || 0).toFixed(1)}% completed
             </p>
           </CardContent>
         </Card>
@@ -256,10 +256,10 @@ export function BookingReportDetail({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.analytics.duration_days || 'N/A'} days
+              {data.analytics?.duration_days || 'N/A'} days
             </div>
             <p className="text-xs text-muted-foreground">
-              {data.analytics.days_since_created} days since created
+              {data.analytics?.days_since_created || 0} days since created
             </p>
           </CardContent>
         </Card>
@@ -280,8 +280,8 @@ export function BookingReportDetail({
             <div>
               <label className="text-sm font-medium text-gray-700">Status</label>
               <div className="mt-1">
-                <Badge className={getStatusColor(data.booking.status)}>
-                  {data.booking.status}
+                <Badge className={getStatusColor(data.booking?.status || 'pending')}>
+                  {data.booking?.status || 'pending'}
                 </Badge>
               </div>
             </div>
@@ -289,17 +289,17 @@ export function BookingReportDetail({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700">Created</label>
-                <p className="text-sm text-gray-900">{formatMuscat(data.booking.created_at)}</p>
+                <p className="text-sm text-gray-900">{formatMuscat(data.booking?.created_at || new Date().toISOString())}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Due Date</label>
                 <p className="text-sm text-gray-900">
-                  {data.booking.due_at ? formatMuscat(data.booking.due_at) : 'Not set'}
+                  {data.booking?.due_at ? formatMuscat(data.booking.due_at) : 'Not set'}
                 </p>
               </div>
             </div>
 
-            {data.booking.location && (
+            {data.booking?.location && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Location</label>
                 <p className="text-sm text-gray-900 flex items-center gap-1">
@@ -309,14 +309,14 @@ export function BookingReportDetail({
               </div>
             )}
 
-            {data.booking.requirements && (
+            {data.booking?.requirements && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Requirements</label>
                 <p className="text-sm text-gray-900">{data.booking.requirements}</p>
               </div>
             )}
 
-            {data.booking.notes && (
+            {data.booking?.notes && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Notes</label>
                 <p className="text-sm text-gray-900">{data.booking.notes}</p>
@@ -347,7 +347,7 @@ export function BookingReportDetail({
             {data.service?.description && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Description</label>
-                <p className="text-sm text-gray-900">{data.service.description}</p>
+                <p className="text-sm text-gray-900">{data.service?.description || 'No description available'}</p>
               </div>
             )}
           </CardContent>
@@ -371,7 +371,7 @@ export function BookingReportDetail({
                 <p className="font-medium">{data.client?.name || 'Unknown Client'}</p>
                 <p className="text-sm text-gray-600">{data.client?.email || 'No email'}</p>
                 {data.client?.company && (
-                  <p className="text-sm text-gray-500">{data.client.company}</p>
+                  <p className="text-sm text-gray-500">{data.client?.company}</p>
                 )}
               </div>
             </div>
@@ -396,7 +396,7 @@ export function BookingReportDetail({
                 <p className="font-medium">{data.provider?.name || 'Unknown Provider'}</p>
                 <p className="text-sm text-gray-600">{data.provider?.email || 'No email'}</p>
                 {data.provider?.company && (
-                  <p className="text-sm text-gray-500">{data.provider.company}</p>
+                  <p className="text-sm text-gray-500">{data.provider?.company}</p>
                 )}
               </div>
             </div>
@@ -408,12 +408,12 @@ export function BookingReportDetail({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Target className="h-5 w-5" />
-              Milestones ({data.milestones.completed}/{data.milestones.total})
+              Milestones ({data.milestones?.completed || 0}/{data.milestones?.total || 0})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.milestones.details.map((milestone) => (
+              {(data.milestones?.details || []).map((milestone) => (
                 <div key={milestone.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">{milestone?.title || 'Milestone'}</p>
@@ -435,12 +435,12 @@ export function BookingReportDetail({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              Tasks ({data.tasks.completed}/{data.tasks.total})
+              Tasks ({data.tasks?.completed || 0}/{data.tasks?.total || 0})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {data.tasks.details.map((task) => (
+              {(data.tasks?.details || []).map((task) => (
                 <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
                   <div>
                     <p className="font-medium">{task?.title || 'Task'}</p>
@@ -534,7 +534,7 @@ export function BookingReportDetail({
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Amount</label>
-                <p className="text-sm text-gray-900">{formatCurrency(data.invoice.amount, data.payment.currency)}</p>
+                <p className="text-sm text-gray-900">{formatCurrency(data.invoice?.amount || 0, data.payment?.currency || 'OMR')}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">Status</label>
