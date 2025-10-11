@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const bookingId = searchParams.get('booking_id')
     const type = searchParams.get('type') || 'list'
     
-    // Build base query
+    // Build base query - only fetch columns that actually exist
     let query = supabase
       .from('bookings')
       .select(`
@@ -62,15 +62,6 @@ export async function GET(request: NextRequest) {
         client_id,
         provider_id,
         service_id,
-        payment_status,
-        invoice_status,
-        duration_days,
-        milestones_completed,
-        milestones_total,
-        tasks_completed,
-        tasks_total,
-        total_messages,
-        total_files,
         services(title, category, description, base_price, currency),
         client_profile:profiles!bookings_client_id_fkey(full_name, company_name, email, avatar_url),
         provider_profile:profiles!bookings_provider_id_fkey(full_name, company_name, email, avatar_url)
@@ -167,40 +158,40 @@ export async function GET(request: NextRequest) {
         payment: {
           amount: bookingData.total_amount || 0,
           currency: 'OMR',
-          status: bookingData.payment_status || 'pending'
+          status: 'pending' // Default since payment_status column doesn't exist
         },
         invoice: {
           invoice_number: `INV-${bookingData.id.slice(0, 8)}`,
           amount: bookingData.total_amount || 0,
-          status: bookingData.invoice_status || 'pending'
+          status: 'pending' // Default since invoice_status column doesn't exist
         },
         analytics: {
           overall_progress: bookingData.project_progress || 0,
-          duration_days: bookingData.duration_days || null,
+          duration_days: null, // Default since duration_days column doesn't exist
           days_since_created: Math.floor((new Date().getTime() - new Date(bookingData.created_at).getTime()) / (1000 * 60 * 60 * 24)),
           days_until_due: bookingData.due_at ? Math.floor((new Date(bookingData.due_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : null
         },
         milestones: {
-          completed: bookingData.milestones_completed || 0,
-          total: bookingData.milestones_total || 0,
-          completion_rate: bookingData.milestones_total > 0 ? ((bookingData.milestones_completed || 0) / bookingData.milestones_total * 100) : 0,
-          details: (bookingData as any).milestones_details || []
+          completed: 0, // Default since milestones columns don't exist
+          total: 0,
+          completion_rate: 0,
+          details: []
         },
         tasks: {
-          completed: bookingData.tasks_completed || 0,
-          total: bookingData.tasks_total || 0,
-          completion_rate: bookingData.tasks_total > 0 ? ((bookingData.tasks_completed || 0) / bookingData.tasks_total * 100) : 0,
-          details: (bookingData as any).tasks_details || []
+          completed: 0, // Default since tasks columns don't exist
+          total: 0,
+          completion_rate: 0,
+          details: []
         },
         communications: {
-          total_messages: bookingData.total_messages || 0,
-          details: (bookingData as any).communications_details || []
+          total_messages: 0, // Default since total_messages column doesn't exist
+          details: []
         },
         files: {
-          total_files: bookingData.total_files || 0,
-          details: (bookingData as any).files_details || []
+          total_files: 0, // Default since total_files column doesn't exist
+          details: []
         },
-        timeline: (bookingData as any).timeline || []
+        timeline: []
       }
       
       console.log('📊 Final detailed report structure:', detailedReport)
