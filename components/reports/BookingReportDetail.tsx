@@ -336,15 +336,15 @@ export function BookingReportDetail({
           <CardContent className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-700">Service Title</label>
-              <p className="text-sm text-gray-900 font-medium">{data.service.title}</p>
+              <p className="text-sm text-gray-900 font-medium">{data.service?.title || 'Professional Service'}</p>
             </div>
             
             <div>
               <label className="text-sm font-medium text-gray-700">Category</label>
-              <Badge variant="secondary">{data.service.category}</Badge>
+              <Badge variant="secondary">{data.service?.category || 'General'}</Badge>
             </div>
             
-            {data.service.description && (
+            {data.service?.description && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Description</label>
                 <p className="text-sm text-gray-900">{data.service.description}</p>
@@ -364,13 +364,13 @@ export function BookingReportDetail({
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={data.client.avatar} />
-                <AvatarFallback>{data.client.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={data.client?.avatar} />
+                <AvatarFallback>{data.client?.name?.charAt(0) || 'C'}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium">{data.client.name}</p>
-                <p className="text-sm text-gray-600">{data.client.email}</p>
-                {data.client.company && (
+                <p className="font-medium">{data.client?.name || 'Unknown Client'}</p>
+                <p className="text-sm text-gray-600">{data.client?.email || 'No email'}</p>
+                {data.client?.company && (
                   <p className="text-sm text-gray-500">{data.client.company}</p>
                 )}
               </div>
@@ -389,13 +389,13 @@ export function BookingReportDetail({
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                <AvatarImage src={data.provider.avatar} />
-                <AvatarFallback>{data.provider.name.charAt(0)}</AvatarFallback>
+                <AvatarImage src={data.provider?.avatar} />
+                <AvatarFallback>{data.provider?.name?.charAt(0) || 'P'}</AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium">{data.provider.name}</p>
-                <p className="text-sm text-gray-600">{data.provider.email}</p>
-                {data.provider.company && (
+                <p className="font-medium">{data.provider?.name || 'Unknown Provider'}</p>
+                <p className="text-sm text-gray-600">{data.provider?.email || 'No email'}</p>
+                {data.provider?.company && (
                   <p className="text-sm text-gray-500">{data.provider.company}</p>
                 )}
               </div>

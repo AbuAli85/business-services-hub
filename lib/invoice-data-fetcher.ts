@@ -319,7 +319,7 @@ export function mapBookingToInvoiceData(
     }
     
     // Provider information with safe fallbacks
-    const providerProfile = booking.service.provider
+    const providerProfile = booking.service?.provider
     const providerCompanyRaw: any = providerProfile.company || {}
     
     const provider = {
@@ -350,15 +350,15 @@ export function mapBookingToInvoiceData(
     }
     
     // Financial calculations
-    const subtotal = booking.amount || booking.service.base_price || 0
+    const subtotal = booking.amount || booking.service?.base_price || 0
     const vatRate = 5.0 // Default VAT for Oman (5%)
     const vatAmount = Math.round((subtotal * vatRate / 100) * 100) / 100
     const total = subtotal + vatAmount
     
     // Service/Items
     const items = [{
-      product: booking.service.title || 'Professional Service',
-      description: booking.service.description || 'High-quality professional service',
+      product: booking.service?.title || 'Professional Service',
+      description: booking.service?.description || 'High-quality professional service',
       qty: 1,
       unit_price: subtotal,
       total: subtotal
@@ -380,7 +380,7 @@ export function mapBookingToInvoiceData(
       vat_amount: vatAmount,
       total,
       payment_terms: 'Payment due within 30 days',
-      notes: `Invoice for ${booking.service.title} - Booking #${booking.id.slice(0, 8)}`,
+      notes: `Invoice for ${booking.service?.title || 'Professional Service'} - Booking #${booking.id.slice(0, 8)}`,
       booking_id: booking.id
     }
     

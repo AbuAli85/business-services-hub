@@ -632,9 +632,9 @@ export default function EnhancedBookingDetails({
         status: enhancedBooking.status,
         approval_status: enhancedBooking.approval_status,
         progress_percentage: enhancedBooking.progress_percentage,
-        serviceTitle: enhancedBooking.service.title,
-        clientName: enhancedBooking.client.full_name,
-        providerName: enhancedBooking.provider.full_name
+        serviceTitle: enhancedBooking.service?.title || 'Professional Service',
+        clientName: enhancedBooking.client?.full_name || 'Unknown Client',
+        providerName: enhancedBooking.provider?.full_name || 'Unknown Provider'
       })
       
       setBooking(enhancedBooking)
@@ -1125,7 +1125,7 @@ export default function EnhancedBookingDetails({
       const exportData: ExportData = {
         booking: {
           id: booking.id,
-          title: booking.service.title,
+          title: booking.service?.title || 'Professional Service',
           status: booking.status,
           created_at: booking.created_at,
           amount: booking.amount,
@@ -1344,7 +1344,7 @@ export default function EnhancedBookingDetails({
     if (navigator.share) {
       navigator.share({
         title: `Booking #${booking?.id.slice(0, 8)}`,
-        text: `Check out this booking: ${booking?.service.title}`,
+        text: `Check out this booking: ${booking?.service?.title || 'Professional Service'}`,
         url: window.location.href
       }).catch(() => {
         // Fallback: copy to clipboard
@@ -2404,8 +2404,8 @@ export default function EnhancedBookingDetails({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-1">{booking.service.title}</h4>
-                  <p className="text-gray-600 text-sm mb-2">{booking.service.description}</p>
+                  <h4 className="font-semibold text-gray-900 mb-1">{booking.service?.title || 'Professional Service'}</h4>
+                  <p className="text-gray-600 text-sm mb-2">{booking.service?.description || 'No description available'}</p>
                   <Badge variant="secondary" className="text-xs">
                     {booking.service.category}
                   </Badge>
@@ -2446,13 +2446,13 @@ export default function EnhancedBookingDetails({
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={booking.client.avatar_url} alt={booking.client.full_name} />
-                      <AvatarFallback>{booking.client.full_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={booking.client?.avatar_url} alt={booking.client?.full_name || 'Client'} />
+                      <AvatarFallback>{(booking.client?.full_name || 'Client').slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">{booking.client.full_name}</p>
+                      <p className="font-medium text-gray-900">{booking.client?.full_name || 'Unknown Client'}</p>
                       <p className="text-sm text-gray-600">Client</p>
-                      {booking.client.company_name && (
+                      {booking.client?.company_name && (
                         <p className="text-xs text-gray-500">{booking.client.company_name}</p>
                       )}
                     </div>
@@ -2465,13 +2465,13 @@ export default function EnhancedBookingDetails({
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={booking.provider.avatar_url} alt={booking.provider.full_name} />
-                      <AvatarFallback>{booking.provider.full_name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={booking.provider?.avatar_url} alt={booking.provider?.full_name || 'Provider'} />
+                      <AvatarFallback>{(booking.provider?.full_name || 'Provider').slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <p className="font-medium text-gray-900">{booking.provider.full_name}</p>
-                        {booking.provider.rating && (
+                        <p className="font-medium text-gray-900">{booking.provider?.full_name || 'Unknown Provider'}</p>
+                        {booking.provider?.rating && (
                           <div className="flex items-center">
                             <Star className="h-3 w-3 text-yellow-400 fill-current" />
                             <span className="text-xs text-gray-600 ml-1">{booking.provider.rating}</span>
@@ -2479,7 +2479,7 @@ export default function EnhancedBookingDetails({
                         )}
                       </div>
                       <p className="text-sm text-gray-600">Service Provider</p>
-                      {booking.provider.availability_status && (
+                      {booking.provider?.availability_status && (
                         <div className="flex items-center space-x-1 mt-1">
                           <div className={`w-2 h-2 rounded-full ${
                             booking.provider.availability_status === 'available' ? 'bg-green-400' :
@@ -2623,7 +2623,7 @@ export default function EnhancedBookingDetails({
                         <div>
                           <p className="text-green-700 text-xs font-medium">Response Time</p>
                           <p className="text-xl font-bold text-green-900">
-                            {booking.provider.response_time || '< 1h'}
+                            {booking.provider?.response_time || '< 1h'}
                           </p>
                         </div>
                         <Clock className="h-6 w-6 text-green-600" />
