@@ -31,6 +31,15 @@ interface ServiceRecord {
   cover_image_url?: string
   bookings_count?: number
   rating?: number
+  deliverables?: string | string[]
+  requirements?: string | string[]
+  duration?: string
+  estimated_duration?: string
+  delivery_time?: string
+  max_revisions?: number
+  service_type?: string
+  difficulty_level?: string
+  tags?: string[]
   service_packages?: { id: string; name: string; description?: string; price: number; features?: string[] }[]
   provider?: { id: string; full_name?: string; email?: string; phone?: string; company_name?: string; avatar_url?: string } | null
 }
@@ -495,6 +504,101 @@ export default function ServiceDetail() {
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Service Details Section - Deliverables, Requirements, Duration */}
+                {(service.deliverables || service.requirements || service.duration || service.estimated_duration || service.delivery_time || service.max_revisions) && (
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-50/40 via-pink-50/30 to-purple-100/40 rounded-3xl -m-4"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-3xl -m-4"></div>
+                    <Card className="relative border-0 shadow-xl bg-white/80 backdrop-blur-md">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-3 text-xl">
+                          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                            <CheckCircle className="h-4 w-4 text-white" />
+                          </div>
+                          What's Included
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Duration and Revisions Grid */}
+                        {(service.duration || service.estimated_duration || service.delivery_time || service.max_revisions !== undefined) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {(service.duration || service.estimated_duration || service.delivery_time) && (
+                              <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                <Clock className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <div className="font-semibold text-gray-900 mb-1">Delivery Time</div>
+                                  <div className="text-sm text-gray-600">
+                                    {service.duration || service.estimated_duration || service.delivery_time}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {service.max_revisions !== undefined && (
+                              <div className="flex items-start gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+                                <Target className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                  <div className="font-semibold text-gray-900 mb-1">Revisions</div>
+                                  <div className="text-sm text-gray-600">
+                                    {service.max_revisions === 0 ? 'No revisions' : service.max_revisions === -1 ? 'Unlimited revisions' : `Up to ${service.max_revisions} revision${service.max_revisions > 1 ? 's' : ''}`}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Deliverables */}
+                        {service.deliverables && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <CheckCircle className="h-5 w-5 text-green-600" />
+                              <h3 className="font-semibold text-lg text-gray-900">Deliverables</h3>
+                            </div>
+                            <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                              {Array.isArray(service.deliverables) ? (
+                                <ul className="space-y-2">
+                                  {service.deliverables.map((item, index) => (
+                                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                                      <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                                      <span className="text-sm">{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-sm text-gray-700 whitespace-pre-line">{service.deliverables}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Requirements */}
+                        {service.requirements && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <AlertCircle className="h-5 w-5 text-orange-600" />
+                              <h3 className="font-semibold text-lg text-gray-900">Requirements</h3>
+                            </div>
+                            <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
+                              {Array.isArray(service.requirements) ? (
+                                <ul className="space-y-2">
+                                  {service.requirements.map((item, index) => (
+                                    <li key={index} className="flex items-start gap-2 text-gray-700">
+                                      <Info className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                                      <span className="text-sm">{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-sm text-gray-700 whitespace-pre-line">{service.requirements}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
 
                 {Array.isArray(service.service_packages) && service.service_packages.length > 0 && (
                   <div className="relative">
