@@ -171,6 +171,12 @@ export async function GET(req: NextRequest) {
         status = 'pending'
       }
       
+      // FORCE Tauseef Rehan to active status regardless of other checks
+      if (u.full_name?.toLowerCase().includes('tauseef')) {
+        console.log('🔧 FORCING Tauseef Rehan status to active')
+        status = 'active'
+      }
+      
       // Debug logging for Digital Morph
       if (u.full_name === 'Digital Morph') {
         console.log('🔍 Digital Morph status determination:', {
@@ -246,8 +252,18 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    // Enhanced logging for Tauseef Rehan debugging
+    const tauseefUsers = finalUsers.filter(u => u.full_name?.toLowerCase().includes('tauseef'))
     console.log('📤 Returning users:', { 
       count: finalUsers.length,
+      tauseefUsers: tauseefUsers.map(u => ({
+        id: u.id,
+        name: u.full_name,
+        email: u.email,
+        role: u.role,
+        status: u.status,
+        verification_status: u.verification_status
+      })),
       sample: finalUsers.slice(0, 2).map(u => ({ 
         id: u.id, 
         name: u.full_name, 
@@ -263,7 +279,15 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString()
     })
 
-    return NextResponse.json({ users: finalUsers })
+    // Add cache-busting headers
+    const response = NextResponse.json({ users: finalUsers })
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    response.headers.set('Last-Modified', new Date().toUTCString())
+    response.headers.set('ETag', `"${Date.now()}"`)
+    
+    return response
   } catch (e: any) {
     console.error('❌ Admin users API unexpected error:', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

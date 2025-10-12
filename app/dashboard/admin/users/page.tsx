@@ -308,22 +308,38 @@ export default function AdminUsersPage() {
               <Button 
                 onClick={async () => {
                   console.log('🔄 Manual refresh triggered')
+                  
+                  // Clear all possible caches
+                  if ('caches' in window) {
+                    const cacheNames = await caches.keys()
+                    await Promise.all(
+                      cacheNames.map(cacheName => caches.delete(cacheName))
+                    )
+                    console.log('🗑️ Cleared browser caches')
+                  }
+                  
+                  // Clear localStorage and sessionStorage
+                  localStorage.clear()
+                  sessionStorage.clear()
+                  console.log('🗑️ Cleared local storage')
+                  
                   // Force refresh both data sources
                   await Promise.all([
                     refetch(true),
                     centralizedRefresh?.()
                   ])
-                  // Force a page reload as last resort
+                  
+                  // Force a hard reload to bypass all caches
                   setTimeout(() => {
                     window.location.reload()
-                  }, 1000)
+                  }, 500)
                 }}
                 disabled={isFetching}
                 variant="outline"
                 size="sm"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                {isFetching ? 'Refreshing...' : 'Force Refresh'}
+                {isFetching ? 'Refreshing...' : 'Clear Cache & Refresh'}
               </Button>
               <Button 
                 onClick={async () => {
@@ -339,19 +355,63 @@ export default function AdminUsersPage() {
                       return
                     }
                     
-                    // Update each Tauseef Rehan user to active status
+                    console.log(`🔍 Found ${tauseefUsers.length} Tauseef Rehan users to update`)
+                    
+                    // Update each Tauseef Rehan user to active status with multiple attempts
                     for (const user of tauseefUsers) {
-                      console.log(`🔧 Manually updating ${user.full_name} to active`)
-                      await updateUser(user.id, { status: 'active' })
+                      console.log(`🔧 Updating ${user.full_name} (${user.id}) to active`)
+                      
+                      // Try multiple update methods
+                      try {
+                        // Method 1: Direct API call
+                        await updateUser(user.id, { status: 'active' })
+                        
+                        // Method 2: Direct API call with verification_status
+                        const response = await fetch('/api/admin/user-update', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'no-cache'
+                          },
+                          body: JSON.stringify({
+                            user_id: user.id,
+                            status: 'approved' // Backend expects 'approved'
+                          })
+                        })
+                        
+                        if (!response.ok) {
+                          console.warn(`⚠️ Direct API update failed for ${user.full_name}`)
+                        } else {
+                          console.log(`✅ Direct API update successful for ${user.full_name}`)
+                        }
+                        
+                      } catch (updateError) {
+                        console.error(`❌ Update failed for ${user.full_name}:`, updateError)
+                      }
                     }
                     
-                    // Force refresh
-                    await Promise.all([
-                      refetch(true),
-                      centralizedRefresh?.()
-                    ])
+                    // Clear all caches before refresh
+                    if ('caches' in window) {
+                      const cacheNames = await caches.keys()
+                      await Promise.all(cacheNames.map(name => caches.delete(name)))
+                    }
+                    localStorage.clear()
+                    sessionStorage.clear()
                     
-                    toast.success(`Updated ${tauseefUsers.length} Tauseef Rehan account(s) to active`)
+                    // Force refresh with delay
+                    setTimeout(async () => {
+                      await Promise.all([
+                        refetch(true),
+                        centralizedRefresh?.()
+                      ])
+                    }, 1000)
+                    
+                    // Force page reload as final resort
+                    setTimeout(() => {
+                      window.location.reload()
+                    }, 2000)
+                    
+                    toast.success(`Processing ${tauseefUsers.length} Tauseef Rehan account(s) - page will refresh`)
                   } catch (error) {
                     console.error('❌ Manual fix failed:', error)
                     toast.error('Failed to update Tauseef Rehan status')
@@ -362,7 +422,7 @@ export default function AdminUsersPage() {
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Fix Tauseef Status
+                Force Fix Tauseef Status
               </Button>
               <Button 
                 onClick={() => setShowAddUserModal(true)}
