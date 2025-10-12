@@ -254,8 +254,27 @@ export function EnhancedServiceTable({
     const approvalStatus = service.approval_status
     const isRecentlyApproved = recentlyApproved.has(service.id)
     
+    // Debug: Log the service status for troubleshooting
+    console.log('🔍 getStatusBadge for service:', service.id, {
+      approval_status: approvalStatus,
+      status: status,
+      isRecentlyApproved
+    })
+    
     if (approvalStatus === 'pending') {
       return <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50">Pending Approval</Badge>
+    }
+    
+    // If approved but status is not active, show as approved
+    if (approvalStatus === 'approved' && status !== 'active') {
+      return (
+        <Badge 
+          variant="outline" 
+          className={`text-blue-600 border-blue-200 bg-blue-50 ${isRecentlyApproved ? 'animate-pulse ring-2 ring-blue-300' : ''}`}
+        >
+          {isRecentlyApproved ? '✅ Just Approved' : 'Approved'}
+        </Badge>
+      )
     }
     
     switch (status) {

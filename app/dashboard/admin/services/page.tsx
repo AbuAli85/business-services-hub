@@ -272,6 +272,16 @@ export default function AdminServicesPage() {
 
       setServices(data || [])
       setTotalCount(count || 0)
+      
+      // Debug: Log the first few services to see their actual status
+      if (data && data.length > 0) {
+        console.log('🔍 loadServices() - First 3 services loaded:', data.slice(0, 3).map(s => ({
+          id: s.id,
+          title: s.title,
+          approval_status: s.approval_status,
+          status: s.status
+        })))
+      }
       // If current page is out of bounds after new count, snap to last valid page
       const totalPages = Math.max(1, Math.ceil((count || 0) / pageSize))
       if (page > totalPages) {
@@ -543,12 +553,22 @@ export default function AdminServicesPage() {
           console.log('🔄 Switching to Approved filter to show the newly approved service...')
           // Switch to "approved" filter so user can see the service in its new home
           setStatusFilter('approved')
-          // Force a refresh to ensure the service appears in the new filter
-          setTimeout(async () => {
-            console.log('🔄 Refreshing services list for Approved filter...')
-            await loadServices()
-            console.log('✅ Services list refreshed - approved service should now be visible')
-          }, 500)
+        // Force a refresh to ensure the service appears in the new filter
+        setTimeout(async () => {
+          console.log('🔄 Refreshing services list for Approved filter...')
+          console.log('🔍 Current statusFilter before refresh:', statusFilter)
+          await loadServices()
+          console.log('✅ Services list refreshed - approved service should now be visible')
+          
+          // Double-check: Log the first few services to verify their status
+          const supabase = await getSupabaseClient()
+          const { data: debugServices } = await supabase
+            .from('services')
+            .select('id, title, approval_status, status')
+            .eq('approval_status', 'approved')
+            .limit(3)
+          console.log('🔍 Debug - Recent approved services:', debugServices)
+        }, 500)
           console.log('✅ Switched to Approved filter - service will appear there')
         }, 2000)
       } else {
@@ -947,6 +967,17 @@ export default function AdminServicesPage() {
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={() => {
+                console.log('🔧 Manual debug refresh triggered')
+                loadServices()
+              }}
+            >
+              🔧 Debug Refresh
             </Button>
           </div>
         </div>
