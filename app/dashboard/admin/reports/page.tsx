@@ -106,12 +106,23 @@ function AdminReportsPageContent() {
         .select('*')
         .order('generated_at', { ascending: false })
       
-      if (reportsError) throw reportsError
+      // Handle case where reports table doesn't exist yet
+      if (reportsError) {
+        if (reportsError.code === '42P01') {
+          // Table doesn't exist - this is okay, just show empty state
+          setReports([])
+          return
+        }
+        throw reportsError
+      }
       
       setReports(reportsData || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading reports:', error)
-      toast.error('Failed to load reports')
+      // Don't show error toast if table doesn't exist
+      if (error.code !== '42P01') {
+        toast.error('Failed to load reports')
+      }
       setReports([])
     }
   }

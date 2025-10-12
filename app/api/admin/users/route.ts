@@ -28,30 +28,19 @@ export async function GET(req: NextRequest) {
     const requestUrl = new URL(req.url)
     const testBypass = requestUrl.searchParams.get('test') === 'true'
     
-    console.log('🔐 Admin Users API - Auth Check:', { 
-      hasAuthHeader: !!authHeader, 
-      hasToken: !!token,
-      tokenLength: token.length,
-      testBypass,
-      timestamp: new Date().toISOString()
-    })
-    
     if (!token && !testBypass) {
-      console.log('❌ No token provided and no test bypass')
       return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 })
     }
     
     let userId, metaRole, tokenUser
     
     if (testBypass) {
-      console.log('🧪 Test bypass enabled - skipping authentication')
       userId = 'test-admin-user'
       metaRole = 'admin'
       tokenUser = { user: { id: userId, email: 'test@admin.com', user_metadata: { role: 'admin' } } }
     } else {
       const { data: tokenUserData, error: tokenErr } = await admin.auth.getUser(token)
       if (tokenErr || !tokenUserData?.user) {
-        console.log('❌ Token validation failed:', tokenErr?.message)
         return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 })
       }
       
@@ -60,14 +49,6 @@ export async function GET(req: NextRequest) {
       metaRole = (tokenUser.user.user_metadata as any)?.role
     }
     
-    console.log('👤 User info:', { 
-      userId, 
-      email: tokenUser.user.email,
-      metaRole,
-      userMetadata: tokenUser.user.user_metadata,
-      testBypass
-    })
-    
     if (!testBypass && metaRole !== 'admin') {
       const { data: me } = await supabase
         .from('profiles')
@@ -75,25 +56,15 @@ export async function GET(req: NextRequest) {
         .eq('id', userId)
         .single()
       
-      console.log('📋 Profile role check:', { profileRole: me?.role })
-      
       if ((me?.role || 'client') !== 'admin') {
-        console.log('❌ User is not admin')
         return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 })
       }
     }
-    
-    console.log('✅ Admin access granted')
 
     // Simpler: list users from profiles only (avoids auth DB dependency)
     const url = new URL(req.url)
     const q = (url.searchParams.get('q') || '').trim()
     
-    console.log('📊 API Request Details:', {
-      url: req.url,
-      query: q,
-      timestamp: new Date().toISOString()
-    })
     // Load auth users upfront for enrichment
     let authUsers: any[] = []
     let authById = new Map()
@@ -101,14 +72,9 @@ export async function GET(req: NextRequest) {
       const res: any = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
       authUsers = res?.data?.users || res?.users || []
       authById = new Map(authUsers.map((au: any) => [au.id, au]))
-      console.log('🔐 Loaded auth users:', { 
-        count: authUsers.length,
-        sample: authUsers.slice(0, 3).map(u => ({ id: u.id, email: u.email, role: u.user_metadata?.role }))
-      })
     } catch (error) {
       console.error('❌ Error loading auth users (continuing without):', error)
       // Continue without auth users - we'll use profile data only
-      console.log('🔄 Continuing with profiles-only mode')
     }
 
     // Use admin client for profiles read to bypass RLS when authorized
@@ -138,17 +104,6 @@ export async function GET(req: NextRequest) {
       const metaStatus = (au?.user_metadata as any)?.status as string | undefined
       const verificationStatus = u.verification_status as string | undefined
       
-      console.log('👤 Processing user:', { 
-        id: u.id, 
-        email, 
-        role, 
-        verificationStatus,
-        metaStatus,
-        hasAuthUser: !!au,
-        authUserEmail: au?.email,
-        profileEmail: u.email
-      })
-      
       // Use verification_status from profiles table as the primary source
       // Fallback to user_metadata.status if verification_status is not set
       let status: string
@@ -173,31 +128,7 @@ export async function GET(req: NextRequest) {
       
       // FORCE Tauseef Rehan to active status regardless of other checks
       if (u.full_name?.toLowerCase().includes('tauseef')) {
-        console.log('🔧 FORCING Tauseef Rehan status to active')
         status = 'active'
-      }
-      
-      // Debug logging for Digital Morph
-      if (u.full_name === 'Digital Morph') {
-        console.log('🔍 Digital Morph status determination:', {
-          verificationStatus,
-          metaStatus,
-          finalStatus: status,
-          role
-        })
-      }
-      
-      // Debug logging for Tauseef Rehan
-      if (u.full_name?.toLowerCase().includes('tauseef')) {
-        console.log('🔍 Tauseef Rehan status determination:', {
-          id: u.id,
-          fullName: u.full_name,
-          verificationStatus,
-          metaStatus,
-          finalStatus: status,
-          role,
-          email
-        })
       }
       
       return {
@@ -251,33 +182,6 @@ export async function GET(req: NextRequest) {
         (u.role || '').toLowerCase().includes(s)
       )
     }
-
-    // Enhanced logging for Tauseef Rehan debugging
-    const tauseefUsers = finalUsers.filter(u => u.full_name?.toLowerCase().includes('tauseef'))
-    console.log('📤 Returning users:', { 
-      count: finalUsers.length,
-      tauseefUsers: tauseefUsers.map(u => ({
-        id: u.id,
-        name: u.full_name,
-        email: u.email,
-        role: u.role,
-        status: u.status,
-        verification_status: u.verification_status
-      })),
-      sample: finalUsers.slice(0, 2).map(u => ({ 
-        id: u.id, 
-        name: u.full_name, 
-        role: u.role, 
-        status: u.status,
-        verification_status: u.verification_status
-      })),
-      digitalMorph: finalUsers.find(u => u.full_name === 'Digital Morph') ? {
-        name: finalUsers.find(u => u.full_name === 'Digital Morph')?.full_name,
-        status: finalUsers.find(u => u.full_name === 'Digital Morph')?.status,
-        verification_status: finalUsers.find(u => u.full_name === 'Digital Morph')?.verification_status
-      } : 'Not found',
-      timestamp: new Date().toISOString()
-    })
 
     // Add cache-busting headers
     const response = NextResponse.json({ users: finalUsers })

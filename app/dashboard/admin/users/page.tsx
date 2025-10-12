@@ -141,14 +141,6 @@ export default function AdminUsersPage() {
                           newStatus === 'inactive' ? 'rejected' : 
                           newStatus === 'deleted' ? 'deleted' : 'pending'
       
-      console.log('🔄 Status change:', {
-        userId: user.id,
-        userName: user.full_name,
-        currentStatus: user.status,
-        newStatus,
-        backendStatus
-      })
-      
       await updateUser(user.id, { status: backendStatus as any })
       
       // Add a small delay to ensure backend has processed the update
@@ -307,21 +299,17 @@ export default function AdminUsersPage() {
               <RealtimeNotifications />
               <Button 
                 onClick={async () => {
-                  console.log('🔄 Manual refresh triggered')
-                  
                   // Clear all possible caches
                   if ('caches' in window) {
                     const cacheNames = await caches.keys()
                     await Promise.all(
                       cacheNames.map(cacheName => caches.delete(cacheName))
                     )
-                    console.log('🗑️ Cleared browser caches')
                   }
                   
                   // Clear localStorage and sessionStorage
                   localStorage.clear()
                   sessionStorage.clear()
-                  console.log('🗑️ Cleared local storage')
                   
                   // Force refresh both data sources
                   await Promise.all([
@@ -343,7 +331,6 @@ export default function AdminUsersPage() {
               </Button>
               <Button 
                 onClick={async () => {
-                  console.log('🔧 Manual Tauseef Rehan status fix triggered')
                   try {
                     // Find Tauseef Rehan users
                     const tauseefUsers = finalUsers.filter(user => 
