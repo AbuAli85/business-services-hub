@@ -71,6 +71,22 @@ export async function POST(request: NextRequest) {
     
     // Use service role client for the insert
     // This bypasses RLS which causes issues with audit log creation
+    
+    // Debug: Check if service role key is available
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('❌ SUPABASE_SERVICE_ROLE_KEY environment variable is not set!')
+      console.error('Available env vars:', Object.keys(process.env).filter(k => k.includes('SUPABASE')))
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'SUPABASE_SERVICE_ROLE_KEY environment variable is not set. Please add it to Vercel environment variables and redeploy.' 
+        },
+        { status: 500 }
+      )
+    }
+    
+    console.log('✅ Service role key is available, creating client...')
+    
     const serviceRoleClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -81,6 +97,8 @@ export async function POST(request: NextRequest) {
         }
       }
     )
+    
+    console.log('✅ Service role client created successfully')
     
     const { data, error } = await serviceRoleClient
       .from('service_audit_logs')
