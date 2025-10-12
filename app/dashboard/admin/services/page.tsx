@@ -273,8 +273,8 @@ export default function AdminServicesPage() {
       setServices(data || [])
       setTotalCount(count || 0)
       
-      // Debug: Log the first few services to see their actual status
-      if (data && data.length > 0) {
+      // Debug: Log the first few services to see their actual status (development only)
+      if (process.env.NODE_ENV === 'development' && data && data.length > 0) {
         console.log('🔍 loadServices() - First 3 services loaded:', data.slice(0, 3).map(s => ({
           id: s.id,
           title: s.title,
@@ -445,14 +445,11 @@ export default function AdminServicesPage() {
 
   // Enhanced service handlers for the new table
   const handleApproveService = async (service: Service) => {
-    console.log('🚀 Starting approval for service:', service.id, service.title)
-    console.log('📊 Current approval_status:', service.approval_status)
-    console.log('🔍 Current statusFilter:', statusFilter)
-    
-    // Debug: Check current user context
-    console.log('🔍 Debug - Current actorId:', actorId)
-    console.log('🔍 Debug - Current actorName:', actorName)
-    console.log('🔍 Debug - Current actorEmail:', actorEmail)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚀 Starting approval for service:', service.id, service.title)
+      console.log('📊 Current approval_status:', service.approval_status)
+      console.log('🔍 Current statusFilter:', statusFilter)
+    }
     
     // Optimistically update the local state
     const originalServices = [...services]

@@ -254,12 +254,14 @@ export function EnhancedServiceTable({
     const approvalStatus = service.approval_status
     const isRecentlyApproved = recentlyApproved.has(service.id)
     
-    // Debug: Log the service status for troubleshooting
-    console.log('🔍 getStatusBadge for service:', service.id, {
-      approval_status: approvalStatus,
-      status: status,
-      isRecentlyApproved
-    })
+    // Debug: Log the service status for troubleshooting (can be removed in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 getStatusBadge for service:', service.id, {
+        approval_status: approvalStatus,
+        status: status,
+        isRecentlyApproved
+      })
+    }
     
     if (approvalStatus === 'pending') {
       return <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50">Pending Approval</Badge>
