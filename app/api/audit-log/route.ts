@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createServerClient } from '@supabase/supabase-js'
 import { createClient } from '@/utils/supabase/server'
 
 /**
  * API endpoint to create audit logs with server-side authentication
- * This bypasses client-side RLS issues by using server-side Supabase client
+ * This bypasses client-side RLS issues by using service role key
+ * 
+ * Note: We use service role key for audit logs because:
+ * - Audit logs are system/administrative logs, not user-facing data
+ * - RLS causes authentication context issues in various client scenarios
+ * - Server-side validation ensures only admins can write logs
  */
 export async function POST(request: NextRequest) {
   try {
+    // First, verify the user is authenticated using the regular client
     const supabase = await createClient()
     
     // Verify user is authenticated
@@ -51,7 +58,7 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Create audit log entry with server-side client
+    // Create audit log entry using service role client to bypass RLS
     const auditLog = {
       service_id: serviceId,
       event,
@@ -62,7 +69,20 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString()
     }
     
-    const { data, error } = await supabase
+    // Use service role client for the insert
+    // This bypasses RLS which causes issues with audit log creation
+    const serviceRoleClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+    
+    const { data, error } = await serviceRoleClient
       .from('service_audit_logs')
       .insert(auditLog)
       .select()
