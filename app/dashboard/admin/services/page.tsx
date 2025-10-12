@@ -493,14 +493,29 @@ export default function AdminServicesPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Ensure both approval_status and status are updated atomically
+      const updateData = { 
+        approval_status: 'approved',
+        status: 'active',
+        updated_at: new Date().toISOString()
+      }
+      
+      console.log('📝 Updating service with data:', updateData)
+      
       const { error } = await supabase
         .from('services')
-        .update({ 
-          approval_status: 'approved',
-          status: 'active',
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', service.id)
+        
+      // Verify the update was successful
+      if (!error) {
+        const { data: verifyData } = await supabase
+          .from('services')
+          .select('id, title, approval_status, status')
+          .eq('id', service.id)
+          .single()
+        console.log('✅ Verification - Service after update:', verifyData)
+      }
 
       if (error) throw error
       console.log('✅ Database update successful')
