@@ -38,7 +38,8 @@ import {
   Mail,
   Phone,
   Link as LinkIcon,
-  Copy
+  Copy,
+  Edit3
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -250,7 +251,13 @@ export default function AdminServicesPage() {
       }
 
       if (statusFilter && statusFilter !== 'all') {
-        query = query.eq('approval_status', statusFilter)
+        if (statusFilter === 'featured') {
+          query = query.eq('featured', true)
+        } else if (statusFilter === 'draft') {
+          query = query.eq('status', 'draft')
+        } else {
+          query = query.eq('approval_status', statusFilter)
+        }
       }
 
       const sortColumn = ['created_at', 'title', 'base_price'].includes(sortBy) ? sortBy : 'created_at'
@@ -763,14 +770,48 @@ export default function AdminServicesPage() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-56">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending Review</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="all">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      <span>All Statuses</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="pending">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-yellow-600" />
+                      <span>Pending Review</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="approved">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <span>Approved</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="rejected">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-red-600" />
+                      <span>Rejected</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="draft">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-600" />
+                      <span>Draft</span>
+                    </div>
+                  </SelectItem>
+                  {allowFeature && (
+                    <SelectItem value="featured">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-purple-600" />
+                        <span>Featured</span>
+                      </div>
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={(v) => { setSortBy(v); setPage(1) }}>
@@ -816,13 +857,52 @@ export default function AdminServicesPage() {
               />
             </div>
 
-            {/* Bulk Actions */}
+            {/* Enhanced Bulk Actions Bar */}
             {selectedIds.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{selectedIds.length} selected</Badge>
-            <Button size="sm" onClick={() => { setConfirmAction('approve'); setConfirmOpen(true) }}>Approve</Button>
-                <Button size="sm" variant="destructive" onClick={() => { setConfirmAction('reject'); setConfirmOpen(true) }}>Reject</Button>
-            <Button size="sm" variant="outline" onClick={() => { setConfirmAction('toggleFeatured'); setConfirmOpen(true) }}>Toggle Featured</Button>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge variant="secondary" className="text-sm font-semibold">
+                    {selectedIds.length} service{selectedIds.length > 1 ? 's' : ''} selected
+                  </Badge>
+                  <div className="h-6 w-px bg-blue-300" />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => { setConfirmAction('approve'); setConfirmOpen(true) }}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approve Selected
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="destructive" 
+                      onClick={() => { setConfirmAction('reject'); setConfirmOpen(true) }}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Reject Selected
+                    </Button>
+                    {allowFeature && (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => { setConfirmAction('toggleFeatured'); setConfirmOpen(true) }}
+                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      >
+                        <Star className="h-4 w-4 mr-1" />
+                        Toggle Featured
+                      </Button>
+                    )}
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setSelectedIds([])}
+                      className="ml-auto"
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -953,22 +1033,87 @@ export default function AdminServicesPage() {
                     </Button>
                   </div>
                 </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Button size="sm" aria-label="Approve service" disabled={!actorId} onClick={() => handleApproveService(detailsService)}>Approve</Button>
-                      <Button size="sm" aria-label="Reject service" disabled={!actorId} variant="destructive" onClick={() => rejectService(detailsService.id)}>Reject</Button>
-                      <Button size="sm" aria-label="Suspend service" disabled={!actorId} variant="outline" onClick={() => handleSuspendService(detailsService)}>Suspend</Button>
-                      <Button size="sm" aria-label="Toggle featured" disabled={!actorId} variant="secondary" onClick={() => handleFeatureService(detailsService)}>
-                    {detailsService.featured ? 'Unfeature' : 'Feature'}
-                  </Button>
-                  {detailsService.slug && (
+                    <div className="flex flex-wrap gap-2 flex-shrink-0">
+                      {detailsService.approval_status === 'pending' && (
+                        <>
+                          <Button 
+                            size="sm" 
+                            aria-label="Approve service" 
+                            disabled={!actorId} 
+                            onClick={() => handleApproveService(detailsService)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            aria-label="Reject service" 
+                            disabled={!actorId} 
+                            variant="destructive" 
+                            onClick={() => rejectService(detailsService.id)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      <Button 
+                        size="sm" 
+                        aria-label="Edit service" 
+                        disabled={!actorId} 
+                        variant="default"
+                        onClick={() => {
+                          setDetailsOpen(false)
+                          router.push(`/dashboard/services/${detailsService.id}/edit`)
+                        }}
+                      >
+                        <Edit3 className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        aria-label="Suspend service" 
+                        disabled={!actorId} 
+                        variant="outline" 
+                        onClick={() => handleSuspendService(detailsService)}
+                      >
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        Suspend
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        aria-label="Toggle featured" 
+                        disabled={!actorId} 
+                        variant="secondary" 
+                        onClick={() => handleFeatureService(detailsService)}
+                      >
+                        <Star className="h-4 w-4 mr-1" />
+                        {detailsService.featured ? 'Unfeature' : 'Feature'}
+                      </Button>
+                      {detailsService.slug && (
                         <Link href={`/services/${detailsService.slug}`} target="_blank" rel="noreferrer" className="inline-flex">
-                          <Button size="sm" aria-label="Open public page" variant="outline">Open page</Button>
-                    </Link>
-                  )}
-                  {detailsService.provider?.id && (
-                        <Button size="sm" aria-label="View provider profile" variant="outline" onClick={() => { setDetailsOpen(false); router.push(`/dashboard/admin/users?userId=${detailsService.provider!.id}`) }}>Provider</Button>
-                  )}
-                </div>
+                          <Button size="sm" aria-label="Open public page" variant="outline">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Public
+                          </Button>
+                        </Link>
+                      )}
+                      {detailsService.provider?.id && (
+                        <Button 
+                          size="sm" 
+                          aria-label="View provider profile" 
+                          variant="outline" 
+                          onClick={() => { 
+                            setDetailsOpen(false)
+                            router.push(`/dashboard/admin/users?userId=${detailsService.provider!.id}`) 
+                          }}
+                        >
+                          <User className="h-4 w-4 mr-1" />
+                          Provider
+                        </Button>
+                      )}
+                    </div>
               </div>
 
               {/* Key facts grid */}

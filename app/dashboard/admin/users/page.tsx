@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { useUsers } from '@/hooks/useUsers'
 import { useDashboardData } from '@/hooks/useDashboardData'
@@ -338,17 +339,47 @@ export default function AdminUsersPage() {
         {selectedIds.size > 0 && (
           <Card className="mb-6 border-blue-200 bg-blue-50">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-blue-900">
+                  <span className="text-sm font-semibold text-blue-900">
                     {selectedIds.size} user{selectedIds.size > 1 ? 's' : ''} selected
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Bulk Role Assignment */}
+                  <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-1.5 border border-blue-300">
+                    <span className="text-xs font-medium text-gray-700">Assign Role:</span>
+                    <Select 
+                      value="" 
+                      onValueChange={async (role) => {
+                        try {
+                          await bulkAction(Array.from(selectedIds), 'role', role)
+                          toast.success(`Role updated for ${selectedIds.size} users`)
+                          setSelectedIds(new Set())
+                        } catch (e: any) {
+                          toast.error(e.message || 'Failed to update roles')
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-32 text-xs">
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="manager">Manager</SelectItem>
+                        <SelectItem value="provider">Provider</SelectItem>
+                        <SelectItem value="client">Client</SelectItem>
+                        <SelectItem value="staff">Staff</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="h-6 w-px bg-blue-300" />
+                  
                   <Button
                     size="sm"
                     onClick={() => handleBulkAction('approve')}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-green-600 hover:bg-green-700 text-white"
                   >
                     <CheckCircle2 className="h-4 w-4 mr-1" />
                     Approve
@@ -364,10 +395,10 @@ export default function AdminUsersPage() {
                   </Button>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => setSelectedIds(new Set())}
                   >
-                    Cancel
+                    Clear Selection
                   </Button>
                 </div>
               </div>
