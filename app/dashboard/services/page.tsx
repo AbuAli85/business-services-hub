@@ -194,6 +194,7 @@ function ServicesStats({ services, bookings, loading }: { services: any[], booki
 function ServiceCard({ service, isProvider, router, onStatusChange }: { service: any, isProvider: boolean, router: any, onStatusChange?: () => void }) {
   const imageUrl = getServiceCardImageUrl(service.cover_image_url, service.category)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [isNavigating, setIsNavigating] = useState(false)
   
   // Debug: Log service data to see if booking_count and total_revenue are present
   useEffect(() => {
@@ -395,19 +396,24 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
                   onClick={(e) => {
                     e.stopPropagation()
                     e.preventDefault()
-                    if (service.id) {
+                    if (service.id && !isNavigating && !isUpdating) {
                       console.log('📝 Navigating to edit service:', service.id)
+                      setIsNavigating(true)
                       router.push(`/dashboard/services/${service.id}/edit`)
-                    } else {
+                    } else if (!service.id) {
                       console.error('Service ID is missing')
                     }
                   }}
-                  disabled={isUpdating}
+                  disabled={isUpdating || isNavigating}
                   className="flex-1"
                   title="Edit service details"
                 >
-                  <Edit className="h-3 w-3 mr-1" />
-                  Edit
+                  {isNavigating ? (
+                    <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Edit className="h-3 w-3 mr-1" />
+                  )}
+                  {isNavigating ? 'Opening...' : 'Edit'}
                 </Button>
                 <Button
                   variant="outline"
@@ -430,18 +436,24 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
                 onClick={(e) => {
                   e.stopPropagation()
                   e.preventDefault()
-                  if (service.id) {
+                  if (service.id && !isNavigating) {
                     console.log('📝 Navigating to edit service:', service.id)
+                    setIsNavigating(true)
                     router.push(`/dashboard/services/${service.id}/edit`)
-                  } else {
+                  } else if (!service.id) {
                     console.error('Service ID is missing for edit')
                   }
                 }}
+                disabled={isNavigating}
                 className="flex-1"
                 title="Edit service details"
               >
-                <Edit className="h-3 w-3 mr-1" />
-                Edit
+                {isNavigating ? (
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Edit className="h-3 w-3 mr-1" />
+                )}
+                {isNavigating ? 'Opening...' : 'Edit'}
               </Button>
             )}
             
@@ -450,18 +462,24 @@ function ServiceCard({ service, isProvider, router, onStatusChange }: { service:
               onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
-                if (service.id) {
+                if (service.id && !isNavigating) {
                   console.log('👁️ Navigating to view service:', service.id)
+                  setIsNavigating(true)
                   router.push(`/services/${service.id}`)
-                } else {
+                } else if (!service.id) {
                   console.error('Service ID is missing')
                 }
               }}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 flex-1"
+              disabled={isNavigating}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 flex-1 disabled:opacity-50"
               title="View service details"
             >
-              <Eye className="h-4 w-4 mr-2" />
-              View
+              {isNavigating ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Eye className="h-4 w-4 mr-2" />
+              )}
+              {isNavigating ? 'Opening...' : 'View'}
             </Button>
           </div>
         </div>
@@ -485,6 +503,7 @@ export default function ServicesPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [refreshing, setRefreshing] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
   // Only call useDashboardData after auth is loaded
   const { services, bookings, loading, error, refresh } = useDashboardData(
@@ -648,9 +667,16 @@ export default function ServicesPage() {
     return cats.sort()
   }, [services])
 
+  // Track if data has loaded at least once to prevent loading screen on navigation
+  useEffect(() => {
+    if (!loading && services && services.length > 0) {
+      setHasLoadedOnce(true)
+    }
+  }, [loading, services])
+  
   // Loading state with timeout indicator
-  // Only show full loading screen on initial auth load or when we have no data
-  if (authLoading || (loading && (!services || services.length === 0))) {
+  // Only show full loading screen on initial auth load or when we truly have no data on first render
+  if (authLoading || (loading && !hasLoadedOnce && (!services || services.length === 0))) {
     return (
       <RoleBasedLayout role={userRole} onNavigate={handleNavigate} onLogout={handleLogout}>
         <div className="flex items-center justify-center h-64">
@@ -789,31 +815,33 @@ export default function ServicesPage() {
                 <div className="flex border rounded-lg" role="group" aria-label="View mode toggle">
                   <Button
                     variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    size="sm"
+                    size="default"
                     onClick={(e) => {
                       e.preventDefault()
                       console.log('🔲 Switching to grid view')
                       setViewMode('grid')
                     }}
-                    className="rounded-r-none h-11 px-3"
+                    className="rounded-r-none h-11 px-4 gap-2 font-medium"
                     aria-label="Grid view"
                     title="Grid view"
                   >
-                    <Grid3X3 className="h-4 w-4" />
+                    <Grid3X3 className="h-5 w-5" />
+                    <span className="hidden sm:inline">Grid</span>
                   </Button>
                   <Button
                     variant={viewMode === 'list' ? 'default' : 'ghost'}
-                    size="sm"
+                    size="default"
                     onClick={(e) => {
                       e.preventDefault()
                       console.log('📋 Switching to list view')
                       setViewMode('list')
                     }}
-                    className="rounded-l-none h-11 px-3"
+                    className="rounded-l-none h-11 px-4 gap-2 font-medium"
                     aria-label="List view"
                     title="List view"
                   >
-                    <List className="h-4 w-4" />
+                    <List className="h-5 w-5" />
+                    <span className="hidden sm:inline">List</span>
                   </Button>
                 </div>
               </div>
