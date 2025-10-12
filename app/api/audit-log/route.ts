@@ -89,16 +89,24 @@ export async function POST(request: NextRequest) {
     console.log('📍 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 40))
     console.log('🔑 Service role key prefix:', process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20))
     
+    // Create service role client with minimal config to ensure it uses the service role properly
     const serviceRoleClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
         auth: {
           autoRefreshToken: false,
-          persistSession: false
+          persistSession: false,
+          detectSessionInUrl: false,
+          flowType: 'implicit'
         },
         db: {
           schema: 'public'
+        },
+        global: {
+          headers: {
+            'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY!
+          }
         }
       }
     )
