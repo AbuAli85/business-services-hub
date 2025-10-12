@@ -48,16 +48,20 @@ export async function notifyProvider(
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
-    
+
     const { error } = await supabase
       .from('notifications')
       .insert(notification)
-    
+
     if (error) {
       console.error('Error creating notification:', error)
-      throw error
+      console.error('Notification data:', notification)
+      
+      // Don't throw - notification failure shouldn't block the main action
+      console.warn('⚠️ Notification creation failed, but continuing with email...')
+      return
     }
-    
+
     console.log('✅ In-app notification created for provider:', providerId, 'Action:', data.action)
     
     // Send email notification for critical actions only
@@ -122,7 +126,9 @@ export async function createAuditLog(
     
     if (error) {
       console.error('Error creating audit log:', error)
-      // Don't throw - audit log failure shouldn't block the main action
+      console.error('Audit log data:', auditLog)
+      console.warn('⚠️ Audit log creation failed, but main action will continue...')
+      return
     }
     
     console.log('✅ Audit log created for service:', serviceId, 'Action:', action)

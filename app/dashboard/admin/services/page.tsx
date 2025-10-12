@@ -114,6 +114,7 @@ export default function AdminServicesPage() {
   const [detailsService, setDetailsService] = useState<Service | null>(null)
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [auditLoading, setAuditLoading] = useState(false)
+  const [recentlyApproved, setRecentlyApproved] = useState<Set<string>>(new Set())
   const [galleryIndex, setGalleryIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [allowFeature, setAllowFeature] = useState(true)
@@ -436,6 +437,7 @@ export default function AdminServicesPage() {
   const handleApproveService = async (service: Service) => {
     console.log('🚀 Starting approval for service:', service.id, service.title)
     console.log('📊 Current approval_status:', service.approval_status)
+    console.log('🔍 Current statusFilter:', statusFilter)
     
     // Optimistically update the local state
     const originalServices = [...services]
@@ -454,6 +456,24 @@ export default function AdminServicesPage() {
       approved: prev.approved + 1
     }))
     console.log('📈 Stats updated optimistically')
+    
+    // If we're filtering by "pending" and just approved a service, 
+    // it will disappear from the list after refresh. Let's handle this gracefully.
+    const willDisappearFromCurrentFilter = statusFilter === 'pending'
+    if (willDisappearFromCurrentFilter) {
+      console.log('⚠️ Service will disappear from current filter after refresh')
+      // Mark this service as recently approved for visual feedback
+      setRecentlyApproved(prev => new Set(prev).add(service.id))
+      
+      // Clear the "recently approved" flag after 3 seconds
+      setTimeout(() => {
+        setRecentlyApproved(prev => {
+          const next = new Set(prev)
+          next.delete(service.id)
+          return next
+        })
+      }, 3000)
+    }
     
     try {
       const supabase = await getSupabaseClient()
@@ -499,12 +519,34 @@ export default function AdminServicesPage() {
       toast.success('Service approved successfully!')
       console.log('🎉 Approval process completed successfully')
       
-      // Refresh to ensure data consistency (with delay to let optimistic update show)
-      setTimeout(async () => {
-        console.log('🔄 Refreshing services list...')
-        await loadServices()
-        console.log('✅ Services list refreshed')
-      }, 500)
+      // Handle the refresh intelligently based on current filter
+      if (willDisappearFromCurrentFilter) {
+        console.log('🎯 Service will move out of current filter - showing success message')
+        
+        // Show a more informative toast
+        toast.success('Service approved successfully!', {
+          duration: 4000,
+          description: `"${service.title}" has been approved and moved to the "Approved" section.`,
+          action: {
+            label: 'View Approved',
+            onClick: () => setStatusFilter('approved')
+          }
+        })
+        
+        // Don't refresh immediately - let the user see the optimistic update
+        setTimeout(async () => {
+          console.log('🔄 Refreshing services list (service will disappear from current filter)...')
+          await loadServices()
+          console.log('✅ Services list refreshed - approved service moved out of pending filter')
+        }, 3000)
+      } else {
+        // Normal refresh for other filters
+        setTimeout(async () => {
+          console.log('🔄 Refreshing services list...')
+          await loadServices()
+          console.log('✅ Services list refreshed')
+        }, 500)
+      }
     } catch (error: any) {
       console.error('Error approving service:', error)
       
@@ -1050,6 +1092,7 @@ export default function AdminServicesPage() {
                 onSelectionChange={setSelectedIds}
                 disableClientSorting
                 allowFeature={allowFeature}
+                recentlyApproved={recentlyApproved}
               />
             </div>
 

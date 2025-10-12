@@ -74,6 +74,7 @@ interface EnhancedServiceTableProps {
   onSelectionChange?: (ids: string[]) => void
   disableClientSorting?: boolean
   allowFeature?: boolean
+  recentlyApproved?: Set<string>
 }
 
 export function EnhancedServiceTable({
@@ -93,7 +94,8 @@ export function EnhancedServiceTable({
   selectedIds = [],
   onSelectionChange,
   disableClientSorting,
-  allowFeature = true
+  allowFeature = true,
+  recentlyApproved = new Set()
 }: EnhancedServiceTableProps) {
   const [searchQuery, setSearchQuery] = useState(searchQueryExternal ?? '')
   const [categoryFilter, setCategoryFilter] = useState(categoryFilterExternal ?? 'all')
@@ -250,6 +252,7 @@ export function EnhancedServiceTable({
   const getStatusBadge = (service: Service) => {
     const status = service.status
     const approvalStatus = service.approval_status
+    const isRecentlyApproved = recentlyApproved.has(service.id)
     
     if (approvalStatus === 'pending') {
       return <Badge variant="outline" className="text-yellow-600 border-yellow-200 bg-yellow-50">Pending Approval</Badge>
@@ -257,7 +260,14 @@ export function EnhancedServiceTable({
     
     switch (status) {
       case 'active':
-        return <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">Active</Badge>
+        return (
+          <Badge 
+            variant="outline" 
+            className={`text-green-600 border-green-200 bg-green-50 ${isRecentlyApproved ? 'animate-pulse ring-2 ring-green-300' : ''}`}
+          >
+            {isRecentlyApproved ? '✅ Just Approved' : 'Active'}
+          </Badge>
+        )
       case 'suspended':
         return <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">Suspended</Badge>
       case 'inactive':
@@ -376,9 +386,15 @@ export function EnhancedServiceTable({
               ) : filteredAndSortedServices.map((service) => {
                 const isLoading = actionLoading.has(service.id)
                 const quickActions = getQuickActions(service)
+                const isRecentlyApproved = recentlyApproved.has(service.id)
                 
                 return (
-                  <tr key={service.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={service.id} 
+                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                      isRecentlyApproved ? 'bg-green-50 border-green-200 animate-pulse' : ''
+                    }`}
+                  >
                     {selectable && (
                       <td className="py-4 px-4 align-middle">
                         <Checkbox checked={isSelected(service.id)} onCheckedChange={() => toggleRow(service.id)} aria-label={`Select ${service?.title || 'Service'}`} />

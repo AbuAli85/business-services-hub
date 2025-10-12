@@ -387,11 +387,14 @@ export async function sendServiceActionEmail(
     
     const { subject, html, text } = template(data)
     
-    // Call the email API
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                   (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
+    // Call the email API - use current domain to avoid domain issues
+    const apiUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/api/send-email`
+      : '/api/send-email'
     
-    const response = await fetch(`${baseUrl}/api/send-email`, {
+    console.log('📧 Sending email to:', data.providerEmail, 'via:', apiUrl)
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
