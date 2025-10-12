@@ -85,6 +85,14 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
 
   // Admin navigation
   if (user.role === 'admin') {
+    // Update dashboard link to admin dashboard
+    baseItems[0] = { 
+      name: 'Admin Dashboard', 
+      href: '/dashboard/admin', 
+      icon: Home,
+      description: 'Admin overview and management'
+    }
+    
     baseItems.splice(1, 0, 
       { 
         name: 'Services (Admin)', 
@@ -93,22 +101,10 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         description: 'Manage all services'
       },
       { 
-        name: 'Suggestions', 
-        href: '/dashboard/suggestions', 
-        icon: Package,
-        description: 'Service suggestions'
-      },
-      { 
         name: 'Users', 
         href: '/dashboard/admin/users', 
         icon: Users,
         description: 'User management'
-      },
-      { 
-        name: 'Permissions', 
-        href: '/dashboard/admin/permissions', 
-        icon: Settings,
-        description: 'Access control'
       },
       { 
         name: 'Analytics', 
@@ -118,7 +114,7 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
       },
       { 
         name: 'Reports', 
-        href: '/dashboard/reports/bookings', 
+        href: '/dashboard/admin/reports', 
         icon: FileBarChart,
         description: 'Booking reports'
       },
@@ -128,6 +124,18 @@ export function getRoleBasedNavigation(user: User | null): NavigationItem[] {
         icon: Receipt,
         description: 'Manage all invoices',
         badge: 'Admin'
+      },
+      { 
+        name: 'Permissions', 
+        href: '/dashboard/admin/permissions', 
+        icon: Settings,
+        description: 'Access control'
+      },
+      { 
+        name: 'Admin Tools', 
+        href: '/dashboard/admin/tools', 
+        icon: Package,
+        description: 'System administration tools'
       }
     )
   }
