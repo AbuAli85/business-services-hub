@@ -365,7 +365,7 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
-      // Create notification for provider and audit log
+      // Create notification for provider, audit log, and send email
       if (actorId && service?.provider?.id && service?.title) {
         await notifyAndLog(
           service.provider.id,
@@ -376,7 +376,9 @@ export default function AdminServicesPage() {
           actorName || undefined,
           actorEmail || undefined,
           reason,
-          { previous_status: service.approval_status, new_status: 'rejected' }
+          { previous_status: service.approval_status, new_status: 'rejected' },
+          service.provider.email, // Provider email for email notification
+          service.provider.full_name // Provider name for email
         )
       }
 
@@ -462,7 +464,7 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
-      // Create notification for provider and audit log
+      // Create notification for provider, audit log, and send email
       if (actorId && service.provider?.id) {
         await notifyAndLog(
           service.provider.id,
@@ -473,7 +475,9 @@ export default function AdminServicesPage() {
           actorName || undefined,
           actorEmail || undefined,
           undefined, // No reason needed for approval
-          { previous_status: service.approval_status, new_status: 'approved' }
+          { previous_status: service.approval_status, new_status: 'approved' },
+          service.provider.email, // Provider email for email notification
+          service.provider.full_name // Provider name for email
         )
       }
 
@@ -524,7 +528,7 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
-      // Create notification for provider and audit log
+      // Create notification for provider, audit log, and send email
       if (actorId && service.provider?.id) {
         await notifyAndLog(
           service.provider.id,
@@ -535,7 +539,9 @@ export default function AdminServicesPage() {
           actorName || undefined,
           actorEmail || undefined,
           reason,
-          { previous_status: service.status, new_status: 'suspended' }
+          { previous_status: service.status, new_status: 'suspended' },
+          service.provider.email, // Provider email for email notification
+          service.provider.full_name // Provider name for email
         )
       }
 
@@ -588,7 +594,7 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
-      // Create notification for provider and audit log
+      // Create notification for provider, audit log, and send email
       if (actorId && service.provider?.id) {
         await notifyAndLog(
           service.provider.id,
@@ -599,7 +605,9 @@ export default function AdminServicesPage() {
           actorName || undefined,
           actorEmail || undefined,
           undefined,
-          { featured: nextVal }
+          { featured: nextVal },
+          service.provider.email, // Provider email for email notification
+          service.provider.full_name // Provider name for email
         )
       }
 

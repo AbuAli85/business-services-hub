@@ -1,6 +1,62 @@
 import { NotificationTemplate, NotificationType } from '@/types/notifications'
 
 const notificationTemplates: Record<NotificationType, NotificationTemplate> = {
+  // Service notifications
+  service: {
+    type: 'service',
+    title_template: 'Service Update: {{service_title}}',
+    message_template: 'Your service "{{service_title}}" has been updated.',
+    priority: 'normal',
+    default_expires_in_hours: 168,
+    action_url_template: '/dashboard/services/{{service_id}}',
+    action_label: 'View Service'
+  },
+  service_approved: {
+    type: 'service_approved',
+    title_template: '🎉 Service Approved: {{service_title}}',
+    message_template: 'Great news! Your service "{{service_title}}" has been approved and is now live.',
+    priority: 'high',
+    default_expires_in_hours: 720,
+    action_url_template: '/dashboard/services/{{service_id}}',
+    action_label: 'View Service'
+  },
+  service_rejected: {
+    type: 'service_rejected',
+    title_template: '❌ Service Rejected: {{service_title}}',
+    message_template: 'Your service "{{service_title}}" requires changes before approval.',
+    priority: 'high',
+    default_expires_in_hours: 720,
+    action_url_template: '/dashboard/services/{{service_id}}/edit',
+    action_label: 'Edit Service'
+  },
+  service_suspended: {
+    type: 'service_suspended',
+    title_template: '⚠️ Service Suspended: {{service_title}}',
+    message_template: 'Your service "{{service_title}}" has been suspended. Please contact support.',
+    priority: 'urgent',
+    default_expires_in_hours: 720,
+    action_url_template: '/dashboard/services/{{service_id}}',
+    action_label: 'View Details'
+  },
+  service_featured: {
+    type: 'service_featured',
+    title_template: '⭐ Service Featured: {{service_title}}',
+    message_template: 'Congratulations! Your service "{{service_title}}" is now featured on the platform.',
+    priority: 'normal',
+    default_expires_in_hours: 720,
+    action_url_template: '/dashboard/services/{{service_id}}',
+    action_label: 'View Service'
+  },
+  service_edited: {
+    type: 'service_edited',
+    title_template: 'Service Edited: {{service_title}}',
+    message_template: 'Your service "{{service_title}}" has been edited by an admin.',
+    priority: 'normal',
+    default_expires_in_hours: 168,
+    action_url_template: '/dashboard/services/{{service_id}}',
+    action_label: 'View Changes'
+  },
+  
   // Task notifications
   task_created: {
     type: 'task_created',

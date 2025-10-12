@@ -14,9 +14,7 @@
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "types": ["@types/node"],
-    "typeRoots": ["./node_modules/@types", "./"]
+    "noUnusedParameters": false
   },
   "include": [
     "**/*.ts",

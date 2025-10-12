@@ -1,8 +1,10 @@
 import { getSupabaseClient } from '@/lib/supabase'
+import { sendServiceActionEmail } from '@/lib/service-email-templates'
 
 /**
  * Service Notification Helper
  * Creates notifications for providers when admins take actions on their services
+ * Also sends email notifications for critical actions
  */
 
 export interface ServiceNotificationData {
@@ -11,6 +13,8 @@ export interface ServiceNotificationData {
   action: 'approved' | 'rejected' | 'suspended' | 'featured' | 'unfeatured' | 'edited'
   adminName?: string
   reason?: string
+  providerEmail?: string
+  providerName?: string
 }
 
 /**
@@ -54,7 +58,34 @@ export async function notifyProvider(
       throw error
     }
     
-    console.log('✅ Notification created for provider:', providerId, 'Action:', data.action)
+    console.log('✅ In-app notification created for provider:', providerId, 'Action:', data.action)
+    
+    // Send email notification for critical actions only
+    const emailActions = ['approved', 'rejected', 'suspended', 'featured'] as const
+    type EmailAction = typeof emailActions[number]
+    
+    if (emailActions.includes(data.action as any) && data.providerEmail && data.providerName) {
+      // Send email asynchronously (don't await to avoid blocking)
+      sendServiceActionEmail(data.action as EmailAction, {
+        providerName: data.providerName,
+        providerEmail: data.providerEmail,
+        serviceTitle: data.serviceTitle,
+        serviceId: data.serviceId,
+        adminName: data.adminName,
+        reason: data.reason,
+        appUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      }).then(success => {
+        if (success) {
+          console.log('✅ Email notification sent for provider:', data.providerEmail, 'Action:', data.action)
+        } else {
+          console.warn('⚠️ Email notification failed for provider:', data.providerEmail, 'Action:', data.action)
+        }
+      }).catch(err => {
+        console.error('❌ Email notification error:', err)
+      })
+    } else {
+      console.log('ℹ️ Skipping email for action:', data.action, '(not a critical action or missing provider info)')
+    }
   } catch (error) {
     console.error('Failed to notify provider:', error)
     // Don't throw - notification failure shouldn't block the main action
@@ -171,15 +202,19 @@ export async function notifyAndLog(
   adminName?: string,
   adminEmail?: string,
   reason?: string,
-  metadata?: any
+  metadata?: any,
+  providerEmail?: string,
+  providerName?: string
 ): Promise<void> {
-  // Create notification for provider
+  // Create notification for provider (includes email sending)
   await notifyProvider(providerId, {
     serviceId,
     serviceTitle,
     action,
     adminName,
-    reason
+    reason,
+    providerEmail,
+    providerName
   })
   
   // Create audit log
