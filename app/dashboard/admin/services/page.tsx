@@ -543,7 +543,12 @@ export default function AdminServicesPage() {
           console.log('🔄 Switching to Approved filter to show the newly approved service...')
           // Switch to "approved" filter so user can see the service in its new home
           setStatusFilter('approved')
-          // The useEffect will automatically call loadServices() when filter changes
+          // Force a refresh to ensure the service appears in the new filter
+          setTimeout(async () => {
+            console.log('🔄 Refreshing services list for Approved filter...')
+            await loadServices()
+            console.log('✅ Services list refreshed - approved service should now be visible')
+          }, 500)
           console.log('✅ Switched to Approved filter - service will appear there')
         }, 2000)
       } else {
