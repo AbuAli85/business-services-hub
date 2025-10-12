@@ -392,7 +392,13 @@ export async function sendServiceActionEmail(
       ? `${window.location.origin}/api/send-email`
       : '/api/send-email'
     
-    console.log('📧 Sending email to:', data.providerEmail, 'via:', apiUrl)
+    // For testing: Use verified email if in development/testing mode
+    const recipientEmail = process.env.NODE_ENV === 'development' 
+      ? 'chairman@falconeyegroup.net'  // Use verified email for testing
+      : data.providerEmail             // Use actual provider email in production
+    
+    console.log('📧 Sending email to:', recipientEmail, 'via:', apiUrl)
+    console.log('📧 Original provider email:', data.providerEmail)
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -400,7 +406,7 @@ export async function sendServiceActionEmail(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        to: data.providerEmail,
+        to: recipientEmail,
         subject,
         html,
         text,
