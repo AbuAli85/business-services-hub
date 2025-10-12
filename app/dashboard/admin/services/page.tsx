@@ -434,6 +434,9 @@ export default function AdminServicesPage() {
 
   // Enhanced service handlers for the new table
   const handleApproveService = async (service: Service) => {
+    console.log('🚀 Starting approval for service:', service.id, service.title)
+    console.log('📊 Current approval_status:', service.approval_status)
+    
     // Optimistically update the local state
     const originalServices = [...services]
     const updatedServices = services.map(s => 
@@ -442,6 +445,7 @@ export default function AdminServicesPage() {
         : s
     )
     setServices(updatedServices)
+    console.log('✅ Optimistic update applied - service should now show as approved')
     
     // Update stats optimistically
     setStats(prev => ({
@@ -449,6 +453,7 @@ export default function AdminServicesPage() {
       pending: Math.max(0, prev.pending - 1),
       approved: prev.approved + 1
     }))
+    console.log('📈 Stats updated optimistically')
     
     try {
       const supabase = await getSupabaseClient()
@@ -463,9 +468,11 @@ export default function AdminServicesPage() {
         .eq('id', service.id)
 
       if (error) throw error
+      console.log('✅ Database update successful')
 
       // Create notification for provider, audit log, and send email
       if (actorId && service.provider?.id) {
+        console.log('📧 Sending notifications and creating audit log...')
         await notifyAndLog(
           service.provider.id,
           service.id,
@@ -479,6 +486,9 @@ export default function AdminServicesPage() {
           service.provider.email, // Provider email for email notification
           service.provider.full_name // Provider name for email
         )
+        console.log('📧 Notifications sent successfully')
+      } else {
+        console.log('⚠️ Missing actorId or provider info - skipping notifications')
       }
 
       // Close the details dialog if open
@@ -487,9 +497,14 @@ export default function AdminServicesPage() {
       }
 
       toast.success('Service approved successfully!')
+      console.log('🎉 Approval process completed successfully')
       
-      // Refresh to ensure data consistency
-      await loadServices()
+      // Refresh to ensure data consistency (with delay to let optimistic update show)
+      setTimeout(async () => {
+        console.log('🔄 Refreshing services list...')
+        await loadServices()
+        console.log('✅ Services list refreshed')
+      }, 500)
     } catch (error: any) {
       console.error('Error approving service:', error)
       
