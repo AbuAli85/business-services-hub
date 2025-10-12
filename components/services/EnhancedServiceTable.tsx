@@ -183,6 +183,12 @@ export function EnhancedServiceTable({
     })
 
   const handleQuickAction = async (service: Service, action: string) => {
+    // Handle view action immediately without loading state
+    if (action === 'view') {
+      onViewService(service)
+      return
+    }
+    
     setActionLoading(prev => new Set(prev).add(service.id))
     try {
       switch (action) {
@@ -219,6 +225,9 @@ export function EnhancedServiceTable({
   const getQuickActions = (service: Service) => {
     const actions = []
     
+    // Always show View Details as first action for better discoverability
+    actions.push({ label: 'View Details', icon: Eye, action: 'view', color: 'text-blue-600' })
+    
     if (service.approval_status === 'pending') {
       actions.push({ label: 'Approve', icon: CheckCircle, action: 'approve', color: 'text-green-600' })
     }
@@ -235,9 +244,7 @@ export function EnhancedServiceTable({
       actions.push({ label: 'Feature', icon: Star, action: 'feature', color: 'text-yellow-600' })
     }
     
-    actions.push({ label: 'Update Pricing', icon: DollarSign, action: 'pricing', color: 'text-blue-600' })
-    
-    return actions
+    return actions.slice(0, 4) // Limit to 4 quick actions to avoid crowding
   }
 
   const getStatusBadge = (service: Service) => {

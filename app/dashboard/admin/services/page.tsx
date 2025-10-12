@@ -309,6 +309,8 @@ export default function AdminServicesPage() {
   // removed old page-level stats and client filtering; now using RPC stats + server filters only
 
   const approveService = async (serviceId: string) => {
+    // For bulk operations, we just do the update without optimistic state changes
+    // The bulk handler will refresh once after all operations
     try {
       const supabase = await getSupabaseClient()
       
@@ -322,16 +324,29 @@ export default function AdminServicesPage() {
         .eq('id', serviceId)
 
       if (error) throw error
-
-      toast.success('Service approved successfully!')
-      loadServices()
     } catch (error: any) {
       console.error('Error approving service:', error)
-      toast.error('Failed to approve service')
+      throw error // Re-throw so bulk handler knows it failed
     }
   }
 
   const rejectService = async (serviceId: string) => {
+    // Optimistically update the local state
+    const originalServices = [...services]
+    const updatedServices = services.map(s => 
+      s.id === serviceId 
+        ? { ...s, approval_status: 'rejected', status: 'archived', updated_at: new Date().toISOString() }
+        : s
+    )
+    setServices(updatedServices)
+    
+    // Update stats optimistically
+    setStats(prev => ({
+      ...prev,
+      pending: Math.max(0, prev.pending - 1),
+      rejected: prev.rejected + 1
+    }))
+    
     try {
       const supabase = await getSupabaseClient()
       
@@ -346,10 +361,26 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
+      // Close the details dialog if open
+      if (detailsOpen && detailsService?.id === serviceId) {
+        setDetailsOpen(false)
+      }
+
       toast.success('Service rejected')
-      loadServices()
+      
+      // Refresh to ensure data consistency
+      await loadServices()
     } catch (error: any) {
       console.error('Error rejecting service:', error)
+      
+      // Rollback optimistic update on error
+      setServices(originalServices)
+      setStats(prev => ({
+        ...prev,
+        pending: prev.pending + 1,
+        rejected: Math.max(0, prev.rejected - 1)
+      }))
+      
       toast.error('Failed to reject service')
     }
   }
@@ -382,6 +413,22 @@ export default function AdminServicesPage() {
 
   // Enhanced service handlers for the new table
   const handleApproveService = async (service: Service) => {
+    // Optimistically update the local state
+    const originalServices = [...services]
+    const updatedServices = services.map(s => 
+      s.id === service.id 
+        ? { ...s, approval_status: 'approved', status: 'active', updated_at: new Date().toISOString() }
+        : s
+    )
+    setServices(updatedServices)
+    
+    // Update stats optimistically
+    setStats(prev => ({
+      ...prev,
+      pending: Math.max(0, prev.pending - 1),
+      approved: prev.approved + 1
+    }))
+    
     try {
       const supabase = await getSupabaseClient()
       
@@ -396,15 +443,40 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
+      // Close the details dialog if open
+      if (detailsOpen && detailsService?.id === service.id) {
+        setDetailsOpen(false)
+      }
+
       toast.success('Service approved successfully!')
-      loadServices()
+      
+      // Refresh to ensure data consistency
+      await loadServices()
     } catch (error: any) {
       console.error('Error approving service:', error)
+      
+      // Rollback optimistic update on error
+      setServices(originalServices)
+      setStats(prev => ({
+        ...prev,
+        pending: prev.pending + 1,
+        approved: Math.max(0, prev.approved - 1)
+      }))
+      
       toast.error('Failed to approve service')
     }
   }
 
   const handleSuspendService = async (service: Service) => {
+    // Optimistically update the local state
+    const originalServices = [...services]
+    const updatedServices = services.map(s => 
+      s.id === service.id 
+        ? { ...s, status: 'suspended', updated_at: new Date().toISOString() }
+        : s
+    )
+    setServices(updatedServices)
+    
     try {
       const supabase = await getSupabaseClient()
       
@@ -418,18 +490,45 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
+      // Close the details dialog if open
+      if (detailsOpen && detailsService?.id === service.id) {
+        setDetailsOpen(false)
+      }
+
       toast.success('Service suspended successfully!')
-      loadServices()
+      
+      // Refresh to ensure data consistency
+      await loadServices()
     } catch (error: any) {
       console.error('Error suspending service:', error)
+      
+      // Rollback optimistic update on error
+      setServices(originalServices)
+      
       toast.error('Failed to suspend service')
     }
   }
 
   const handleFeatureService = async (service: Service) => {
+    const nextVal = !service.featured
+    
+    // Optimistically update the local state
+    const originalServices = [...services]
+    const updatedServices = services.map(s => 
+      s.id === service.id 
+        ? { ...s, featured: nextVal, updated_at: new Date().toISOString() }
+        : s
+    )
+    setServices(updatedServices)
+    
+    // Update stats optimistically
+    setStats(prev => ({
+      ...prev,
+      featured: nextVal ? prev.featured + 1 : Math.max(0, prev.featured - 1)
+    }))
+    
     try {
       const supabase = await getSupabaseClient()
-      const nextVal = !service.featured
       const { error } = await supabase
         .from('services')
         .update({ 
@@ -441,9 +540,19 @@ export default function AdminServicesPage() {
       if (error) throw error
 
       toast.success(`Service ${nextVal ? 'featured' : 'unfeatured'} successfully!`)
-      loadServices()
+      
+      // Refresh to ensure data consistency
+      await loadServices()
     } catch (error: any) {
       console.error('Error featuring service:', error)
+      
+      // Rollback optimistic update on error
+      setServices(originalServices)
+      setStats(prev => ({
+        ...prev,
+        featured: nextVal ? Math.max(0, prev.featured - 1) : prev.featured + 1
+      }))
+      
       toast.error('Failed to update featured status')
     }
   }
@@ -1365,19 +1474,63 @@ export default function AdminServicesPage() {
           <div className="flex items-center justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
             <Button variant={confirmAction === 'reject' ? 'destructive' : 'default'} onClick={async () => {
-              if (confirmAction === 'reject') {
-                await Promise.all(selectedIds.map(async (id) => rejectService(id)))
+              const count = selectedIds.length
+              let successCount = 0
+              let failCount = 0
+              
+              try {
+                if (confirmAction === 'reject') {
+                  const results = await Promise.allSettled(
+                    selectedIds.map(async (id) => {
+                      const supabase = await getSupabaseClient()
+                      return supabase
+                        .from('services')
+                        .update({ 
+                          approval_status: 'rejected',
+                          status: 'archived',
+                          updated_at: new Date().toISOString()
+                        })
+                        .eq('id', id)
+                    })
+                  )
+                  successCount = results.filter(r => r.status === 'fulfilled' && !(r.value as any).error).length
+                  failCount = count - successCount
+                } else if (confirmAction === 'approve') {
+                  const results = await Promise.allSettled(
+                    selectedIds.map(async (id) => approveService(id))
+                  )
+                  successCount = results.filter(r => r.status === 'fulfilled').length
+                  failCount = count - successCount
+                } else if (confirmAction === 'toggleFeatured') {
+                  const results = await Promise.allSettled(
+                    selectedIds.map(async (id) => {
+                      const svc = services.find(s => s.id === id)
+                      if (svc) return toggleFeatured(id, !!svc.featured)
+                    })
+                  )
+                  successCount = results.filter(r => r.status === 'fulfilled').length
+                  failCount = count - successCount
+                }
+                
+                // Clear selection
                 setSelectedIds([])
-              } else if (confirmAction === 'approve') {
-                await Promise.all(selectedIds.map(async (id) => approveService(id)))
-                setSelectedIds([])
-              } else if (confirmAction === 'toggleFeatured') {
-                await Promise.all(selectedIds.map(async (id) => {
-                  const svc = services.find(s => s.id === id)
-                  if (svc) await toggleFeatured(id, !!svc.featured)
-                }))
-                setSelectedIds([])
+                
+                // Refresh the list once
+                await loadServices()
+                
+                // Show appropriate toast
+                if (failCount === 0) {
+                  toast.success(`Successfully ${confirmAction === 'approve' ? 'approved' : confirmAction === 'reject' ? 'rejected' : 'updated'} ${count} service${count > 1 ? 's' : ''}`)
+                } else if (successCount === 0) {
+                  toast.error(`Failed to ${confirmAction} services`)
+                } else {
+                  toast.warning(`Partially completed: ${successCount} succeeded, ${failCount} failed`)
+                }
+              } catch (error) {
+                console.error('Bulk action error:', error)
+                toast.error('An error occurred during bulk operation')
               }
+              
               setConfirmOpen(false)
             }}>Confirm</Button>
           </div>
