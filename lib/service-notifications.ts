@@ -108,51 +108,38 @@ export async function createAuditLog(
   metadata?: any
 ): Promise<void> {
   try {
-    const supabase = await getSupabaseClient()
+    // Use API endpoint for server-side audit log creation
+    // This bypasses client-side RLS authentication issues
+    const apiUrl = typeof window !== 'undefined' 
+      ? `${window.location.origin}/api/audit-log`
+      : '/api/audit-log'
     
-    // Debug: Check current user context
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    console.log('🔍 Debug - Current auth user:', user?.id, userError)
+    console.log('📝 Creating audit log via API:', { serviceId, event: action })
     
-    // Debug: Check if user has admin role
-    if (user) {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, role, email, full_name')
-        .eq('id', user.id)
-        .single()
-      
-      console.log('🔍 Debug - User profile:', profile, profileError)
-      console.log('🔍 Debug - User role:', profile?.role)
-      console.log('🔍 Debug - Is admin?', profile?.role === 'admin')
-    }
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        serviceId,
+        event: action,
+        metadata: metadata || {}
+      })
+    })
     
-    const auditLog = {
-      service_id: serviceId,
-      event: action,
-      actor_id: adminId,
-      actor_name: adminName,
-      actor_email: adminEmail,
-      metadata: metadata || {},
-      created_at: new Date().toISOString()
-    }
-    
-    console.log('🔍 Debug - Audit log data:', auditLog)
-    
-    const { error } = await supabase
-      .from('service_audit_logs')
-      .insert(auditLog)
-    
-    if (error) {
-      console.error('Error creating audit log:', error)
-      console.error('Audit log data:', auditLog)
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Audit log API error:', errorData)
       console.warn('⚠️ Audit log creation failed, but main action will continue...')
       return
     }
     
-    console.log('✅ Audit log created for service:', serviceId, 'Action:', action)
+    const result = await response.json()
+    console.log('✅ Audit log created for service:', serviceId, 'Action:', action, 'ID:', result.data?.id)
   } catch (error) {
     console.error('Failed to create audit log:', error)
+    console.warn('⚠️ Audit log creation failed, but main action will continue...')
   }
 }
 
