@@ -157,12 +157,17 @@ export default function AdminUsersPage() {
       // Force refresh the data to ensure UI updates
       await refetch(true)
       
+      // Also refresh centralized data if available
+      if (centralizedRefresh) {
+        await centralizedRefresh()
+      }
+      
       toast.success(`${user.full_name}'s status updated to ${newStatus}`)
     } catch (err: any) {
       console.error('❌ Status change error:', err)
       toast.error(err.message)
     }
-  }, [updateUser, refetch])
+  }, [updateUser, refetch, centralizedRefresh])
 
   const handleRoleChange = useCallback(async (user: AdminUser, newRole: string) => {
     try {
@@ -301,13 +306,63 @@ export default function AdminUsersPage() {
             <div className="flex items-center space-x-3">
               <RealtimeNotifications />
               <Button 
-                onClick={() => refetch(true)}
+                onClick={async () => {
+                  console.log('🔄 Manual refresh triggered')
+                  // Force refresh both data sources
+                  await Promise.all([
+                    refetch(true),
+                    centralizedRefresh?.()
+                  ])
+                  // Force a page reload as last resort
+                  setTimeout(() => {
+                    window.location.reload()
+                  }, 1000)
+                }}
                 disabled={isFetching}
                 variant="outline"
                 size="sm"
               >
                 <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? 'animate-spin' : ''}`} />
-                {isFetching ? 'Refreshing...' : 'Refresh'}
+                {isFetching ? 'Refreshing...' : 'Force Refresh'}
+              </Button>
+              <Button 
+                onClick={async () => {
+                  console.log('🔧 Manual Tauseef Rehan status fix triggered')
+                  try {
+                    // Find Tauseef Rehan users
+                    const tauseefUsers = finalUsers.filter(user => 
+                      (user as AdminUser).full_name?.toLowerCase().includes('tauseef')
+                    ) as AdminUser[]
+                    
+                    if (tauseefUsers.length === 0) {
+                      toast.error('No Tauseef Rehan users found')
+                      return
+                    }
+                    
+                    // Update each Tauseef Rehan user to active status
+                    for (const user of tauseefUsers) {
+                      console.log(`🔧 Manually updating ${user.full_name} to active`)
+                      await updateUser(user.id, { status: 'active' })
+                    }
+                    
+                    // Force refresh
+                    await Promise.all([
+                      refetch(true),
+                      centralizedRefresh?.()
+                    ])
+                    
+                    toast.success(`Updated ${tauseefUsers.length} Tauseef Rehan account(s) to active`)
+                  } catch (error) {
+                    console.error('❌ Manual fix failed:', error)
+                    toast.error('Failed to update Tauseef Rehan status')
+                  }
+                }}
+                variant="outline"
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Fix Tauseef Status
               </Button>
               <Button 
                 onClick={() => setShowAddUserModal(true)}

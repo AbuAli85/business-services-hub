@@ -181,6 +181,19 @@ export async function GET(req: NextRequest) {
         })
       }
       
+      // Debug logging for Tauseef Rehan
+      if (u.full_name?.toLowerCase().includes('tauseef')) {
+        console.log('🔍 Tauseef Rehan status determination:', {
+          id: u.id,
+          fullName: u.full_name,
+          verificationStatus,
+          metaStatus,
+          finalStatus: status,
+          role,
+          email
+        })
+      }
+      
       return {
         id: u.id,
         email,
