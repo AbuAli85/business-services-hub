@@ -26,9 +26,9 @@ const typography = {
 
 // Helper function to format currency
 function formatCurrency(amount: number, currency: string = 'USD'): string {
-  // For OMR, we want 3 decimal places as shown in template
+  // Use 2 decimal places for consistency across the platform
   if (currency === 'OMR') {
-    return `OMR ${amount.toFixed(3)}`
+    return `OMR ${amount.toFixed(2)}`
   }
   
   return new Intl.NumberFormat('en-US', {

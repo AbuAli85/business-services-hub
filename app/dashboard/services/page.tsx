@@ -611,13 +611,20 @@ export default function ServicesPage() {
   // Auto-refresh when returning from service creation
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('refresh') === 'true' && !loading && !authLoading) {
+    if (urlParams.get('refresh') === 'true' && !loading && !authLoading && authInitialized) {
       console.log('🔄 Auto-refreshing services list after creation')
+      // Force immediate refresh
       handleRefresh()
       // Clean up URL parameter
       window.history.replaceState({}, '', '/dashboard/services')
+      
+      // Show a subtle success message
+      toast.success('Service list updated', {
+        description: 'Your new service is now visible',
+        duration: 3000
+      })
     }
-  }, [loading, authLoading, handleRefresh])
+  }, [loading, authLoading, authInitialized, handleRefresh])
 
   // Optimized filtering and sorting
   const filteredServices = useMemo(() => {

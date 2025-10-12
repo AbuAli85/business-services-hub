@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRefreshCallback } from '@/contexts/AutoRefreshContext'
+import { useDashboardData } from '@/hooks/useDashboardData'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -43,6 +44,9 @@ interface RealtimeAnalyticsProps {
 }
 
 export function RealtimeAnalytics({ className }: RealtimeAnalyticsProps) {
+  // Use real data from the dashboard hook
+  const { metrics, bookings, invoices, users, services, loading: dataLoading } = useDashboardData()
+  
   const [data, setData] = useState<AnalyticsData>({
     totalUsers: 0,
     totalServices: 0,
@@ -57,119 +61,56 @@ export function RealtimeAnalytics({ className }: RealtimeAnalyticsProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
-  // Simulate real-time data updates
+  // Fetch real data from the dashboard
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Generate realistic data with some randomness
-      const baseData = {
-        totalUsers: 5000 + Math.floor(Math.random() * 100),
-        totalServices: 800 + Math.floor(Math.random() * 50),
-        totalRevenue: 150000 + Math.floor(Math.random() * 10000),
-        totalBookings: 15000 + Math.floor(Math.random() * 1000),
-        userGrowth: 5 + Math.random() * 10,
-        revenueGrowth: 8 + Math.random() * 15,
-        bookingGrowth: 12 + Math.random() * 20,
-        serviceGrowth: 3 + Math.random() * 8,
-        recentActivity: [
-          {
-            id: '1',
-            type: 'user' as const,
-            message: 'New user registration: Ahmed Al-Rashid',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 1
-          },
-          {
-            id: '2',
-            type: 'service' as const,
-            message: 'Service approved: Digital Marketing by TechStart Oman',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 1
-          },
-          {
-            id: '3',
-            type: 'booking' as const,
-            message: 'New booking: Legal Services consultation',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 1
-          },
-          {
-            id: '4',
-            type: 'revenue' as const,
-            message: 'Payment received: OMR 2,500',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 2500
-          }
-        ]
+      if (dataLoading || !metrics) {
+        return
       }
       
-      setData(baseData)
+      setIsLoading(true)
+      
+      // Calculate total revenue from paid invoices
+      const totalRevenue = invoices
+        .filter(invoice => invoice.status === 'paid')
+        .reduce((sum, invoice) => sum + invoice.amount, 0)
+      
+      // Get recent activity from bookings
+      const recentActivity = bookings
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 4)
+        .map((booking, index) => ({
+          id: booking.id || String(index),
+          type: 'booking' as const,
+          message: `${booking.status === 'completed' ? 'Completed' : 'New'} booking: ${booking.serviceTitle || 'Service'}`,
+          timestamp: new Date(booking.updatedAt),
+          value: booking.totalAmount || 0
+        }))
+      
+      // Use real data from metrics
+      const realData = {
+        totalUsers: metrics.totalUsers || 0,
+        totalServices: metrics.totalServices || 0,
+        totalRevenue: totalRevenue,
+        totalBookings: metrics.totalBookings || 0,
+        userGrowth: metrics.userGrowth || 0,
+        revenueGrowth: metrics.revenueGrowth || 0,
+        bookingGrowth: metrics.bookingGrowth || 0,
+        serviceGrowth: metrics.serviceGrowth || 0,
+        recentActivity: recentActivity.length > 0 ? recentActivity : []
+      }
+      
+      setData(realData)
       setLastUpdated(new Date())
       setIsLoading(false)
     }
 
     fetchData()
-  }, [])
+  }, [metrics, bookings, invoices, dataLoading])
 
   // Register with centralized auto-refresh system
   useRefreshCallback(() => {
-    const fetchData = async () => {
-      setIsLoading(true)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Generate realistic data with some randomness
-      const baseData = {
-        totalUsers: 5000 + Math.floor(Math.random() * 100),
-        totalServices: 800 + Math.floor(Math.random() * 50),
-        totalBookings: 1200 + Math.floor(Math.random() * 100),
-        totalRevenue: 150000 + Math.floor(Math.random() * 10000),
-        userGrowth: Math.floor(Math.random() * 20) - 10,
-        revenueGrowth: Math.floor(Math.random() * 30) - 15,
-        bookingGrowth: Math.floor(Math.random() * 25) - 12,
-        serviceGrowth: Math.floor(Math.random() * 15) - 7,
-        recentActivity: [
-          {
-            id: '1',
-            type: 'user' as const,
-            message: 'New user registration: Ahmed Al-Rashid',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 1
-          },
-          {
-            id: '2',
-            type: 'service' as const,
-            message: 'Service approved: Digital Marketing by TechStart Oman',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 1
-          },
-          {
-            id: '3',
-            type: 'booking' as const,
-            message: 'New booking: Legal Services consultation',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 1
-          },
-          {
-            id: '4',
-            type: 'revenue' as const,
-            message: 'Payment received: OMR 2,500',
-            timestamp: new Date(Date.now() - Math.random() * 3600000),
-            value: 2500
-          }
-        ]
-      }
-      
-      setData(baseData)
-      setLastUpdated(new Date())
-      setIsLoading(false)
-    }
-    fetchData()
+    setLastUpdated(new Date())
   }, [])
 
   const formatCurrency = (amount: number) => {

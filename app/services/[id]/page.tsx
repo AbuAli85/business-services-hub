@@ -107,13 +107,37 @@ export default function ServiceDetail() {
         }
         
         setService(serviceData)
-        // determine ownership if possible
-        try {
-          const supabase2 = await getSupabaseClient()
-          const { data: { user: u2 } } = await supabase2.auth.getUser()
-          if (u2 && data?.service?.provider_id) setIsServiceOwner(data.service.provider_id === u2.id)
-          else setIsServiceOwner(false)
-        } catch { setIsServiceOwner(false) }
+        
+        // Check if service is pending approval or draft
+        if (serviceData?.status === 'pending_approval' || serviceData?.status === 'draft') {
+          // determine ownership first
+          try {
+            const supabase2 = await getSupabaseClient()
+            const { data: { user: u2 } } = await supabase2.auth.getUser()
+            const isOwner = u2 && data?.service?.provider_id && data.service.provider_id === u2.id
+            setIsServiceOwner(isOwner || false)
+            
+            // If not the owner, don't show pending/draft services
+            if (!isOwner) {
+              setError(`This service is ${serviceData.status === 'draft' ? 'not yet published' : 'pending approval'} and cannot be viewed publicly.`)
+              setService(null)
+              return
+            }
+          } catch { 
+            setIsServiceOwner(false)
+            setError(`This service is ${serviceData.status === 'draft' ? 'not yet published' : 'pending approval'} and cannot be viewed publicly.`)
+            setService(null)
+            return
+          }
+        } else {
+          // determine ownership if possible for active services
+          try {
+            const supabase2 = await getSupabaseClient()
+            const { data: { user: u2 } } = await supabase2.auth.getUser()
+            if (u2 && data?.service?.provider_id) setIsServiceOwner(data.service.provider_id === u2.id)
+            else setIsServiceOwner(false)
+          } catch { setIsServiceOwner(false) }
+        }
       } catch (e: any) {
         setError(e?.message || 'Failed to load service')
       } finally {
@@ -168,6 +192,25 @@ export default function ServiceDetail() {
             </div>
           </div>
         </div>
+
+        {/* Status Alert for Owner viewing pending/draft service */}
+        {!loading && !error && service && isServiceOwner && (service.status === 'pending_approval' || service.status === 'draft') && (
+          <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg shadow-sm">
+            <div className="flex items-start">
+              <Info className="h-5 w-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-semibold text-yellow-800 mb-1">
+                  {service.status === 'draft' ? 'Service Not Published' : 'Service Pending Review'}
+                </h3>
+                <p className="text-sm text-yellow-700">
+                  {service.status === 'draft' 
+                    ? 'This service is saved as a draft and is not visible to the public. You can edit it and publish it when ready.'
+                    : 'This service is awaiting admin approval before it becomes publicly visible. You can view it as the owner, but clients cannot see it yet.'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading && (
           <Card>
@@ -278,6 +321,12 @@ export default function ServiceDetail() {
                         <Users className="h-3 w-3 mr-1" />
                         {service.bookings_count || 0} bookings
                       </Badge>
+                      {isServiceOwner && (service.status === 'pending_approval' || service.status === 'draft') && (
+                        <Badge className="bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 border-yellow-200 px-3 py-1 animate-pulse">
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          {service.status === 'draft' ? 'Draft - Not Published' : 'Pending Admin Approval'}
+                        </Badge>
+                      )}
                     </div>
                     
                     {service.description && (
