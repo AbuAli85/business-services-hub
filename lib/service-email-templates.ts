@@ -392,11 +392,13 @@ export async function sendServiceActionEmail(
       ? `${window.location.origin}/api/send-email`
       : '/api/send-email'
     
-    // For testing: Use verified email for both sender and recipient
-    const recipientEmail = 'chairman@falconeyegroup.net'  // Always use verified email until domain is verified
-    const fromEmail = 'chairman@falconeyegroup.net'       // Use verified email as sender
+    // For testing: Use verified email as recipient and Resend default as sender
+    const recipientEmail = 'chairman@falconeyegroup.net'  // Verified email as recipient
+    const fromEmail = 'onboarding@resend.dev'             // Use Resend's default domain for sender
+    const replyToEmail = 'chairman@falconeyegroup.net'    // Set reply-to as verified email
     
     console.log('📧 Sending email to:', recipientEmail, 'via:', apiUrl)
+    console.log('📧 From:', fromEmail, '| Reply-To:', replyToEmail)
     console.log('📧 Original provider email:', data.providerEmail)
     
     const response = await fetch(apiUrl, {
@@ -407,6 +409,7 @@ export async function sendServiceActionEmail(
       body: JSON.stringify({
         to: recipientEmail,
         from: fromEmail,
+        replyTo: replyToEmail,
         subject,
         html,
         text,
