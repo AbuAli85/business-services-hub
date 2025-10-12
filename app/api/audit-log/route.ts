@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('✅ Service role key is available, creating client...')
+    console.log('📍 Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 40))
+    console.log('🔑 Service role key prefix:', process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20))
     
     const serviceRoleClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -94,11 +96,15 @@ export async function POST(request: NextRequest) {
         auth: {
           autoRefreshToken: false,
           persistSession: false
+        },
+        db: {
+          schema: 'public'
         }
       }
     )
     
     console.log('✅ Service role client created successfully')
+    console.log('📝 Attempting to insert audit log:', { serviceId, event })
     
     const { data, error } = await serviceRoleClient
       .from('service_audit_logs')
@@ -107,9 +113,20 @@ export async function POST(request: NextRequest) {
       .single()
     
     if (error) {
-      console.error('Error creating audit log:', error)
+      console.error('❌ Error creating audit log:', error)
+      console.error('📋 Audit log data:', auditLog)
+      console.error('🔍 Error code:', error.code)
+      console.error('🔍 Error details:', error.details)
+      console.error('🔍 Error hint:', error.hint)
+      
+      // Check if it's an RLS issue
+      if (error.code === '42501') {
+        console.error('🚨 RLS PERMISSION DENIED - Service role key may be incorrect or RLS is still enabled')
+        console.error('💡 Verify: 1) Service role key is correct, 2) RLS is disabled for service_audit_logs')
+      }
+      
       return NextResponse.json(
-        { success: false, error: error.message },
+        { success: false, error: error.message, code: error.code, details: error.details },
         { status: 500 }
       )
     }
