@@ -439,6 +439,11 @@ export default function AdminServicesPage() {
     console.log('📊 Current approval_status:', service.approval_status)
     console.log('🔍 Current statusFilter:', statusFilter)
     
+    // Debug: Check current user context
+    console.log('🔍 Debug - Current actorId:', actorId)
+    console.log('🔍 Debug - Current actorName:', actorName)
+    console.log('🔍 Debug - Current actorEmail:', actorEmail)
+    
     // Optimistically update the local state
     const originalServices = [...services]
     const updatedServices = services.map(s => 
