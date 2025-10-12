@@ -15,6 +15,12 @@ export interface Notification {
 }
 
 export type NotificationType = 
+  | 'service'
+  | 'service_approved'
+  | 'service_rejected'
+  | 'service_suspended'
+  | 'service_featured'
+  | 'service_edited'
   | 'task_created'
   | 'task_updated'
   | 'task_completed'
@@ -57,6 +63,16 @@ export type NotificationType =
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
 
 export interface NotificationData {
+  // Service related
+  service_id?: string
+  service_title?: string
+  action?: string
+  admin_name?: string
+  reason?: string
+  previous_status?: string
+  new_status?: string
+  featured?: boolean
+  
   // Task related
   task_id?: string
   task_title?: string
@@ -67,7 +83,6 @@ export interface NotificationData {
   booking_id?: string
   booking_title?: string
   service_name?: string
-  service_title?: string
   status?: string
   
   // Payment related

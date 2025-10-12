@@ -377,6 +377,7 @@ export function NotificationCenter({ userId, className = '' }: NotificationCente
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="service">Service Updates</SelectItem>
                     <SelectItem value="task_created">Task Created</SelectItem>
                     <SelectItem value="task_completed">Task Completed</SelectItem>
                     <SelectItem value="milestone_completed">Milestone Completed</SelectItem>
@@ -548,8 +549,26 @@ function NotificationItem({
   getPriorityIcon,
   getPriorityColor
 }: NotificationItemProps) {
+  // Get icon based on notification type or action
+  const getNotificationIcon = () => {
+    // Check if it's a service notification based on type or data
+    if (notification.type === 'service' || (notification.data as any)?.action) {
+      const action = (notification.data as any)?.action
+      if (action === 'approved') return { icon: CheckCircle, color: 'text-green-600 bg-green-50' }
+      if (action === 'rejected') return { icon: X, color: 'text-red-600 bg-red-50' }
+      if (action === 'suspended') return { icon: AlertTriangle, color: 'text-orange-600 bg-orange-50' }
+      if (action === 'featured' || action === 'unfeatured') return { icon: Star, color: 'text-purple-600 bg-purple-50' }
+    }
+    
+    // Default icons for other types
+    return { icon: Info, color: 'text-blue-600 bg-blue-50' }
+  }
+  
+  const { icon: NotifIcon, color: iconColor } = getNotificationIcon()
+  const borderColor = !notification.read ? 'border-l-4 border-l-blue-500' : ''
+  
   return (
-    <Card className={`${!notification.read ? 'border-l-4 border-l-blue-500' : ''}`}>
+    <Card className={borderColor}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
           <Checkbox
@@ -558,11 +577,15 @@ function NotificationItem({
             className="mt-1"
           />
           
+          {/* Service notification icon */}
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+            <NotifIcon className="h-5 w-5" />
+          </div>
+          
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                  {getPriorityIcon(notification.priority)}
                   <h3 className={`text-sm font-medium ${!notification.read ? 'text-gray-900' : 'text-gray-700'}`}>
                     {notification.title}
                   </h3>
@@ -575,13 +598,13 @@ function NotificationItem({
                   </Badge>
                 )}
                 </div>
-                <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
+                <p className="text-sm text-gray-600 mb-2 whitespace-pre-line">{notification.message}</p>
                 <div className="flex items-center gap-4 text-xs text-gray-500">
                   <span>{formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}</span>
                   {notification.action_url && (
                     <a
                       href={notification.action_url}
-                      className="text-blue-600 hover:text-blue-800"
+                      className="text-blue-600 hover:text-blue-800 font-medium"
                     >
                       {notification.action_label || 'View Details'}
                     </a>

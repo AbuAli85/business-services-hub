@@ -50,6 +50,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
+import { notifyAndLog } from '@/lib/service-notifications'
 
 interface Service {
   id: string
@@ -330,7 +331,10 @@ export default function AdminServicesPage() {
     }
   }
 
-  const rejectService = async (serviceId: string) => {
+  const rejectService = async (serviceId: string, reason?: string) => {
+    // Find the service to get provider info
+    const service = services.find(s => s.id === serviceId)
+    
     // Optimistically update the local state
     const originalServices = [...services]
     const updatedServices = services.map(s => 
@@ -360,6 +364,21 @@ export default function AdminServicesPage() {
         .eq('id', serviceId)
 
       if (error) throw error
+
+      // Create notification for provider and audit log
+      if (actorId && service?.provider?.id && service?.title) {
+        await notifyAndLog(
+          service.provider.id,
+          serviceId,
+          service.title,
+          'rejected',
+          actorId,
+          actorName || undefined,
+          actorEmail || undefined,
+          reason,
+          { previous_status: service.approval_status, new_status: 'rejected' }
+        )
+      }
 
       // Close the details dialog if open
       if (detailsOpen && detailsService?.id === serviceId) {
@@ -443,6 +462,21 @@ export default function AdminServicesPage() {
 
       if (error) throw error
 
+      // Create notification for provider and audit log
+      if (actorId && service.provider?.id) {
+        await notifyAndLog(
+          service.provider.id,
+          service.id,
+          service.title,
+          'approved',
+          actorId,
+          actorName || undefined,
+          actorEmail || undefined,
+          undefined, // No reason needed for approval
+          { previous_status: service.approval_status, new_status: 'approved' }
+        )
+      }
+
       // Close the details dialog if open
       if (detailsOpen && detailsService?.id === service.id) {
         setDetailsOpen(false)
@@ -467,7 +501,7 @@ export default function AdminServicesPage() {
     }
   }
 
-  const handleSuspendService = async (service: Service) => {
+  const handleSuspendService = async (service: Service, reason?: string) => {
     // Optimistically update the local state
     const originalServices = [...services]
     const updatedServices = services.map(s => 
@@ -489,6 +523,21 @@ export default function AdminServicesPage() {
         .eq('id', service.id)
 
       if (error) throw error
+
+      // Create notification for provider and audit log
+      if (actorId && service.provider?.id) {
+        await notifyAndLog(
+          service.provider.id,
+          service.id,
+          service.title,
+          'suspended',
+          actorId,
+          actorName || undefined,
+          actorEmail || undefined,
+          reason,
+          { previous_status: service.status, new_status: 'suspended' }
+        )
+      }
 
       // Close the details dialog if open
       if (detailsOpen && detailsService?.id === service.id) {
@@ -538,6 +587,21 @@ export default function AdminServicesPage() {
         .eq('id', service.id)
 
       if (error) throw error
+
+      // Create notification for provider and audit log
+      if (actorId && service.provider?.id) {
+        await notifyAndLog(
+          service.provider.id,
+          service.id,
+          service.title,
+          nextVal ? 'featured' : 'unfeatured',
+          actorId,
+          actorName || undefined,
+          actorEmail || undefined,
+          undefined,
+          { featured: nextVal }
+        )
+      }
 
       toast.success(`Service ${nextVal ? 'featured' : 'unfeatured'} successfully!`)
       
@@ -1428,32 +1492,105 @@ export default function AdminServicesPage() {
                   <Separator />
                 </TabsContent>
 
-                <TabsContent value="history" className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Audit Log</div>
-                  <div className="border rounded-md divide-y">
+                <TabsContent value="history" className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-gray-900">Audit Log & History</div>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={async () => {
+                        if (!detailsService) return
+                        setAuditLoading(true)
+                        try {
+                          const supabase = await getSupabaseClient()
+                          const { data } = await supabase
+                            .from('service_audit_logs')
+                            .select('*')
+                            .eq('service_id', detailsService.id)
+                            .order('created_at', { ascending: false })
+                          setAuditLogs(data || [])
+                          toast.success('Audit log refreshed')
+                        } catch (e) {
+                          toast.error('Failed to refresh audit log')
+                        } finally {
+                          setAuditLoading(false)
+                        }
+                      }}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Refresh
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-3">
                     {auditLoading ? (
-                      <>
-                        <div className="p-3 animate-pulse">
-                          <div className="h-3 bg-gray-200 rounded w-1/3" />
-                        </div>
-                        <div className="p-3 animate-pulse">
-                          <div className="h-3 bg-gray-200 rounded w-1/4" />
-                        </div>
-                      </>
-                    ) : auditLogs.length === 0 ? (
-                      <div className="p-3 text-sm text-muted-foreground">No history available.</div>
-                    ) : (
-                      auditLogs.map((log: any) => (
-                        <div key={log.id} className="p-3 text-sm flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{log.event || log.action || 'Event'}</div>
-                            {(log.actor_name || log.actor_email || log.actor_id) && (
-                              <div className="text-xs text-muted-foreground">by {log.actor_name || log.actor_email || log.actor_id}</div>
-                            )}
+                      <div className="space-y-3">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="p-4 bg-gray-50 rounded-lg animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
+                            <div className="h-3 bg-gray-200 rounded w-1/2" />
                           </div>
-                          <div className="text-muted-foreground">{formatDate(log.created_at)}</div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
+                    ) : auditLogs.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg">
+                        <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                        <div className="text-sm text-gray-500">No history available yet</div>
+                        <div className="text-xs text-gray-400 mt-1">Actions on this service will appear here</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {auditLogs.map((log: any, index: number) => {
+                          const getEventIcon = (event: string) => {
+                            const eventLower = (event || '').toLowerCase()
+                            if (eventLower.includes('approv')) return { icon: CheckCircle, color: 'text-green-600 bg-green-50 border-green-200' }
+                            if (eventLower.includes('reject')) return { icon: XCircle, color: 'text-red-600 bg-red-50 border-red-200' }
+                            if (eventLower.includes('suspend')) return { icon: AlertCircle, color: 'text-orange-600 bg-orange-50 border-orange-200' }
+                            if (eventLower.includes('feature')) return { icon: Star, color: 'text-purple-600 bg-purple-50 border-purple-200' }
+                            if (eventLower.includes('edit') || eventLower.includes('updat')) return { icon: Edit3, color: 'text-blue-600 bg-blue-50 border-blue-200' }
+                            return { icon: Clock, color: 'text-gray-600 bg-gray-50 border-gray-200' }
+                          }
+                          
+                          const { icon: Icon, color } = getEventIcon(log.event || log.action)
+                          
+                          return (
+                            <div key={log.id || index} className="p-4 bg-white border rounded-lg hover:shadow-sm transition-shadow">
+                              <div className="flex items-start gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border ${color}`}>
+                                  <Icon className="h-5 w-5" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-gray-900 mb-1">{log.event || log.action || 'Event'}</div>
+                                  {(log.actor_name || log.actor_email) && (
+                                    <div className="text-sm text-gray-600">
+                                      by <span className="font-medium">{log.actor_name || log.actor_email}</span>
+                                    </div>
+                                  )}
+                                  {log.metadata && Object.keys(log.metadata).length > 0 && (
+                                    <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                                      {Object.entries(log.metadata).map(([key, value]) => (
+                                        <div key={key} className="text-gray-600">
+                                          <span className="font-medium">{key}:</span> {JSON.stringify(value)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(log.created_at).toLocaleString('en-US', {
+                                      year: 'numeric',
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
                     )}
                   </div>
                 </TabsContent>
