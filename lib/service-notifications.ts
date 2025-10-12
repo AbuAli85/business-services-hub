@@ -110,6 +110,23 @@ export async function createAuditLog(
   try {
     const supabase = await getSupabaseClient()
     
+    // Debug: Check current user context
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    console.log('🔍 Debug - Current auth user:', user?.id, userError)
+    
+    // Debug: Check if user has admin role
+    if (user) {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, role, email, full_name')
+        .eq('id', user.id)
+        .single()
+      
+      console.log('🔍 Debug - User profile:', profile, profileError)
+      console.log('🔍 Debug - User role:', profile?.role)
+      console.log('🔍 Debug - Is admin?', profile?.role === 'admin')
+    }
+    
     const auditLog = {
       service_id: serviceId,
       event: action,
@@ -119,6 +136,8 @@ export async function createAuditLog(
       metadata: metadata || {},
       created_at: new Date().toISOString()
     }
+    
+    console.log('🔍 Debug - Audit log data:', auditLog)
     
     const { error } = await supabase
       .from('service_audit_logs')

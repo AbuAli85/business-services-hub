@@ -392,10 +392,9 @@ export async function sendServiceActionEmail(
       ? `${window.location.origin}/api/send-email`
       : '/api/send-email'
     
-    // For testing: Use verified email if in development/testing mode
-    const recipientEmail = process.env.NODE_ENV === 'development' 
-      ? 'chairman@falconeyegroup.net'  // Use verified email for testing
-      : data.providerEmail             // Use actual provider email in production
+    // For testing: Use verified email for both sender and recipient
+    const recipientEmail = 'chairman@falconeyegroup.net'  // Always use verified email until domain is verified
+    const fromEmail = 'chairman@falconeyegroup.net'       // Use verified email as sender
     
     console.log('📧 Sending email to:', recipientEmail, 'via:', apiUrl)
     console.log('📧 Original provider email:', data.providerEmail)
@@ -407,6 +406,7 @@ export async function sendServiceActionEmail(
       },
       body: JSON.stringify({
         to: recipientEmail,
+        from: fromEmail,
         subject,
         html,
         text,
