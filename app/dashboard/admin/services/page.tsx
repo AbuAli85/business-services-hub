@@ -540,10 +540,12 @@ export default function AdminServicesPage() {
         
         // Don't refresh immediately - let the user see the optimistic update
         setTimeout(async () => {
-          console.log('🔄 Refreshing services list (service will disappear from current filter)...')
-          await loadServices()
-          console.log('✅ Services list refreshed - approved service moved out of pending filter')
-        }, 3000)
+          console.log('🔄 Switching to Approved filter to show the newly approved service...')
+          // Switch to "approved" filter so user can see the service in its new home
+          setStatusFilter('approved')
+          // The useEffect will automatically call loadServices() when filter changes
+          console.log('✅ Switched to Approved filter - service will appear there')
+        }, 2000)
       } else {
         // Normal refresh for other filters
         setTimeout(async () => {
