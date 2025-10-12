@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
         totalRevenue: invoices
           .filter(invoice => invoice.status === 'paid')
           .reduce((sum, invoice) => sum + invoice.amount, 0),
-        pendingApprovals: services.filter(service => service.approval_status === 'pending').length,
+        pendingApprovals: services.filter(service => service.approvalStatus === 'pending').length,
         pendingVerifications: users.filter(user => user.status === 'pending').length,
         activeUsers: users.filter(user => user.status === 'active').length,
         featuredServices: services.filter(service => service.featured).length
@@ -95,13 +95,13 @@ export default function AdminDashboardPage() {
 
   const recentActivity = [
     ...services
-      .filter(service => service.approval_status === 'pending')
+      .filter(service => service.approvalStatus === 'pending')
       .slice(0, 3)
       .map(service => ({
         type: 'service_pending' as const,
         title: 'Service Pending Approval',
-        description: `${service.title} by ${service.provider?.full_name}`,
-        timestamp: service.created_at,
+        description: `${service.title} by ${service.providerId}`,
+        timestamp: service.createdAt,
         action: 'Review Service',
         href: `/dashboard/admin/services?id=${service.id}`
       })),
@@ -111,8 +111,8 @@ export default function AdminDashboardPage() {
       .map(user => ({
         type: 'user_pending' as const,
         title: 'User Pending Verification',
-        description: `${user.full_name || user.email}`,
-        timestamp: user.created_at,
+        description: `${user.fullName || user.email}`,
+        timestamp: user.createdAt,
         action: 'Verify User',
         href: `/dashboard/admin/users?id=${user.id}`
       }))
