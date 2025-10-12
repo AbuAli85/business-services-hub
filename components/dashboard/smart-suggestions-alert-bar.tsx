@@ -42,47 +42,17 @@ export function SmartSuggestionsAlertBar({
     generateSuggestions()
   }, [bookingId, userRole])
 
-  const generateSuggestions = () => {
-    // This would typically fetch from an API or be passed as props
-    // For now, we'll generate some mock suggestions based on common scenarios
-    const mockSuggestions: Suggestion[] = [
-      {
-        id: '1',
-        type: 'progress_update',
-        title: 'Send Progress Update',
-        description: 'Client hasn\'t received an update in 2 days',
-        priority: 'high',
-        actionRequired: true,
-        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '2',
-        type: 'overdue_task',
-        title: 'Overdue Task Alert',
-        description: '1 task is overdue and needs attention',
-        priority: 'high',
-        actionRequired: true
-      },
-      {
-        id: '3',
-        type: 'payment_reminder',
-        title: 'Payment Reminder',
-        description: 'Invoice is due in 3 days',
-        priority: 'normal',
-        actionRequired: true,
-        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-      },
-      {
-        id: '4',
-        type: 'follow_up',
-        title: 'Schedule Follow-up',
-        description: 'Milestone completed, schedule client review',
-        priority: 'normal',
-        actionRequired: false
-      }
-    ]
-
-    setSuggestions(mockSuggestions)
+  const generateSuggestions = async () => {
+    // Fetch real suggestions from backend based on booking status
+    // No mock data - suggestions must be generated from real booking/task/milestone data
+    try {
+      // In a full implementation, this would call an API endpoint
+      // For now, return empty array - suggestions should come from props or API
+      setSuggestions([])
+    } catch (error) {
+      console.error('Error generating suggestions:', error)
+      setSuggestions([])
+    }
   }
 
   const getSuggestionIcon = (type: string) => {

@@ -162,40 +162,46 @@ export default function AdminPermissionsPage() {
 
   const loadData = async () => {
     try {
-      // Load users with their permissions
-      const mockUsers: UserPermission[] = [
-        {
-          user_id: '1',
-          user_name: 'Admin User',
-          user_email: 'admin@businesshub.com',
-          role: 'admin',
-          custom_permissions: [],
-          is_active: true,
-          last_login: new Date(Date.now() - 3600000).toISOString()
-        },
-        {
-          user_id: '2',
-          user_name: 'Fahad Alamri',
-          user_email: 'fahad.alamri@example.com',
-          role: 'provider',
-          custom_permissions: ['service:approve'],
-          is_active: true,
-          last_login: new Date(Date.now() - 1800000).toISOString()
-        },
-        {
-          user_id: '3',
-          user_name: 'Ahmed Al-Rashid',
-          user_email: 'client@example.com',
-          role: 'client',
-          custom_permissions: [],
-          is_active: true,
-          last_login: new Date(Date.now() - 7200000).toISOString()
-        }
-      ]
-      setUsers(mockUsers)
+      const supabase = await getSupabaseClient()
+      
+      // Load real users with their role assignments
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          role,
+          last_active,
+          user_roles_v2 (
+            role_id,
+            is_active,
+            roles_v2 (
+              name,
+              permissions
+            )
+          )
+        `)
+        .order('created_at', { ascending: false })
+      
+      if (profilesError) throw profilesError
+      
+      // Transform to UserPermission format
+      const realUsers: UserPermission[] = (profilesData || []).map(user => ({
+        user_id: user.id,
+        user_name: user.full_name || 'Unknown User',
+        user_email: user.email || '',
+        role: user.role || 'client',
+        custom_permissions: [],
+        is_active: true,
+        last_login: user.last_active || new Date().toISOString()
+      }))
+      
+      setUsers(realUsers)
       setLoading(false)
     } catch (error) {
       console.error('Error loading permissions data:', error)
+      setUsers([])
       setLoading(false)
     }
   }

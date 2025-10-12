@@ -100,115 +100,107 @@ function AdminReportsPageContent() {
     try {
       const supabase = await getSupabaseClient()
       
-      // Mock data for demonstration
-      const mockReports: Report[] = [
-        {
-          id: '1',
-          title: 'Comprehensive Financial Report',
-          type: 'financial',
-          description: 'Revenue, expenses, profit analysis, and payment trends with client/provider breakdown',
-          generated_at: new Date(Date.now() - 86400000).toISOString(),
-          status: 'ready',
-          file_url: '/reports/financial-comprehensive.pdf',
-          metrics: {
-            totalRevenue: 15750,
-            totalBookings: 45,
-            completionRate: 87.5
-          }
-        },
-        {
-          id: '2',
-          title: 'User Analytics & Growth Report',
-          type: 'user',
-          description: 'User registrations, role distribution, activity metrics, and engagement analysis',
-          generated_at: new Date(Date.now() - 172800000).toISOString(),
-          status: 'ready',
-          file_url: '/reports/user-analytics.pdf',
-          metrics: {
-            totalUsers: 156,
-            totalBookings: 45,
-            completionRate: 87.5
-          }
-        },
-        {
-          id: '3',
-          title: 'Service Performance & Quality Report',
-          type: 'service',
-          description: 'Service booking rates, completion times, customer satisfaction, and provider performance',
-          generated_at: new Date(Date.now() - 259200000).toISOString(),
-          status: 'ready',
-          file_url: '/reports/service-performance.pdf',
-          metrics: {
-            totalBookings: 45,
-            completionRate: 87.5
-          }
-        },
-        {
-          id: '4',
-          title: 'Booking Analytics & Trends Report',
-          type: 'booking',
-          description: 'Booking trends, cancellation rates, revenue by service, and client/provider insights',
-          generated_at: new Date(Date.now() - 345600000).toISOString(),
-          status: 'generating'
-        },
-        {
-          id: '5',
-          title: 'Executive Dashboard Report',
-          type: 'analytics',
-          description: 'High-level KPIs, growth metrics, and strategic insights for management',
-          generated_at: new Date(Date.now() - 432000000).toISOString(),
-          status: 'ready',
-          file_url: '/reports/executive-dashboard.pdf',
-          metrics: {
-            totalUsers: 156,
-            totalRevenue: 15750,
-            totalBookings: 45,
-            completionRate: 87.5
-          }
-        }
-      ]
-
-      setReports(mockReports)
+      // Fetch real reports from database
+      const { data: reportsData, error: reportsError } = await supabase
+        .from('reports')
+        .select('*')
+        .order('generated_at', { ascending: false })
+      
+      if (reportsError) throw reportsError
+      
+      setReports(reportsData || [])
     } catch (error) {
       console.error('Error loading reports:', error)
       toast.error('Failed to load reports')
+      setReports([])
     }
   }
 
   const loadAnalytics = async () => {
     try {
-      // Mock analytics data
-      const mockAnalytics: AnalyticsData = {
-        totalUsers: 156,
-        totalRevenue: 15750,
-        totalBookings: 45,
-        completionRate: 87.5,
-        userGrowth: 12.5,
-        revenueGrowth: 8.3,
-        bookingGrowth: 15.2,
-        topServices: [
-          { name: 'Website Development', bookings: 12, revenue: 6000 },
-          { name: 'Digital Marketing', bookings: 10, revenue: 3000 },
-          { name: 'Graphic Design', bookings: 8, revenue: 1600 },
-          { name: 'Content Writing', bookings: 7, revenue: 1400 },
-          { name: 'Translation Services', bookings: 5, revenue: 600 }
-        ],
-        userRoles: [
-          { role: 'Client', count: 89, percentage: 57.1 },
-          { role: 'Provider', count: 45, percentage: 28.8 },
-          { role: 'Admin', count: 12, percentage: 7.7 },
-          { role: 'Manager', count: 6, percentage: 3.8 },
-          { role: 'Support', count: 4, percentage: 2.6 }
-        ],
-        monthlyStats: [
-          { month: 'Jan', users: 45, revenue: 3200, bookings: 12 },
-          { month: 'Feb', users: 52, revenue: 3800, bookings: 15 },
-          { month: 'Mar', users: 48, revenue: 4200, bookings: 18 },
-          { month: 'Apr', users: 61, revenue: 4550, bookings: 20 }
-        ]
+      // Calculate real analytics from actual data
+      const totalUsers = users.length
+      const totalBookings = bookings.length
+      const totalRevenue = invoices
+        .filter(invoice => invoice.status === 'paid')
+        .reduce((sum, invoice) => sum + (invoice.amount || 0), 0)
+      
+      const completedBookings = bookings.filter(b => b.status === 'completed').length
+      const completionRate = totalBookings > 0 ? (completedBookings / totalBookings) * 100 : 0
+      
+      // Calculate user role distribution
+      const userRoleMap = new Map<string, number>()
+      users.forEach(user => {
+        const role = user.role || 'Unknown'
+        userRoleMap.set(role, (userRoleMap.get(role) || 0) + 1)
+      })
+      
+      const userRoles = Array.from(userRoleMap.entries()).map(([role, count]) => ({
+        role: role.charAt(0).toUpperCase() + role.slice(1),
+        count,
+        percentage: totalUsers > 0 ? (count / totalUsers) * 100 : 0
+      }))
+      
+      // Calculate top services by bookings and revenue
+      const serviceMap = new Map<string, { bookings: number, revenue: number }>()
+      bookings.forEach(booking => {
+        const serviceName = (booking as any).service_title || (booking as any).serviceTitle || 'Unknown Service'
+        const current = serviceMap.get(serviceName) || { bookings: 0, revenue: 0 }
+        const revenue = (booking as any).total_amount || (booking as any).totalAmount || (booking as any).amount || 0
+        serviceMap.set(serviceName, {
+          bookings: current.bookings + 1,
+          revenue: current.revenue + revenue
+        })
+      })
+      
+      const topServices = Array.from(serviceMap.entries())
+        .map(([name, data]) => ({ name, ...data }))
+        .sort((a, b) => b.bookings - a.bookings)
+        .slice(0, 5)
+      
+      // Calculate monthly stats (last 4 months)
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const monthlyData = new Map<string, { users: number, revenue: number, bookings: number }>()
+      
+      const now = new Date()
+      for (let i = 3; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`
+        monthlyData.set(monthKey, { users: 0, revenue: 0, bookings: 0 })
+      }
+      
+      bookings.forEach(booking => {
+        const date = new Date((booking as any).created_at || (booking as any).createdAt)
+        const monthKey = `${date.getFullYear()}-${date.getMonth()}`
+        const current = monthlyData.get(monthKey)
+        if (current) {
+          current.bookings++
+          current.revenue += (booking as any).total_amount || (booking as any).totalAmount || (booking as any).amount || 0
+        }
+      })
+      
+      const monthlyStats = Array.from(monthlyData.entries()).map(([key, data]) => {
+        const [year, monthIndex] = key.split('-').map(Number)
+        return {
+          month: monthNames[monthIndex],
+          ...data
+        }
+      })
+      
+      const realAnalytics: AnalyticsData = {
+        totalUsers,
+        totalRevenue,
+        totalBookings,
+        completionRate,
+        userGrowth: 0, // Would need historical data
+        revenueGrowth: 0, // Would need historical data
+        bookingGrowth: 0, // Would need historical data
+        topServices,
+        userRoles,
+        monthlyStats
       }
 
-      setAnalytics(mockAnalytics)
+      setAnalytics(realAnalytics)
     } catch (error) {
       console.error('Error loading analytics:', error)
     }
