@@ -202,7 +202,9 @@ export default function AdminPermissionsPage() {
             id: role.id,
             name: role.name,
             description: role.description || '',
-            permissions: role.permissions || [],
+            permissions: Array.isArray(role.permissions) ? role.permissions : 
+                        typeof role.permissions === 'string' ? JSON.parse(role.permissions) : 
+                        [],
             is_system: role.is_system || false,
             user_count: 0,
             created_at: role.created_at
@@ -548,17 +550,18 @@ export default function AdminPermissionsPage() {
                     <div key={permission.id} className="flex items-center space-x-2">
                       <Checkbox
                         id={permission.id}
-                        checked={newRole.permissions.includes(permission.id)}
+                        checked={Array.isArray(newRole.permissions) && newRole.permissions.includes(permission.id)}
                         onCheckedChange={(checked) => {
+                          const currentPermissions = Array.isArray(newRole.permissions) ? newRole.permissions : []
                           if (checked) {
                             setNewRole({
                               ...newRole,
-                              permissions: [...newRole.permissions, permission.id]
+                              permissions: [...currentPermissions, permission.id]
                             })
                           } else {
                             setNewRole({
                               ...newRole,
-                              permissions: newRole.permissions.filter(p => p !== permission.id)
+                              permissions: currentPermissions.filter(p => p !== permission.id)
                             })
                           }
                         }}
@@ -722,7 +725,7 @@ export default function AdminPermissionsPage() {
                             <p className="text-sm text-gray-600">{permission.description}</p>
                             <div className="mt-2">
                               <span className="text-xs text-gray-500">
-                                {roles.filter(role => role.permissions.includes(permission.id)).length} roles
+                                {roles.filter(role => Array.isArray(role.permissions) && role.permissions.includes(permission.id)).length} roles
                               </span>
                             </div>
                           </div>
