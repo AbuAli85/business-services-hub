@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/table'
 import { EnhancedServiceTable } from '@/components/services/EnhancedServiceTable'
 import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
+import { useAdminRealtime } from '@/hooks/useAdminRealtime'
 import { 
   Search,
   Filter,
@@ -39,7 +40,8 @@ import {
   Phone,
   Link as LinkIcon,
   Copy,
-  Edit3
+  Edit3,
+  Radio
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { toast } from 'sonner'
@@ -134,6 +136,28 @@ export default function AdminServicesPage() {
   const canEdit = actorRole === 'admin' || actorRole === 'staff'
   const abortRef = useRef<AbortController | null>(null)
   const latestReqRef = useRef(0)
+  const [hasRecentUpdate, setHasRecentUpdate] = useState(false)
+
+  // Real-time subscription for services
+  const { status: realtimeStatus, lastUpdate } = useAdminRealtime({
+    enableUsers: false,
+    enableServices: true,
+    enableBookings: true,
+    enableInvoices: false,
+    enablePermissions: false,
+    enableVerifications: false,
+    debounceMs: 2000,
+    showToasts: true
+  })
+
+  // Auto-refresh on real-time updates
+  useEffect(() => {
+    if (lastUpdate) {
+      setHasRecentUpdate(true)
+      loadServices()
+      setTimeout(() => setHasRecentUpdate(false), 3000)
+    }
+  }, [lastUpdate])
 
   useEffect(() => {
     loadServices()
@@ -999,12 +1023,20 @@ export default function AdminServicesPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
       {/* Enhanced Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-8 text-white">
+      <div className={`bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-8 text-white transition-all duration-300 ${hasRecentUpdate ? 'ring-4 ring-yellow-400' : ''}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Service Management</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">Service Management</h1>
+              {realtimeStatus.connected && (
+                <Badge className="bg-green-500/20 text-white border-white/30">
+                  <Radio className="h-3 w-3 mr-1 animate-pulse" />
+                  Live
+                </Badge>
+              )}
+            </div>
             <p className="text-blue-100 text-lg mb-4">
-              Review and approve services from providers with comprehensive oversight
+              Real-time service approval and management with comprehensive oversight
             </p>
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center">
@@ -1023,6 +1055,12 @@ export default function AdminServicesPage() {
                 <DollarSign className="h-4 w-4 mr-1" />
                 <span>Revenue: {formatCurrency(stats.totalRevenue)}</span>
               </div>
+              {lastUpdate && (
+                <div className="flex items-center text-xs opacity-75">
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-3">
