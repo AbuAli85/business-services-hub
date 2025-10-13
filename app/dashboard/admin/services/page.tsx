@@ -731,8 +731,46 @@ export default function AdminServicesPage() {
   }
 
   const handleUpdatePricing = async (service: Service) => {
-    // This would typically open a modal for editing pricing
-    toast.success('Pricing update functionality coming soon!')
+    const newPrice = prompt(`Enter new price for "${service.title}" (Current: ${service.currency} ${service.base_price}):`, service.base_price.toString())
+    
+    if (newPrice === null) return // User cancelled
+    
+    const priceValue = parseFloat(newPrice)
+    if (isNaN(priceValue) || priceValue < 0) {
+      toast.error('Invalid price value')
+      return
+    }
+    
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('services')
+        .update({ 
+          base_price: priceValue,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', service.id)
+      
+      if (error) throw error
+      
+      // Create audit log
+      if (actorId) {
+        await supabase.from('service_audit_logs').insert({
+          service_id: service.id,
+          event: 'Price Updated',
+          actor_id: actorId,
+          actor_name: actorName,
+          actor_email: actorEmail,
+          metadata: { from: service.base_price, to: priceValue }
+        })
+      }
+      
+      toast.success(`Price updated to ${service.currency} ${priceValue}`)
+      await loadServices()
+    } catch (error) {
+      console.error('Error updating price:', error)
+      toast.error('Failed to update pricing')
+    }
   }
 
   const handleViewService = (service: Service) => {
@@ -747,13 +785,30 @@ export default function AdminServicesPage() {
   }
 
   const handleEditService = (service: Service) => {
-    // This would typically open an edit modal
-    toast.success(`Editing service: ${service.title}`)
+    // Navigate to edit page
+    router.push(`/dashboard/services/${service.id}/edit`)
   }
 
-  const handleDeleteService = (service: Service) => {
-    // This would typically open a confirmation modal
-    toast.success(`Delete service: ${service.title}`)
+  const handleDeleteService = async (service: Service) => {
+    if (!confirm(`Are you sure you want to delete "${service.title}"? This action cannot be undone.`)) {
+      return
+    }
+    
+    try {
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('services')
+        .delete()
+        .eq('id', service.id)
+      
+      if (error) throw error
+      
+      toast.success(`Service "${service.title}" deleted successfully`)
+      await loadServices()
+    } catch (error) {
+      console.error('Error deleting service:', error)
+      toast.error('Failed to delete service')
+    }
   }
 
   const exportCsv = () => {

@@ -122,17 +122,34 @@ export function useAdminRealtime(config: AdminRealtimeConfig = {}) {
                   callback(update)
                 }
 
-                // Show toast if enabled
+                // Show toast if enabled and dispatch custom event for notifications
                 if (showToasts) {
                   const eventText = payload.eventType === 'INSERT' ? 'New' : 
                                    payload.eventType === 'UPDATE' ? 'Updated' :
                                    'Deleted'
-                  toast.info(`${eventText} ${tableName.slice(0, -1)} detected`, {
+                  const tableSingular = tableName.slice(0, -1)
+                  const message = `${eventText} ${tableSingular} detected`
+                  
+                  toast.info(message, {
                     duration: 2000
                   })
+
+                  // Dispatch custom event for RealtimeNotifications component
+                  const notificationEvent = new CustomEvent('admin-notification', {
+                    detail: {
+                      type: 'info',
+                      title: `${eventText} ${tableSingular.charAt(0).toUpperCase() + tableSingular.slice(1)}`,
+                      message: message,
+                      actionUrl: `/dashboard/admin/${tableName}`,
+                      actionLabel: `View ${tableSingular.charAt(0).toUpperCase() + tableSingular.slice(1)}`
+                    }
+                  })
+                  window.dispatchEvent(notificationEvent)
                 }
 
-                console.log(`🔄 Real-time ${payload.eventType} on ${tableName}:`, payload)
+                if (process.env.NODE_ENV === 'development') {
+                  console.log(`🔄 Real-time ${payload.eventType} on ${tableName}:`, payload)
+                }
               }, debounceMs)
             }
           )
@@ -143,14 +160,18 @@ export function useAdminRealtime(config: AdminRealtimeConfig = {}) {
                 [statusKey]: true,
                 connected: true
               }))
-              console.log(`✅ Subscribed to real-time updates for ${tableName}`)
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`✅ Subscribed to real-time updates for ${tableName}`)
+              }
             } else if (status === 'CHANNEL_ERROR') {
               setStatus(prev => ({
                 ...prev,
                 [statusKey]: false
               }))
               setError(`Failed to subscribe to ${tableName}`)
-              console.error(`❌ Failed to subscribe to ${tableName}`)
+              if (process.env.NODE_ENV === 'development') {
+                console.error(`❌ Failed to subscribe to ${tableName}`)
+              }
             }
           })
 
@@ -169,7 +190,9 @@ export function useAdminRealtime(config: AdminRealtimeConfig = {}) {
       setError(null)
 
     } catch (err) {
-      console.error('Error setting up real-time subscriptions:', err)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error setting up real-time subscriptions:', err)
+      }
       setError(err instanceof Error ? err.message : 'Failed to setup real-time')
       setStatus(prev => ({ ...prev, connected: false }))
     }
@@ -227,7 +250,9 @@ export function useAdminRealtime(config: AdminRealtimeConfig = {}) {
     if (autoReconnect) {
       const reconnectInterval = setInterval(() => {
         if (!status.connected) {
-          console.log('🔄 Attempting to reconnect real-time subscriptions...')
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Attempting to reconnect real-time subscriptions...')
+          }
           setupRealtimeSubscriptions()
         }
       }, 30000) // Try to reconnect every 30 seconds

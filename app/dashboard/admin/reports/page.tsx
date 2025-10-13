@@ -32,7 +32,8 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
-  Search
+  Search,
+  Radio
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { useDashboardData } from '@/hooks/useDashboardData'
@@ -40,7 +41,6 @@ import { useAdminRealtime } from '@/hooks/useAdminRealtime'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { toast } from 'sonner'
 import { DashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
-import { Radio, Download as DownloadIcon } from 'lucide-react'
 
 interface Report {
   id: string
@@ -88,7 +88,6 @@ function AdminReportsPageContent() {
   const { users, services, bookings, invoices, loading, error, refresh } = useDashboardData()
   const [reports, setReports] = useState<Report[]>([])
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
-  const [selectedPeriod, setSelectedPeriod] = useState('30d')
   const [selectedTab, setSelectedTab] = useState<'all' | 'financial' | 'user' | 'service' | 'booking' | 'analytics'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -222,14 +221,27 @@ function AdminReportsPageContent() {
         }
       })
       
+      // Calculate growth metrics from monthly stats
+      const previousMonthBookings = monthlyStats.length >= 2 ? monthlyStats[monthlyStats.length - 2].bookings : 0
+      const currentMonthBookings = monthlyStats.length >= 1 ? monthlyStats[monthlyStats.length - 1].bookings : 0
+      const bookingGrowthCalc = previousMonthBookings > 0 
+        ? ((currentMonthBookings - previousMonthBookings) / previousMonthBookings) * 100 
+        : 0
+      
+      const previousMonthRevenue = monthlyStats.length >= 2 ? monthlyStats[monthlyStats.length - 2].revenue : 0
+      const currentMonthRevenue = monthlyStats.length >= 1 ? monthlyStats[monthlyStats.length - 1].revenue : 0
+      const revenueGrowthCalc = previousMonthRevenue > 0 
+        ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 
+        : 0
+
       const realAnalytics: AnalyticsData = {
         totalUsers,
         totalRevenue,
         totalBookings,
         completionRate,
-        userGrowth: 0, // Would need historical data
-        revenueGrowth: 0, // Would need historical data
-        bookingGrowth: 0, // Would need historical data
+        userGrowth: 0, // Would require historical snapshots
+        revenueGrowth: revenueGrowthCalc,
+        bookingGrowth: bookingGrowthCalc,
         topServices,
         userRoles,
         monthlyStats
@@ -243,23 +255,80 @@ function AdminReportsPageContent() {
 
   const generateReport = async (type: string) => {
     try {
-      toast.success(`Generating ${type} report...`)
-      // In a real implementation, this would trigger a background job
-      setTimeout(() => {
-        toast.success(`${type} report generated successfully!`)
-        loadReports()
-      }, 2000)
-    } catch (error) {
-      toast.error('Failed to generate report')
+      toast.info(`Preparing ${type} report...`)
+      
+      const supabase = await getSupabaseClient()
+      
+      // Get current analytics data
+      const reportMetrics = {
+        totalUsers: analytics?.totalUsers || 0,
+        totalRevenue: analytics?.totalRevenue || 0,
+        totalBookings: analytics?.totalBookings || 0,
+        completionRate: analytics?.completionRate || 0
+      }
+      
+      // Insert report record into database
+      const { data, error } = await supabase
+        .from('reports')
+        .insert({
+          title: `${type} Report - ${new Date().toLocaleDateString()}`,
+          type: type.toLowerCase() as 'financial' | 'user' | 'service' | 'booking' | 'analytics',
+          description: `Comprehensive ${type.toLowerCase()} analysis and insights`,
+          status: 'ready',
+          metrics: reportMetrics,
+          generated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      toast.success(`${type} report generated successfully!`)
+      await loadReports()
+    } catch (error: any) {
+      console.error('Error generating report:', error)
+      if (error?.code === '42P01') {
+        toast.error('Reports table not found. Please run CREATE_REPORTS_TABLE.sql migration.')
+      } else {
+        toast.error('Failed to generate report')
+      }
     }
   }
 
   const downloadReport = (report: Report) => {
-    if (report.file_url) {
-      // In a real implementation, this would download the actual file
-      toast.success(`Downloading ${report?.title || 'Report'}...`)
-    } else {
-      toast.error('Report file not available')
+    try {
+      // Generate CSV from report metrics
+      const csvData = [
+        ['Report', report.title],
+        ['Type', report.type],
+        ['Generated', new Date(report.generated_at).toLocaleString()],
+        ['Status', report.status],
+        [''],
+        ['Metrics', 'Value']
+      ]
+      
+      if (report.metrics) {
+        if (report.metrics.totalUsers) csvData.push(['Total Users', report.metrics.totalUsers.toString()])
+        if (report.metrics.totalRevenue) csvData.push(['Total Revenue', report.metrics.totalRevenue.toString()])
+        if (report.metrics.totalBookings) csvData.push(['Total Bookings', report.metrics.totalBookings.toString()])
+        if (report.metrics.completionRate) csvData.push(['Completion Rate', `${report.metrics.completionRate}%`])
+      }
+      
+      const csv = csvData.map(row => row.join(',')).join('\n')
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${report.title.replace(/\s+/g, '-')}-${Date.now()}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      
+      toast.success(`Downloaded ${report.title}`)
+    } catch (error) {
+      console.error('Error downloading report:', error)
+      toast.error('Failed to download report')
     }
   }
 
@@ -325,32 +394,38 @@ function AdminReportsPageContent() {
           ]
         }
       case 'user':
+        const activeUsersCount = users.filter(u => u.status === 'active').length
+        const userGrowthRate = analytics?.userGrowth || 0
         return {
           title: 'User Analytics',
           description: 'User registrations, roles, and engagement',
           metrics: [
             { label: 'Total Users', value: safeTotalUsers.toString(), icon: Users },
-            { label: 'Active Users', value: Math.floor(safeTotalUsers * 0.8).toString(), icon: UserCheck },
-            { label: 'Growth Rate', value: '+12.5%', icon: TrendingUp }
+            { label: 'Active Users', value: activeUsersCount.toString(), icon: UserCheck },
+            { label: 'Growth Rate', value: `${userGrowthRate > 0 ? '+' : ''}${userGrowthRate.toFixed(1)}%`, icon: TrendingUp }
           ]
         }
       case 'service':
+        const totalServicesCount = services.length
+        const averageBookingsPerService = totalServicesCount > 0 ? (safeTotalBookings / totalServicesCount).toFixed(1) : '0'
         return {
           title: 'Service Performance',
           description: 'Service bookings, ratings, and provider performance',
           metrics: [
-            { label: 'Total Services', value: safeTopServices.length.toString(), icon: BarChart3 },
+            { label: 'Total Services', value: totalServicesCount.toString(), icon: BarChart3 },
             { label: 'Top Service', value: safeTopServices[0]?.name || 'N/A', icon: Building2 },
-            { label: 'Avg Rating', value: '4.8/5', icon: Activity }
+            { label: 'Avg Bookings/Service', value: averageBookingsPerService, icon: Activity }
           ]
         }
       case 'booking':
+        const completedCount = bookings.filter(b => b.status === 'completed').length
+        const realCompletionRate = safeTotalBookings > 0 ? ((completedCount / safeTotalBookings) * 100).toFixed(1) : '0'
         return {
           title: 'Booking Analytics',
           description: 'Booking trends, completion rates, and client insights',
           metrics: [
             { label: 'Total Bookings', value: safeTotalBookings.toString(), icon: Calendar },
-            { label: 'Completion Rate', value: '87.5%', icon: CheckCircle },
+            { label: 'Completion Rate', value: `${realCompletionRate}%`, icon: CheckCircle },
             { label: 'Avg Booking Value', value: formatCurrency(safeTotalBookings > 0 ? safeTotalRevenue / safeTotalBookings : 0), icon: DollarSign }
           ]
         }

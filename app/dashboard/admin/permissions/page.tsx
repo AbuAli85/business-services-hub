@@ -152,7 +152,7 @@ const DEFAULT_ROLES: Role[] = [
 
 export default function AdminPermissionsPage() {
   const [activeTab, setActiveTab] = useState('roles')
-  const [roles, setRoles] = useState<Role[]>(DEFAULT_ROLES)
+  const [roles, setRoles] = useState<Role[]>([])
   const [users, setUsers] = useState<UserPermission[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
@@ -189,6 +189,38 @@ export default function AdminPermissionsPage() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Load roles from database if table exists, otherwise use defaults
+      try {
+        const { data: rolesData, error: rolesError } = await supabase
+          .from('roles_v2')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (!rolesError && rolesData && rolesData.length > 0) {
+          // Transform database roles to our format
+          const loadedRoles: Role[] = rolesData.map(role => ({
+            id: role.id,
+            name: role.name,
+            description: role.description || '',
+            permissions: role.permissions || [],
+            is_system: role.is_system || false,
+            user_count: 0,
+            created_at: role.created_at
+          }))
+          setRoles(loadedRoles)
+        } else {
+          // Use default roles if table doesn't exist
+          setRoles(DEFAULT_ROLES)
+        }
+      } catch (e: any) {
+        // If roles table doesn't exist, use defaults
+        if (e?.code === '42P01') {
+          setRoles(DEFAULT_ROLES)
+        } else {
+          throw e
+        }
+      }
+      
       // Load real users with their role assignments
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
@@ -197,21 +229,13 @@ export default function AdminPermissionsPage() {
           full_name,
           email,
           role,
-          last_active,
-          user_roles_v2 (
-            role_id,
-            is_active,
-            roles_v2 (
-              name,
-              permissions
-            )
-          )
+          last_active
         `)
         .order('created_at', { ascending: false })
       
       if (profilesError) throw profilesError
       
-      // Transform to UserPermission format
+      // Transform to UserPermission format and count users per role
       const realUsers: UserPermission[] = (profilesData || []).map(user => ({
         user_id: user.id,
         user_name: user.full_name || 'Unknown User',
@@ -222,60 +246,166 @@ export default function AdminPermissionsPage() {
         last_login: user.last_active || new Date().toISOString()
       }))
       
+      // Update role counts
+      const roleCounts = realUsers.reduce((acc, user) => {
+        acc[user.role] = (acc[user.role] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+      
+      setRoles(prev => prev.map(role => ({
+        ...role,
+        user_count: roleCounts[role.id] || 0
+      })))
+      
       setUsers(realUsers)
       setLoading(false)
     } catch (error) {
       console.error('Error loading permissions data:', error)
       setUsers([])
+      setRoles(DEFAULT_ROLES) // Fallback to defaults
       setLoading(false)
     }
   }
 
-  const handleCreateRole = () => {
+  const handleCreateRole = async () => {
     if (!newRole.name.trim()) {
       toast.error('Role name is required')
       return
     }
 
-    const role: Role = {
-      id: newRole.name.toLowerCase().replace(/\s+/g, '_'),
-      name: newRole.name,
-      description: newRole.description,
-      permissions: newRole.permissions,
-      is_system: false,
-      user_count: 0,
-      created_at: new Date().toISOString()
+    try {
+      const supabase = await getSupabaseClient()
+      const roleId = newRole.name.toLowerCase().replace(/\s+/g, '_')
+      
+      // Try to insert into database
+      const { data, error } = await supabase
+        .from('roles_v2')
+        .insert({
+          id: roleId,
+          name: newRole.name,
+          description: newRole.description,
+          permissions: newRole.permissions,
+          is_system: false
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        // If table doesn't exist, add to local state only
+        if (error.code === '42P01') {
+          const role: Role = {
+            id: roleId,
+            name: newRole.name,
+            description: newRole.description,
+            permissions: newRole.permissions,
+            is_system: false,
+            user_count: 0,
+            created_at: new Date().toISOString()
+          }
+          setRoles([...roles, role])
+          toast.success('Role created locally (database table not available)')
+        } else {
+          throw error
+        }
+      } else {
+        // Successfully added to database
+        await loadData()
+        toast.success('Role created successfully')
+      }
+      
+      setNewRole({ name: '', description: '', permissions: [] })
+    } catch (error) {
+      console.error('Error creating role:', error)
+      toast.error('Failed to create role')
     }
-
-    setRoles([...roles, role])
-    setNewRole({ name: '', description: '', permissions: [] })
-    toast.success('Role created successfully')
   }
 
-  const handleUpdateRole = (roleId: string, updates: Partial<Role>) => {
-    setRoles(roles.map(role => 
-      role.id === roleId ? { ...role, ...updates } : role
-    ))
-    setEditingRole(null)
-    toast.success('Role updated successfully')
+  const handleUpdateRole = async (roleId: string, updates: Partial<Role>) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Try to update in database
+      const { error } = await supabase
+        .from('roles_v2')
+        .update({
+          name: updates.name,
+          description: updates.description,
+          permissions: updates.permissions
+        })
+        .eq('id', roleId)
+      
+      if (error && error.code !== '42P01') throw error
+      
+      // Update local state
+      setRoles(roles.map(role => 
+        role.id === roleId ? { ...role, ...updates } : role
+      ))
+      setEditingRole(null)
+      toast.success('Role updated successfully')
+      
+      // Reload to ensure consistency
+      await loadData()
+    } catch (error) {
+      console.error('Error updating role:', error)
+      toast.error('Failed to update role')
+    }
   }
 
-  const handleDeleteRole = (roleId: string) => {
+  const handleDeleteRole = async (roleId: string) => {
     const role = roles.find(r => r.id === roleId)
     if (role?.is_system) {
       toast.error('Cannot delete system roles')
       return
     }
     
-    setRoles(roles.filter(role => role.id !== roleId))
-    toast.success('Role deleted successfully')
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Try to delete from database
+      const { error } = await supabase
+        .from('roles_v2')
+        .delete()
+        .eq('id', roleId)
+      
+      if (error && error.code !== '42P01') throw error
+      
+      // Update local state
+      setRoles(roles.filter(role => role.id !== roleId))
+      toast.success('Role deleted successfully')
+      
+      // Reload to ensure consistency
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting role:', error)
+      toast.error('Failed to delete role')
+    }
   }
 
-  const handleAssignRole = (userId: string, roleId: string) => {
-    setUsers(users.map(user => 
-      user.user_id === userId ? { ...user, role: roleId } : user
-    ))
-    toast.success('Role assigned successfully')
+  const handleAssignRole = async (userId: string, roleId: string) => {
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Update user role in profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: roleId })
+        .eq('id', userId)
+      
+      if (error) throw error
+      
+      // Update local state
+      setUsers(users.map(user => 
+        user.user_id === userId ? { ...user, role: roleId } : user
+      ))
+      
+      toast.success('Role assigned successfully')
+      
+      // Reload to ensure consistency
+      await loadData()
+    } catch (error) {
+      console.error('Error assigning role:', error)
+      toast.error('Failed to assign role')
+    }
   }
 
   const getPermissionCategory = (category: string) => {

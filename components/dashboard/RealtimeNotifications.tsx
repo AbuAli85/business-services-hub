@@ -39,64 +39,61 @@ export function RealtimeNotifications({ className }: RealtimeNotificationsProps)
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Simulate real-time notifications
+  // Real-time notifications using admin realtime hook
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate random notifications
-      const notificationTypes = [
-        {
-          type: 'success' as const,
-          title: 'New Service Approved',
-          message: 'Digital Marketing service by Ahmed Al-Rashid has been approved',
-          actionUrl: '/dashboard/admin/services',
-          actionLabel: 'View Services'
-        },
-        {
-          type: 'info' as const,
-          title: 'New User Registration',
-          message: 'Fatima Al-Zahra has registered as a service provider',
-          actionUrl: '/dashboard/admin/users',
-          actionLabel: 'View Users'
-        },
-        {
-          type: 'warning' as const,
-          title: 'Payment Overdue',
-          message: 'Invoice #INV-2024-001 is 3 days overdue',
-          actionUrl: '/dashboard/admin/invoices',
-          actionLabel: 'View Invoice'
-        },
-        {
-          type: 'error' as const,
-          title: 'High Revenue Alert',
-          message: 'Daily revenue exceeded OMR 5,000',
-          actionUrl: '/dashboard/admin/analytics',
-          actionLabel: 'View Analytics'
-        }
-      ]
-
-      // Only add notifications occasionally to avoid spam
-      if (Math.random() < 0.3) {
-        const randomNotification = notificationTypes[Math.floor(Math.random() * notificationTypes.length)]
-        const newNotification: Notification = {
-          id: Date.now().toString(),
-          ...randomNotification,
-          timestamp: new Date(),
-          read: false
-        }
-
-        setNotifications(prev => [newNotification, ...prev].slice(0, 10)) // Keep only last 10
-        setUnreadCount(prev => prev + 1)
-        
-        // Show toast for important notifications
-        if (randomNotification.type === 'warning' || randomNotification.type === 'error') {
-          toast.error(randomNotification.title)
-        } else if (randomNotification.type === 'success') {
-          toast.success(randomNotification.title)
-        }
+    // Load initial notifications from localStorage if available
+    const savedNotifications = localStorage.getItem('admin-notifications')
+    if (savedNotifications) {
+      try {
+        const parsed = JSON.parse(savedNotifications)
+        setNotifications(parsed.map((n: any) => ({
+          ...n,
+          timestamp: new Date(n.timestamp)
+        })))
+        setUnreadCount(parsed.filter((n: any) => !n.read).length)
+      } catch (e) {
+        console.error('Failed to parse saved notifications:', e)
       }
-    }, 30000) // Check every 30 seconds
+    }
+  }, [])
 
-    return () => clearInterval(interval)
+  // Save notifications to localStorage when they change
+  useEffect(() => {
+    if (notifications.length > 0) {
+      localStorage.setItem('admin-notifications', JSON.stringify(notifications))
+    }
+  }, [notifications])
+
+  // Public method to add notification (can be called from other components)
+  useEffect(() => {
+    const handleCustomNotification = (event: CustomEvent) => {
+      const { type, title, message, actionUrl, actionLabel } = event.detail
+      const newNotification: Notification = {
+        id: Date.now().toString(),
+        type: type || 'info',
+        title,
+        message,
+        timestamp: new Date(),
+        read: false,
+        actionUrl,
+        actionLabel
+      }
+      
+      setNotifications(prev => [newNotification, ...prev].slice(0, 50))
+      setUnreadCount(prev => prev + 1)
+      
+      // Show toast for important notifications
+      if (type === 'warning' || type === 'error') {
+        toast.error(title)
+      } else if (type === 'success') {
+        toast.success(title)
+      }
+    }
+
+    window.addEventListener('admin-notification' as any, handleCustomNotification)
+    return () => {
+      window.removeEventListener('admin-notification' as any, handleCustomNotification)
+    }
   }, [])
 
   const markAsRead = (notificationId: string) => {

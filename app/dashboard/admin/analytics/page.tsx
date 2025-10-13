@@ -129,6 +129,31 @@ export default function AdminAnalyticsPage() {
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={() => {
+                // Generate CSV export
+                const csvData = [
+                  ['Metric', 'Value'],
+                  ['Total Users', metrics.totalUsers],
+                  ['Total Revenue', totalRevenue],
+                  ['Total Bookings', metrics.totalBookings],
+                  ['Total Services', metrics.totalServices],
+                  ['User Growth', `${metrics.userGrowth}%`],
+                  ['Revenue Growth', `${metrics.revenueGrowth}%`],
+                  ['Booking Growth', `${metrics.bookingGrowth}%`],
+                  ['Service Growth', `${metrics.serviceGrowth}%`],
+                  ['Completion Rate', `${completionRate.toFixed(1)}%`]
+                ]
+                const csv = csvData.map(row => row.join(',')).join('\n')
+                const blob = new Blob([csv], { type: 'text/csv' })
+                const url = window.URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `analytics-report-${new Date().toISOString().split('T')[0]}.csv`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                window.URL.revokeObjectURL(url)
+              }}
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Export Report
@@ -280,17 +305,17 @@ export default function AdminAnalyticsPage() {
             <div className="text-center">
               <div className="text-3xl font-bold text-green-600">{completionRate.toFixed(1)}%</div>
               <p className="text-sm text-gray-600">Completion Rate</p>
-              <p className="text-xs text-gray-500">Bookings completed successfully</p>
+              <p className="text-xs text-gray-500">{completedBookings} of {bookings.length} bookings completed</p>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-blue-600">4.7</div>
-              <p className="text-sm text-gray-600">Average Rating</p>
-              <p className="text-xs text-gray-500">Customer satisfaction score</p>
+              <div className="text-3xl font-bold text-blue-600">{bookings.length}</div>
+              <p className="text-sm text-gray-600">Total Bookings</p>
+              <p className="text-xs text-gray-500">All time platform bookings</p>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">2.5h</div>
-              <p className="text-sm text-gray-600">Response Time</p>
-              <p className="text-xs text-gray-500">Average response to inquiries</p>
+              <div className="text-3xl font-bold text-purple-600">{services.length}</div>
+              <p className="text-sm text-gray-600">Active Services</p>
+              <p className="text-xs text-gray-500">Available on platform</p>
             </div>
           </div>
         </CardContent>

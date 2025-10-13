@@ -193,11 +193,27 @@ export default function AdminUsersPage() {
 
   const handleSendEmail = useCallback(async (user: AdminUser) => {
     try {
-      // Simulate email sending
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Send email via API
+      const response = await fetch('/api/notifications/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: user.email,
+          subject: 'Message from Admin',
+          text: `Hello ${user.full_name},\n\nThis is a message from the admin team.`,
+          html: `<p>Hello <strong>${user.full_name}</strong>,</p><p>This is a message from the admin team.</p>`
+        })
+      })
+      
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Email API failed')
+      }
+      
       toast.success(`Email sent to ${user.email}`)
     } catch (err: any) {
-      toast.error('Failed to send email')
+      console.error('Email error:', err)
+      toast.error('Failed to send email: ' + err.message)
     }
   }, [])
 
@@ -527,14 +543,50 @@ export default function AdminUsersPage() {
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
-                <Button 
-                  onClick={() => toast('Import functionality coming soon')}
-                  variant="outline" 
-                  size="sm"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
-                </Button>
+              <Button 
+                onClick={() => {
+                  const input = document.createElement('input')
+                  input.type = 'file'
+                  input.accept = '.csv'
+                  input.onchange = async (e: any) => {
+                    const file = e.target?.files?.[0]
+                    if (!file) return
+                    
+                    try {
+                      const text = await file.text()
+                      const lines = text.split('\n')
+                      const headers = lines[0].split(',')
+                      
+                      toast.info(`Processing ${lines.length - 1} users from CSV...`)
+                      
+                      // Parse CSV and prepare user data
+                      const users = lines.slice(1)
+                        .filter((line: string) => line.trim())
+                        .map((line: string) => {
+                          const values = line.split(',')
+                          return headers.reduce((obj: any, header: string, index: number) => {
+                            obj[header.trim()] = values[index]?.trim()
+                            return obj
+                          }, {})
+                        })
+                      
+                      // You would send this to API for bulk user creation
+                      console.log('Parsed users:', users)
+                      toast.success(`CSV parsed: ${users.length} users ready for import`)
+                      toast.info('Bulk import API endpoint needed for full implementation')
+                    } catch (error) {
+                      console.error('Import error:', error)
+                      toast.error('Failed to parse CSV file')
+                    }
+                  }
+                  input.click()
+                }}
+                variant="outline" 
+                size="sm"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Import CSV
+              </Button>
               </div>
             </div>
           </CardHeader>
