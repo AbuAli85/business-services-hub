@@ -218,41 +218,56 @@ class DashboardDataManager {
 
   // Load users
   private async loadUsers() {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    this.users = [
-      {
-        id: '1',
-        fullName: 'Ahmed Al-Rashid',
-        email: 'ahmed@example.com',
-        role: 'client',
-        status: 'active',
-        createdAt: '2024-01-15T10:00:00Z',
-        lastActive: '2024-01-20T14:30:00Z',
-        companyName: 'Al-Rashid Trading LLC'
-      },
-      {
-        id: '2',
-        fullName: 'Fatima Al-Zahra',
-        email: 'fatima@example.com',
-        role: 'provider',
-        status: 'active',
-        createdAt: '2024-01-10T09:00:00Z',
-        lastActive: '2024-01-20T16:45:00Z',
-        companyName: 'Digital Solutions Oman'
-      },
-      {
-        id: '3',
-        fullName: 'Mohammed Al-Balushi',
-        email: 'mohammed@example.com',
-        role: 'admin',
-        status: 'active',
-        createdAt: '2024-01-01T08:00:00Z',
-        lastActive: '2024-01-20T17:00:00Z',
-        companyName: 'Business Services Hub'
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Fetch users from profiles table
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          role,
+          status,
+          company_name,
+          created_at,
+          last_active,
+          updated_at
+        `)
+        .order('created_at', { ascending: false })
+      
+      if (usersError) {
+        console.warn('⚠️ Error loading users from database:', usersError)
+        // Fallback to empty array if table doesn't exist or other error
+        this.users = []
+        return
       }
-    ]
+      
+      if (usersData && usersData.length > 0) {
+        // Transform database data to our interface
+        this.users = usersData.map((user: any) => ({
+          id: user.id,
+          fullName: user.full_name || 'Unknown User',
+          email: user.email || '',
+          role: user.role || 'client',
+          status: user.status || 'active',
+          createdAt: user.created_at || new Date().toISOString(),
+          lastActive: user.last_active || user.updated_at || new Date().toISOString(),
+          companyName: user.company_name
+        }))
+        
+        console.log(`✅ Loaded ${this.users.length} real users from database`)
+      } else {
+        // No users found in database
+        this.users = []
+        console.log('ℹ️ No users found in database - showing empty state')
+      }
+    } catch (error) {
+      console.error('❌ Error loading users:', error)
+      // Fallback to empty array on any error
+      this.users = []
+    }
   }
 
   // Load services based on user role
@@ -316,63 +331,15 @@ class DashboardDataManager {
         console.log('📊 Dashboard Data: Mapped services:', this.services.length, 'services with provider names')
       } else {
         console.error('Failed to fetch services:', response.status, response.statusText)
-        console.log('🔄 Dashboard Data: Using fallback data for services')
-        // Fallback to sample data if API fails
-        this.services = [
-          {
-            id: 'sample-1',
-            title: 'Sample Service 1',
-            description: 'This is a sample service for testing purposes',
-            category: 'Web Development',
-            basePrice: 100,
-            currency: 'OMR',
-            providerId: userId || 'sample-provider',
-            providerName: 'Sample Provider',
-            provider_name: 'Sample Provider',
-            status: 'active',
-            approvalStatus: 'approved',
-            featured: true,
-            rating: 4.5,
-            avg_rating: 4.5,
-            reviewCount: 10,
-            review_count: 10,
-            bookingCount: 5,
-            booking_count: 5,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            cover_image_url: null
-          }
-        ]
+        console.log('🔄 Dashboard Data: Using empty services data due to API failure')
+        // Fallback to empty array if API fails
+        this.services = []
       }
     } catch (error) {
       console.error('Error loading services:', error)
-      console.log('🔄 Dashboard Data: Using fallback data due to error')
-      // Fallback to sample data if API fails
-      this.services = [
-        {
-          id: 'sample-1',
-          title: 'Sample Service 1',
-          description: 'This is a sample service for testing purposes',
-          category: 'Web Development',
-          basePrice: 100,
-          currency: 'OMR',
-          providerId: userId || 'sample-provider',
-          providerName: 'Sample Provider',
-          provider_name: 'Sample Provider',
-          status: 'active',
-          approvalStatus: 'approved',
-          featured: true,
-          rating: 4.5,
-          avg_rating: 4.5,
-          reviewCount: 10,
-          review_count: 10,
-          bookingCount: 5,
-          booking_count: 5,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          cover_image_url: null
-        }
-      ]
+      console.log('🔄 Dashboard Data: Using empty services data due to error')
+      // Fallback to empty array if API fails
+      this.services = []
     }
   }
 
@@ -423,47 +390,15 @@ class DashboardDataManager {
           console.error('❌ Dashboard Data: Could not parse error response')
         }
         
-        // Fallback to sample data if API fails
-        console.log('🔄 Dashboard Data: Using fallback booking data')
-        this.bookings = [
-          {
-            id: 'sample-booking-1',
-            serviceId: 'sample-service-1',
-            serviceTitle: 'Sample Service Booking',
-            clientId: 'sample-client',
-            clientName: 'Sample Client',
-            providerId: 'sample-provider',
-            providerName: 'Sample Provider',
-            status: 'completed',
-            totalAmount: 500,
-            currency: 'OMR',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            invoiceId: undefined
-          }
-        ]
+        // Fallback to empty array if API fails
+        console.log('🔄 Dashboard Data: Using empty booking data due to API failure')
+        this.bookings = []
       }
     } catch (error) {
       console.error('❌ Dashboard Data: Error loading bookings:', error)
-      // Fallback to sample data if API fails
-      console.log('🔄 Dashboard Data: Using fallback booking data due to error')
-      this.bookings = [
-        {
-          id: 'sample-booking-1',
-          serviceId: 'sample-service-1',
-          serviceTitle: 'Sample Service Booking',
-          clientId: 'sample-client',
-          clientName: 'Sample Client',
-          providerId: 'sample-provider',
-          providerName: 'Sample Provider',
-          status: 'completed',
-          totalAmount: 500,
-          currency: 'OMR',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          invoiceId: undefined
-        }
-      ]
+      // Fallback to empty array if API fails
+      console.log('🔄 Dashboard Data: Using empty booking data due to error')
+      this.bookings = []
     }
   }
 
