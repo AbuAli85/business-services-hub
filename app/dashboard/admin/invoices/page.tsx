@@ -396,7 +396,37 @@ export default function AdminInvoicesPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => toast.success('Downloading invoice...')}
+                              onClick={() => {
+                                try {
+                                  // Generate invoice CSV
+                                  const csvData = [
+                                    ['Invoice ID', invoice.id],
+                                    ['Client', invoice.clientName || 'N/A'],
+                                    ['Provider', invoice.providerName || 'N/A'],
+                                    ['Service', invoice.serviceTitle || 'N/A'],
+                                    ['Amount', `${invoice.currency} ${invoice.amount}`],
+                                    ['Status', invoice.status],
+                                    ['Issued', new Date(invoice.issuedAt).toLocaleDateString()],
+                                    ['Due', new Date(invoice.dueAt).toLocaleDateString()]
+                                  ]
+                                  
+                                  const csv = csvData.map(row => row.join(',')).join('\n')
+                                  const blob = new Blob([csv], { type: 'text/csv' })
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = `invoice-${invoice.id}-${Date.now()}.csv`
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  document.body.removeChild(a)
+                                  window.URL.revokeObjectURL(url)
+                                  
+                                  toast.success('Invoice downloaded')
+                                } catch (err) {
+                                  console.error('Download error:', err)
+                                  toast.error('Failed to download invoice')
+                                }
+                              }}
                             >
                               <Download className="h-3 w-3" />
                             </Button>
