@@ -469,122 +469,112 @@ class DashboardDataManager {
 
   // Load invoices
   private async loadInvoices() {
-    await new Promise(resolve => setTimeout(resolve, 100))
-    
-    this.invoices = [
-      {
-        id: '2',
-        bookingId: 'a89a8f68-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Graphic Design',
-        amount: 200,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-24T04:00:00Z',
-        dueAt: '2024-10-01T04:00:00Z'
-      },
-      {
-        id: '3',
-        bookingId: '789c854b-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Digital Marketing Campaign',
-        amount: 500,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-24T04:00:00Z',
-        dueAt: '2024-10-01T04:00:00Z'
-      },
-      {
-        id: '4',
-        bookingId: '5c3f1125-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Digital Marketing Campaign',
-        amount: 500,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-14T04:00:00Z',
-        dueAt: '2024-09-21T04:00:00Z'
-      },
-      {
-        id: '5',
-        bookingId: 'e7fd3d8a-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Business Consulting',
-        amount: 300,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-13T04:00:00Z',
-        dueAt: '2024-09-20T04:00:00Z'
-      },
-      {
-        id: '6',
-        bookingId: '087c823e-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Website Development',
-        amount: 800,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-11T04:00:00Z',
-        dueAt: '2024-09-18T04:00:00Z'
-      },
-      {
-        id: '7',
-        bookingId: '60ced295-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Accounting Services',
-        amount: 250,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-12T04:00:00Z',
-        dueAt: '2024-09-19T04:00:00Z'
-      },
-      {
-        id: '8',
-        bookingId: '7c3ae238-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Website Development',
-        amount: 800,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-09T04:00:00Z',
-        dueAt: '2024-09-16T04:00:00Z'
-      },
-      {
-        id: '9',
-        bookingId: 'cfb058a9-1234-5678-9abc-def012345678',
-        clientId: '1',
-        clientName: 'Ahmed Al-Rashid',
-        providerId: '2',
-        providerName: 'Fatima Al-Zahra',
-        serviceTitle: 'Business Consulting',
-        amount: 300,
-        currency: 'OMR',
-        status: 'issued',
-        issuedAt: '2024-09-09T04:00:00Z',
-        dueAt: '2024-09-16T04:00:00Z'
+    try {
+      const supabase = await getSupabaseClient()
+      
+      // Try to fetch invoices from database
+      let invoicesData: any[] = []
+      let invoicesError: any = null
+      
+      try {
+        // First try the complex query with joins
+        const { data, error } = await supabase
+          .from('invoices')
+          .select(`
+            id,
+            booking_id,
+            client_id,
+            provider_id,
+            service_title,
+            amount,
+            currency,
+            status,
+            issued_at,
+            due_at,
+            paid_at,
+            created_at,
+            updated_at,
+            bookings!inner(
+              client_id,
+              provider_id,
+              service_title
+            ),
+            profiles_client:profiles!invoices_client_id_fkey(
+              full_name,
+              email
+            ),
+            profiles_provider:profiles!invoices_provider_id_fkey(
+              full_name,
+              email
+            )
+          `)
+          .order('created_at', { ascending: false })
+        
+        invoicesData = data || []
+        invoicesError = error
+      } catch (joinError) {
+        console.warn('⚠️ Complex invoice query failed, trying simple query:', joinError)
+        
+        // Fallback to simple query without joins
+        const { data, error } = await supabase
+          .from('invoices')
+          .select(`
+            id,
+            booking_id,
+            client_id,
+            provider_id,
+            service_title,
+            amount,
+            currency,
+            status,
+            issued_at,
+            due_at,
+            paid_at,
+            created_at,
+            updated_at
+          `)
+          .order('created_at', { ascending: false })
+        
+        invoicesData = data || []
+        invoicesError = error
       }
-    ]
+      
+      if (invoicesError) {
+        console.warn('⚠️ Error loading invoices from database:', invoicesError)
+        // Fallback to empty array if table doesn't exist or other error
+        this.invoices = []
+        return
+      }
+      
+      if (invoicesData && invoicesData.length > 0) {
+        // Transform database data to our interface
+        this.invoices = invoicesData.map((invoice: any) => ({
+          id: invoice.id,
+          bookingId: invoice.booking_id,
+          clientId: invoice.client_id,
+          clientName: invoice.profiles_client?.full_name || `Client ${invoice.client_id}`,
+          providerId: invoice.provider_id,
+          providerName: invoice.profiles_provider?.full_name || `Provider ${invoice.provider_id}`,
+          serviceTitle: invoice.service_title || 'Service',
+          amount: invoice.amount || 0,
+          currency: invoice.currency || 'OMR',
+          status: invoice.status || 'draft',
+          issuedAt: invoice.issued_at || invoice.created_at,
+          dueAt: invoice.due_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+          paidAt: invoice.paid_at
+        }))
+        
+        console.log(`✅ Loaded ${this.invoices.length} real invoices from database`)
+      } else {
+        // No invoices found in database
+        this.invoices = []
+        console.log('ℹ️ No invoices found in database - showing empty state')
+      }
+    } catch (error) {
+      console.error('❌ Error loading invoices:', error)
+      // Fallback to empty array on any error
+      this.invoices = []
+    }
   }
 
   // Load recent milestone events (live from DB if available, else fallback)
