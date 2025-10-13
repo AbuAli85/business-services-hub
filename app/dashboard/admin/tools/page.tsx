@@ -1,12 +1,16 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { RoleGuard } from '@/components/role-guard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { Radio, RefreshCw, Settings } from 'lucide-react'
+import { useAdminRealtime } from '@/hooks/useAdminRealtime'
+import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
 import { toast } from 'sonner'
 
 export default function AdminToolsPage() {
@@ -18,6 +22,30 @@ export default function AdminToolsPage() {
   const [userRole, setUserRole] = useState<string>('client')
   const [inviteEmail, setInviteEmail] = useState('')
   const [syncLoading, setSyncLoading] = useState(false)
+  const [hasRecentUpdate, setHasRecentUpdate] = useState(false)
+
+  // Real-time subscription for admin tools
+  const { status: realtimeStatus, lastUpdate } = useAdminRealtime({
+    enableUsers: true,
+    enableServices: true,
+    enableBookings: true,
+    enableInvoices: true,
+    enablePermissions: true,
+    enableVerifications: true,
+    debounceMs: 2000,
+    showToasts: false
+  })
+
+  // Auto-refresh when real-time updates occur
+  useEffect(() => {
+    if (lastUpdate) {
+      setHasRecentUpdate(true)
+      if (users.length > 0) {
+        loadUsers() // Reload users if they're already loaded
+      }
+      setTimeout(() => setHasRecentUpdate(false), 3000)
+    }
+  }, [lastUpdate])
 
   const [bookingId, setBookingId] = useState('')
   const [bookingAction, setBookingAction] = useState<'approve'|'decline'|'reschedule'|'complete'|'cancel'>('approve')
@@ -174,6 +202,38 @@ export default function AdminToolsPage() {
   return (
     <RoleGuard allow={['admin']} redirect="/dashboard">
     <div className="p-4 space-y-6">
+      {/* Enhanced Header */}
+      <div className={`bg-gradient-to-r from-orange-600 to-red-600 rounded-xl p-8 text-white transition-all duration-300 ${hasRecentUpdate ? 'ring-4 ring-yellow-400' : ''}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Settings className="h-10 w-10" />
+              <div>
+                <h1 className="text-4xl font-bold">Admin Tools</h1>
+                {realtimeStatus.connected && (
+                  <Badge className="bg-green-500/20 text-white border-white/30 mt-2">
+                    <Radio className="h-3 w-3 mr-1 animate-pulse" />
+                    Live Updates Active
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <p className="text-orange-100 text-lg">
+              Advanced administrative tools with real-time monitoring
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <RealtimeNotifications />
+            {lastUpdate && (
+              <Badge variant="outline" className="text-white border-white/30">
+                <RefreshCw className="h-3 w-3 mr-1" />
+                Updated: {lastUpdate.toLocaleTimeString()}
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>

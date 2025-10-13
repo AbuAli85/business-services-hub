@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,10 +25,13 @@ import {
   ExternalLink,
   Download,
   Eye,
-  Edit
+  Edit,
+  Radio
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { useInvoicesRealtime } from '@/hooks/useAdminRealtime'
+import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { toast } from 'sonner'
 
@@ -37,6 +40,32 @@ export default function AdminInvoicesPage() {
   const { bookings, invoices, loading, error, refresh } = useDashboardData()
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [hasRecentUpdate, setHasRecentUpdate] = useState(false)
+  
+  // Real-time subscription for invoices
+  const { isConnected: realtimeConnected, lastUpdate } = useInvoicesRealtime((update) => {
+    // Show visual indicator for new updates
+    setHasRecentUpdate(true)
+    setTimeout(() => setHasRecentUpdate(false), 3000)
+    
+    // Auto-refresh data when invoice changes
+    refresh()
+    
+    // Show notification for important updates
+    if (update.event === 'INSERT') {
+      toast.success('New invoice created')
+    } else if (update.event === 'UPDATE' && update.record?.status === 'paid') {
+      toast.success('Invoice marked as paid')
+    }
+  })
+  
+  // Clear hasRecentUpdate after 3 seconds
+  useEffect(() => {
+    if (hasRecentUpdate) {
+      const timer = setTimeout(() => setHasRecentUpdate(false), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [hasRecentUpdate])
 
   // Filter invoices
   const filteredInvoices = useMemo(() => {
@@ -114,10 +143,18 @@ export default function AdminInvoicesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-8 text-white">
+      <div className={`bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-8 text-white transition-all duration-300 ${hasRecentUpdate ? 'ring-4 ring-yellow-400' : ''}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Invoice Management</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">Invoice Management</h1>
+              {realtimeConnected && (
+                <Badge className="bg-green-500/20 text-white border-white/30">
+                  <Radio className="h-3 w-3 mr-1 animate-pulse" />
+                  Live
+                </Badge>
+              )}
+            </div>
             <p className="text-purple-100 text-lg mb-4">
               Manage invoices with integrated booking tracking and payment status
             </p>
@@ -138,9 +175,16 @@ export default function AdminInvoicesPage() {
                 <DollarSign className="h-4 w-4 mr-1" />
                 <span>Revenue: {formatCurrency(stats.totalRevenue)}</span>
               </div>
+              {lastUpdate && (
+                <div className="flex items-center text-xs opacity-75">
+                  <Clock className="h-3 w-3 mr-1" />
+                  <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-3">
+            <RealtimeNotifications />
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"

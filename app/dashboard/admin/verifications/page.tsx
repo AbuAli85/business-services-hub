@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSupabaseClient } from '@/lib/supabase'
+import { useAdminRealtime } from '@/hooks/useAdminRealtime'
+import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
 import { toast } from 'sonner'
 import { 
   CheckCircle, 
@@ -23,7 +25,9 @@ import {
   MapPin,
   Globe,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Radio,
+  RefreshCw
 } from 'lucide-react'
 
 interface VerificationProfile {
@@ -52,10 +56,32 @@ export default function AdminVerificationsPage() {
   const [selectedProfile, setSelectedProfile] = useState<VerificationProfile | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [hasRecentUpdate, setHasRecentUpdate] = useState(false)
+
+  // Real-time subscription for verification updates
+  const { status: realtimeStatus, lastUpdate } = useAdminRealtime({
+    enableUsers: true,
+    enableVerifications: true,
+    enableServices: false,
+    enableBookings: false,
+    enableInvoices: false,
+    enablePermissions: false,
+    debounceMs: 1500,
+    showToasts: true
+  })
 
   useEffect(() => {
     fetchProfiles()
   }, [])
+  
+  // Auto-refresh when real-time updates occur
+  useEffect(() => {
+    if (lastUpdate) {
+      setHasRecentUpdate(true)
+      fetchProfiles()
+      setTimeout(() => setHasRecentUpdate(false), 3000)
+    }
+  }, [lastUpdate])
 
   const fetchProfiles = async () => {
     try {
@@ -177,9 +203,55 @@ export default function AdminVerificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">User Verifications</h1>
-        <p className="text-gray-600 mt-2">Review and approve user account applications</p>
+      {/* Enhanced Header */}
+      <div className={`bg-gradient-to-r from-green-600 to-teal-600 rounded-xl p-8 text-white transition-all duration-300 ${hasRecentUpdate ? 'ring-4 ring-yellow-400' : ''}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">User Verifications</h1>
+              {realtimeStatus.connected && (
+                <Badge className="bg-green-500/20 text-white border-white/30">
+                  <Radio className="h-3 w-3 mr-1 animate-pulse" />
+                  Live
+                </Badge>
+              )}
+            </div>
+            <p className="text-green-100 text-lg mb-4">
+              Review and approve user account applications with real-time updates
+            </p>
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center">
+                <User className="h-4 w-4 mr-1" />
+                <span>{profiles.length} Total Profiles</span>
+              </div>
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-1" />
+                <span>{profiles.filter(p => p.verification_status === 'pending').length} Pending</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-4 w-4 mr-1" />
+                <span>{profiles.filter(p => p.verification_status === 'approved').length} Approved</span>
+              </div>
+              {lastUpdate && (
+                <div className="flex items-center text-xs opacity-75">
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col gap-3">
+            <RealtimeNotifications />
+            <Button 
+              variant="secondary"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              onClick={fetchProfiles}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}

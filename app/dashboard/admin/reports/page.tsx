@@ -36,9 +36,11 @@ import {
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
 import { useDashboardData } from '@/hooks/useDashboardData'
+import { useAdminRealtime } from '@/hooks/useAdminRealtime'
 import { formatCurrency } from '@/lib/dashboard-data'
 import { toast } from 'sonner'
 import { DashboardErrorBoundary } from '@/components/dashboard/dashboard-error-boundary'
+import { Radio, Download as DownloadIcon } from 'lucide-react'
 
 interface Report {
   id: string
@@ -90,6 +92,28 @@ function AdminReportsPageContent() {
   const [selectedTab, setSelectedTab] = useState<'all' | 'financial' | 'user' | 'service' | 'booking' | 'analytics'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [hasRecentUpdate, setHasRecentUpdate] = useState(false)
+
+  // Real-time subscription for reports data
+  const { status: realtimeStatus, lastUpdate } = useAdminRealtime({
+    enableUsers: true,
+    enableServices: true,
+    enableBookings: true,
+    enableInvoices: true,
+    enablePermissions: false,
+    enableVerifications: false,
+    debounceMs: 3000,
+    showToasts: false
+  })
+
+  // Auto-refresh when real-time updates occur
+  useEffect(() => {
+    if (lastUpdate) {
+      setHasRecentUpdate(true)
+      loadAnalytics()
+      setTimeout(() => setHasRecentUpdate(false), 3000)
+    }
+  }, [lastUpdate])
 
   useEffect(() => {
     loadReports()
@@ -371,12 +395,20 @@ function AdminReportsPageContent() {
   return (
     <div className="space-y-6">
       {/* Enhanced Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-8 text-white">
+      <div className={`bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl p-8 text-white transition-all duration-300 ${hasRecentUpdate ? 'ring-4 ring-yellow-400' : ''}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Analytics & Reports</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">Analytics & Reports</h1>
+              {realtimeStatus.connected && (
+                <Badge className="bg-green-500/20 text-white border-white/30">
+                  <Radio className="h-3 w-3 mr-1 animate-pulse" />
+                  Live
+                </Badge>
+              )}
+            </div>
             <p className="text-purple-100 text-lg mb-4">
-              Comprehensive business intelligence and detailed system analytics
+              Comprehensive business intelligence with real-time analytics
             </p>
             <div className="flex items-center space-x-6 text-sm">
               <div className="flex items-center">

@@ -26,9 +26,13 @@ import {
   Crown,
   Key,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Radio,
+  RefreshCw
 } from 'lucide-react'
 import { getSupabaseClient } from '@/lib/supabase'
+import { useAdminRealtime } from '@/hooks/useAdminRealtime'
+import { RealtimeNotifications } from '@/components/dashboard/RealtimeNotifications'
 import { toast } from 'sonner'
 
 interface Permission {
@@ -155,10 +159,31 @@ export default function AdminPermissionsPage() {
   const [selectedRole, setSelectedRole] = useState<Role | null>(null)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [newRole, setNewRole] = useState({ name: '', description: '', permissions: [] as string[] })
+  const [hasRecentUpdate, setHasRecentUpdate] = useState(false)
+
+  // Real-time subscription for permission changes
+  const { status: realtimeStatus, lastUpdate } = useAdminRealtime({
+    enableUsers: true,
+    enablePermissions: true,
+    enableServices: false,
+    enableBookings: false,
+    enableInvoices: false,
+    debounceMs: 2000,
+    showToasts: false
+  })
 
   useEffect(() => {
     loadData()
   }, [])
+  
+  // Auto-refresh when real-time updates occur
+  useEffect(() => {
+    if (lastUpdate) {
+      setHasRecentUpdate(true)
+      loadData()
+      setTimeout(() => setHasRecentUpdate(false), 3000)
+    }
+  }, [lastUpdate])
 
   const loadData = async () => {
     try {
@@ -287,10 +312,18 @@ export default function AdminPermissionsPage() {
   return (
     <div className="space-y-6">
       {/* Enhanced Header */}
-      <div className="bg-gradient-to-r from-red-600 to-pink-600 rounded-xl p-8 text-white">
+      <div className={`bg-gradient-to-r from-red-600 to-pink-600 rounded-xl p-8 text-white transition-all duration-300 ${hasRecentUpdate ? 'ring-4 ring-yellow-400' : ''}`}>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold mb-2">Permission Management</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">Permission Management</h1>
+              {realtimeStatus.connected && (
+                <Badge className="bg-green-500/20 text-white border-white/30">
+                  <Radio className="h-3 w-3 mr-1 animate-pulse" />
+                  Live
+                </Badge>
+              )}
+            </div>
             <p className="text-red-100 text-lg mb-4">
               Manage user roles, permissions, and access control across the platform
             </p>
@@ -307,9 +340,16 @@ export default function AdminPermissionsPage() {
                 <Key className="h-4 w-4 mr-1" />
                 <span>{SYSTEM_PERMISSIONS.length} Permissions</span>
               </div>
+              {lastUpdate && (
+                <div className="flex items-center text-xs opacity-75">
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  <span>Updated: {lastUpdate.toLocaleTimeString()}</span>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-3">
+            <RealtimeNotifications />
             <Button 
               variant="secondary"
               className="bg-white/10 border-white/20 text-white hover:bg-white/20"
