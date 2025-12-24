@@ -64,7 +64,17 @@ export async function GET(request: NextRequest) {
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        // CRITICAL: This storage key must match all other platforms for SSO
+        storageKey: 'sb-auth-token',
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      },
+    }
   )
 
   try {
