@@ -62,7 +62,12 @@ export default function AdminToolsPage() {
     try {
       setLoadingUsers(true)
       const supaMod = await import('@supabase/supabase-js')
-      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+        auth: {
+          storageKey: 'sb-auth-token',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        },
+      })
       const { data: { session } } = await supa.auth.getSession()
       if (!session?.access_token) throw new Error('Please sign in again (no session)')
       const res = await fetch('/api/admin/users', { cache: 'no-store', headers: { Authorization: `Bearer ${session.access_token}` } })
@@ -90,7 +95,12 @@ export default function AdminToolsPage() {
     if (!selectedUser) return toast.error('Select a user')
     try {
       const supaMod = await import('@supabase/supabase-js')
-      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+        auth: {
+          storageKey: 'sb-auth-token',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        },
+      })
       const { data: { session } } = await supa.auth.getSession()
       if (!session?.access_token) throw new Error('Please sign in again (no session)')
       const res = await fetch('/api/admin/user-update', {
@@ -111,7 +121,12 @@ export default function AdminToolsPage() {
     try {
       if (!inviteEmail) return toast.error('Enter email to invite')
       const supaMod = await import('@supabase/supabase-js')
-      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+        auth: {
+          storageKey: 'sb-auth-token',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        },
+      })
       const { data: { session } } = await supa.auth.getSession()
       if (!session?.access_token) throw new Error('Please sign in again (no session)')
       const res = await fetch('/api/admin/users/invite', {
@@ -133,7 +148,12 @@ export default function AdminToolsPage() {
     try {
       setSyncLoading(true)
       const supaMod = await import('@supabase/supabase-js')
-      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      const supa = supaMod.createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+        auth: {
+          storageKey: 'sb-auth-token',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        },
+      })
       const { data: { session } } = await supa.auth.getSession()
       if (!session?.access_token) throw new Error('Please sign in again (no session)')
       const res = await fetch('/api/admin/users/sync', { method: 'POST', headers: { Authorization: `Bearer ${session.access_token}` } })
@@ -187,7 +207,12 @@ export default function AdminToolsPage() {
   async function loadEmailEvents() {
     try {
       setLoadingEvents(true)
-      const token = (await (await import('@supabase/supabase-js')).createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).auth.getSession()).data.session?.access_token
+      const token = (await (await import('@supabase/supabase-js')).createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+        auth: {
+          storageKey: 'sb-auth-token',
+          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        },
+      }).auth.getSession()).data.session?.access_token
       const res = await fetch('/api/admin/email-events?limit=100', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to load events')
