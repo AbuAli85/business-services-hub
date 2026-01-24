@@ -85,6 +85,14 @@ async function verifyTokenAndGetUserId(token: string): Promise<string> {
 }
 
 /**
+ * Profile query result type
+ */
+interface ProfileQueryResult {
+  company_id: string | null;
+  role: string | null;
+}
+
+/**
  * Resolve tenant_id (company_id) and role from database (DB-first)
  * Uses user-scoped client so RLS still applies
  */
@@ -113,14 +121,14 @@ async function resolveTenantAndRole(
     .from(CONFIG.PROFILES_TABLE)
     .select(`${CONFIG.PROFILES_TENANT_COLUMN}, ${CONFIG.PROFILES_ROLE_COLUMN}`)
     .eq(CONFIG.PROFILES_USER_ID_COLUMN, user_id)
-    .single();
+    .single<ProfileQueryResult>();
 
   if (error || !profile) {
     throw new McpError('UNAUTHORIZED', 'User profile not found');
   }
 
   // company_id can be null - handle gracefully
-  const companyId = profile[CONFIG.PROFILES_TENANT_COLUMN];
+  const companyId = profile.company_id;
   if (!companyId) {
     // In this repo, users without company_id may still be valid (single-tenant mode)
     // For MCP, we'll use a default or throw - adjust based on your requirements
@@ -128,7 +136,7 @@ async function resolveTenantAndRole(
   }
 
   // Normalize role (prevent case/variant errors)
-  const rawRole = profile[CONFIG.PROFILES_ROLE_COLUMN] || 'user';
+  const rawRole = profile.role || 'user';
   const normalizedRole = normalizeRole(rawRole);
 
   return {
