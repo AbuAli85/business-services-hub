@@ -1,68 +1,21 @@
 import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/utils/supabase/server'
 
 // Force dynamic rendering for this API route
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
-    // Get access token from cookies or Authorization header
-    let token = req.cookies.get('sb-access-token')?.value
-    const authHeader = req.headers.get('authorization')
-    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null
-    
-    if (bearerToken && (!token || token !== bearerToken)) {
-      token = bearerToken
-    }
+    // Use server client: reads Supabase auth from cookies (chunked sb-*-auth-token)
+    // or Authorization: Bearer. Same as /api/bookings/self, utils/supabase/server.
+    const supabase = await createClient()
 
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Unauthorized', details: 'No authentication token found' },
-        { status: 401 }
-      )
-    }
-
-    // Create Supabase client with user token
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('❌ Missing Supabase environment variables')
-      return NextResponse.json(
-        { error: 'Server configuration error', details: 'Missing database configuration' },
-        { status: 500 }
-      )
-    }
-    
-    let supabase
-    try {
-      supabase = createClient(supabaseUrl, supabaseKey, {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        },
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      })
-    } catch (clientError) {
-      console.error('❌ Failed to create Supabase client:', clientError)
-      return NextResponse.json(
-        { error: 'Database connection error', details: 'Failed to initialize database client' },
-        { status: 500 }
-      )
-    }
-
-    // Verify user authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
     if (authError || !user) {
-      console.warn('⚠️ User companies auth error:', authError?.message || 'No user found')
       return NextResponse.json(
-        { error: 'Unauthorized', details: authError?.message || 'User not authenticated' },
+        { error: 'Unauthorized', details: authError?.message ?? 'User not authenticated' },
         { status: 401 }
       )
     }
