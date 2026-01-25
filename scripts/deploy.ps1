@@ -59,32 +59,33 @@ if ($buildTest -eq "y" -or $buildTest -eq "Y") {
 # Step 3: Check git status
 Write-ColorOutput Cyan "Step 3: Checking git status..."
 $gitStatus = git status --porcelain
-if ([string]::IsNullOrWhiteSpace($gitStatus)) {
+$hasChanges = -not [string]::IsNullOrWhiteSpace($gitStatus)
+if (-not $hasChanges) {
     Write-ColorOutput Yellow "⚠️  No changes to commit"
-    $continue = Read-Host "Continue anyway? (y/n)"
+    $continue = Read-Host "Continue anyway? (y/n) [Push will report 'Everything up-to-date' if already in sync]"
     if ($continue -ne "y" -and $continue -ne "Y") {
         exit 0
     }
+    Write-ColorOutput Yellow "   Skipping commit. Proceeding to push...`n"
 } else {
     Write-ColorOutput Green "✅ Changes detected"
     git status --short
     Write-Output ""
-}
 
-# Step 4: Commit changes
-Write-ColorOutput Cyan "Step 4: Committing changes..."
-$commitMsg = Read-Host "Commit message (or press Enter for default)"
-if ([string]::IsNullOrWhiteSpace($commitMsg)) {
-    $commitMsg = "chore: Deploy to production"
-}
-
-git add .
-git commit -m $commitMsg
-if ($LASTEXITCODE -eq 0) {
-    Write-ColorOutput Green "✅ Changes committed`n"
-} else {
-    Write-ColorOutput Red "❌ Commit failed"
-    exit 1
+    # Step 4: Commit changes (only when there are changes)
+    Write-ColorOutput Cyan "Step 4: Committing changes..."
+    $commitMsg = Read-Host "Commit message (or press Enter for default)"
+    if ([string]::IsNullOrWhiteSpace($commitMsg)) {
+        $commitMsg = "chore: Deploy to production"
+    }
+    git add .
+    git commit -m $commitMsg
+    if ($LASTEXITCODE -eq 0) {
+        Write-ColorOutput Green "✅ Changes committed`n"
+    } else {
+        Write-ColorOutput Red "❌ Commit failed"
+        exit 1
+    }
 }
 
 # Step 5: Deploy
