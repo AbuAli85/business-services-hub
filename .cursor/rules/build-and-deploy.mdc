@@ -1,0 +1,27 @@
+---
+description: Build and deployment process for this project
+globs: package.json, **/deploy.ps1, vercel.json, next.config.*, scripts/validate-deployment.ts
+alwaysApply: false
+---
+
+# Build & Deploy Rules
+
+## Local build
+
+- Install dependencies: `npm install`
+- Build: `npm run build`. If `next` is not found, run from repo root after `npm install` or use `npx next build`
+- Dev: `npm run dev` (runs on port 3002; see package.json)
+- Optional: `npm run build:optimized` for large builds (increases Node memory)
+
+## Deployment
+
+- From **project root** run: `.\scripts\deploy.ps1`
+- Use an **interactive** PowerShell; the script prompts for build test, commit message, and push confirmation
+- Flow: validation (if present) → optional build test → git status → commit → push to origin/main
+- Vercel builds on push; local build failure (e.g. missing `next`) is acceptable
+
+## When changing build or deploy
+
+- Keep deploy.ps1 flow: validate → optional build → git status → commit → push
+- Treat validation as optional (skip if script absent)
+- Do not block deploy on local build; recommend "n" for build test when using Vercel
