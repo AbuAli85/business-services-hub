@@ -17,11 +17,13 @@ alwaysApply: false
 
 - From **project root** run: `.\scripts\deploy.ps1`
 - Use an **interactive** PowerShell; the script prompts for build test, commit message, and push confirmation
-- Flow: validation (if present) → optional build test → git status → commit → push to origin/main
+- Flow: validation (if present) → optional build test → git status → [commit only if changes] → push to origin/main
+- If no changes: skip commit and go straight to push (user can still push; git may report "Everything up-to-date")
 - Vercel builds on push; local build failure (e.g. missing `next`) is acceptable
 
 ## When changing build or deploy
 
-- Keep deploy.ps1 flow: validate → optional build → git status → commit → push
+- Keep deploy.ps1 flow: validate → optional build → git status → commit (only when there are changes) → push
+- When working tree is clean, skip commit; do not run `git commit` (it would fail)
 - Treat validation as optional (skip if script absent)
 - Do not block deploy on local build; recommend "n" for build test when using Vercel
